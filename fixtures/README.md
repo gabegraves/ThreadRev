@@ -18,6 +18,9 @@ Regenerate the documents with `python3 fixtures/generate.py` (needs python-docx 
 
 Scenario A model: first-order ideal RC, `t_99.9 = R * C * 6.907755`. Scenario B model: the toy closed form `E = (m * g * Crr + 0.5 * rho * CdA * v^2) * d` with `g = 9.81`, `rho = 1.20`, `CdA = 0.12`, `d = 220 km`, regen assumed zero. Neither is real simulation code.
 
+Regenerating the documents needs `python-docx` and `openpyxl`:
+`python3 -m pip install -r fixtures/requirements.txt && python3 fixtures/generate.py`. The script writes `SHA256SUMS` itself. The workspace export and the Slack scripts need no dependencies — `generate_workspace.py` is stdlib only.
+
 ## slack/
 
 One JSON array per file, one object per message, in `ts` order. Fields: `ts`, `channel`, `channel_name`, `user`, `user_name`, `thread_ts` (parent `ts` for replies, else `null`), `text`, `files` (paths relative to `fixtures/`), `role`.
