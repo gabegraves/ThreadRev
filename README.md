@@ -180,6 +180,8 @@ The workspace index is retrieval. It is retrieval by exact match over a structur
 
 Verified on `main` at 1:56 PM EDT, September 12, 2026, with `npm run verify`:
 
+`npm run smoke` checks the layers `verify` cannot: the documents still hash to what the cards cite, the generators still reproduce their output byte for byte, and both extractors and both checkers actually run here. Each of those failed at some point today while `verify` stayed green.
+
 | Check | Result |
 |---|---|
 | TypeScript typecheck, all workspaces | pass |

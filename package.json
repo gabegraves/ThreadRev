@@ -24,7 +24,8 @@
     "test": "npm run test --workspaces --if-present",
     "verify": "npm run typecheck && npm test && npm run test:checkers",
     "test:checkers": "python3 -m unittest checkers/test_checkers.py",
-    "replay:record": "node apps/channel/replay-record.mjs"
+    "replay:record": "node apps/channel/replay-record.mjs",
+    "smoke": "node apps/channel/smoke.mjs"
   },
   "overrides": {
     "@ag-ui/client": "0.0.59"
