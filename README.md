@@ -19,6 +19,12 @@ Built on September 12, 2026 at the [Agents, Everywhere](https://aitinkerers.org/
 
 > **Prototype status:** a live `@Rev` mention produced an initial checker-backed Slack card and proposed-edit card. The workspace search and document extraction in this demo use a synthetic Slack export and local DOCX fixtures. Stale replacement and approved-copy output are replay-verified; they have not yet been captured together in one live Slack run. See [the evidence boundary](#live-versus-sample).
 
+## See the deployed console
+
+[![ThreadRev console overview: a stale card, an evidence trail, and the related checker run](assets/demo/threadrev-console-overview.gif)](https://threadrev-web.vercel.app/overview)
+
+This is a captured view of the deployed [ThreadRev review console](https://threadrev-web.vercel.app/overview). It visualizes the card lifecycle and evidence trail used in the demo: a stale card, replacement activity, the document read, a message read, and the RC checker run. **It is fixture-backed console data, not a claim of live Slack delivery.**
+
 ## The problem, in one thread
 
 Engineering teams make decisions in Slack threads and then write documents that quietly disagree with them. A review document prints a result computed from a capacitance the thread already replaced. A simulation request pulls parameters from a sheet that a correction message superseded three weeks earlier. Nobody catches it, because nobody rereads the thread.
