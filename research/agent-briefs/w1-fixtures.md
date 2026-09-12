@@ -1,14 +1,13 @@
-# Handoff A: synthetic fixtures and submission package
+# Agent brief: synthetic fixtures (W1)
 
 Project: ThreadRev, a Slack-native engineering change reviewer. Agents, Everywhere hackathon, deadline 5 PM EDT today, September 12, 2026. Repo: https://github.com/gabegraves/ThreadRev (private, `main`).
 
-You own two packages that need no credentials and no application code: **W1** the synthetic fixture assets, and **W5** the submission package. Someone else owns the checkers, the replay harness, the Slack card, and the live workspace.
+You own **W1**, the synthetic fixture assets. No credentials, no application code. The submission package belongs to the human owner of `research/handoff-demo-narrative.md`; do not write under `submission/` or edit `SUBMISSION.md`.
 
 ## Read first, in this order
 
 1. `research/synthetic-fixture-spec.md`, all of it. Every number, name, channel, and message you produce comes from here. It is the only source. Section 6 lists what must never appear.
 2. `contracts/checker-io.md` and `contracts/examples/`, so your documents contain exactly the values the checker will recompute.
-3. `hackathon-rules.md`, `hackathon-overview.md`, and `SUBMISSION.md` for W5.
 
 ## Rules
 
@@ -65,17 +64,6 @@ Acceptance for W1:
 - `python3 -c "import json;[json.load(open(f'fixtures/slack/{n}.json')) for n in ['scenario-a','scenario-b','rc1-clean','rc2-conflict','rc3-midrun']]"` exits 0.
 - `grep -rniE 'clickup|notion|srsim' fixtures/` returns nothing.
 - `fixtures/README.md` maps every file to a scenario or replay case.
-
-## W5. Submission package
-
-Output: fill in `SUBMISSION.md` in place, and create `submission/` with:
-
-- `description.md`: project title ThreadRev, what it does, who it is for, why the Slack context matters. Under 250 words. Written for a judge scoring the four rubric criteria in `hackathon-overview.md`.
-- `video-shotlist.md`: a two-minute shot list built from Scenario A's script and the "Recommended two-minute demonstration" section of `research/hackathon-design.md`. Timestamps, what is on screen, what is said. Include the requirement-change moment and the stale card.
-- `social-post.md`: one draft post tagging the event partners named in `hackathon-rules.md`. No link yet; the repo goes public at submission.
-- `inherited-vs-built.md`: two lists. Inherited: everything in the CopilotKit starter as of commit `9ed46e0`. Built during the event: every path added after that commit, generated from `git diff --stat 9ed46e0..HEAD --name-only` at the time you write it, and refreshed once more before submission.
-
-Acceptance for W5: every required deliverable row in `hackathon-rules.md` has a corresponding file or a filled `SUBMISSION.md` section. Nothing is published or posted; preparing is your job, publishing is the team lead's.
 
 ## Report back
 

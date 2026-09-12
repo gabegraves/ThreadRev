@@ -1,4 +1,4 @@
-# Handoff B: trusted checkers and offline replay harness
+# Agent brief: trusted checkers and offline replay harness (W2, W4)
 
 Project: ThreadRev, a Slack-native engineering change reviewer. Agents, Everywhere hackathon, deadline 5 PM EDT today, September 12, 2026. Repo: https://github.com/gabegraves/ThreadRev (private, `main`). Node 22+, Python 3.11+.
 
