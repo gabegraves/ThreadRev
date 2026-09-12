@@ -33,12 +33,11 @@ A Slack-native engineering change investigator. It watches an engineering channe
 | Cross-channel workspace index and `search_workspace` | `apps/channel/src/workspace.ts`, `fixtures/workspace/` |
 | Human control surface — stand down, resume, show your work | `apps/channel/src/control.ts`, `apps/channel/src/work-trail.tsx` |
 | Revision tracking and the fail-closed freshness guard | `apps/channel/src/revision.ts`, `apps/channel/src/replay/publish-guard.ts` |
-| The four reviewer tools and the only path that can draw a card | `apps/channel/src/reviewer-tools.tsx` |
+| The five reviewer tools and the only path that can draw a card | `apps/channel/src/reviewer-tools.tsx` |
 | Trusted checkers, stdlib-only, stdin/stdout JSON | `checkers/check_rc.py`, `checkers/check_route.py`, `contracts/checker-io.md` |
 | Finding contract and card | `packages/agent-core/src/contracts/finding.ts`, `apps/channel/src/finding-card.tsx` |
 | Evidence log, and reading it back into the thread | `packages/agent-core/src/contracts/evidence.ts`, `apps/channel/src/work-trail.tsx` |
 | Instruction-in-evidence detection | `apps/channel/src/injection.ts` |
-| Human control surface | `apps/channel/src/control.ts` |
 | Offline replay: clean control, conflict case, mid-run revision, and an adversarial injected document | `apps/channel/src/replay/`, `fixtures/slack/` |
 
 The synthetic fixture — Kestrel Solar Racing, vehicle KS-4 — is ours, generated reproducibly by `fixtures/generate.py` and checksummed in `fixtures/SHA256SUMS`. No real team, person, or document appears in it.
