@@ -23,6 +23,8 @@ import {
 } from "./findings.js";
 import {
   applyFilter,
+  arrivalReaction,
+  arrivals,
   fitSweep,
   formatValue,
   isDrag,
@@ -340,6 +342,60 @@ window.setInterval(() => {
   const idleMs = Date.now() - lastActivity;
   if (idleMs > settings.sleepAfterMin * 60_000 && state !== "found") setState("asleep");
 }, 5000);
+
+/* -------------------------------------------------------------- arrival --- */
+
+/** Live finding ids Rev has already reacted to. Never cleared: see `arrivals`. */
+const announced = new Set<string>();
+/** From the monotonic clock, so a system clock change cannot skew the cooldown. */
+let lastStartleAt: number | null = null;
+/** An arrival that landed while the window was hidden, played once it shows. */
+let arrivalHeld = false;
+/** Bumped per reaction, so an earlier one finishing cannot clear a later one. */
+let arrivalToken = 0;
+
+/**
+ * React to an issue arriving: a startle, or a nudge of the badge.
+ *
+ * The motion is CSS keyframes keyed off `data-arrival`, so the reduced-motion
+ * rules that stop every other animation stop this one too. The attribute is
+ * cleared when those animations finish rather than on a timer, so the timing
+ * lives in the stylesheet alone — and with motion off there is nothing to wait
+ * for, so it clears at once.
+ */
+function react(): void {
+  // A hidden window does not paint; a reaction now would play to nobody.
+  if (document.hidden) {
+    arrivalHeld = true;
+    return;
+  }
+  const now = performance.now();
+  const kind = arrivalReaction({ now, lastStartleAt, engaged: open || menuOpen });
+  if (kind === "startle") lastStartleAt = now;
+
+  const token = ++arrivalToken;
+  const targets = [petEl, radialEl];
+  // Clear and reflow first, so an arrival during a reaction restarts it
+  // instead of being swallowed by the one already playing.
+  for (const node of targets) delete node.dataset.arrival;
+  void petEl.offsetWidth;
+  for (const node of targets) node.dataset.arrival = kind;
+
+  const playing = targets
+    .flatMap((node) => node.getAnimations({ subtree: true }))
+    .filter((a) => a instanceof CSSAnimation && a.animationName.startsWith("arrival-"));
+  // allSettled: opening the menu cancels a startle, which rejects `finished`.
+  void Promise.allSettled(playing.map((a) => a.finished)).then(() => {
+    if (token !== arrivalToken) return;
+    for (const node of targets) delete node.dataset.arrival;
+  });
+}
+
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden || !arrivalHeld) return;
+  arrivalHeld = false;
+  react();
+});
 
 /* --------------------------------------------------------------- views --- */
 
@@ -1078,6 +1134,14 @@ function render(conn: Connection): void {
 
   if (isSample) seen = new Set(findings.map((f) => f.finding_id));
   renderBadge();
+
+  // After the badge, so the badge is displayed and its animation is one the
+  // reaction waits for. The sample set is never news: only a real answer is.
+  if (!isSample) {
+    const fresh = arrivals(findings, announced);
+    for (const f of fresh) announced.add(f.finding_id);
+    if (fresh.length) react();
+  }
 
   // Only rebuild when the content actually changed. The feed polls every 3s and
   // replaceChildren() destroys the cards, so re-rendering unconditionally

@@ -350,6 +350,76 @@ body {
   animation: pop 380ms var(--ease-spring);
 }
 
+/* --- an issue arrives ---------------------------------------------------- */
+
+/*
+ * The one time Rev is allowed to move.
+ *
+ * Everything else about Rev holds still, because a companion that fidgets in
+ * the corner of your eye is one you close. An issue arriving is the exception:
+ * it is the event Rev exists to report, and in peripheral vision motion is the
+ * cue that lands — a colour change on its own goes unnoticed.
+ *
+ * So it is one reaction, played once: crouch, hop, land, settle, with marks
+ * flicking off the head on the way up and the badge landing as Rev does. Then
+ * Rev is still again, and the colour and the badge carry it. When it plays is
+ * decided in renderer.ts, from `arrivalReaction` in logic.ts.
+ *
+ * All travel is up or inward. The window ends 12px right of Rev and 16px below
+ * it, and anything past that is cut off wherever Rev has been dragged to.
+ *
+ * Never while the menu is open: Rev anchors the arc, and opening it mid-hop
+ * ends the hop rather than leaving the arc centred on a moving target.
+ */
+.pet[data-arrival="startle"]:not([data-menu="true"]) .pet__hit {
+  animation: arrival-hop 820ms linear;
+}
+
+.pet[data-arrival="startle"]:not([data-menu="true"]) .pet__face {
+  /* Squash on the feet, so landing reads as landing rather than shrinking. */
+  transform-origin: 50% 100%;
+  animation: arrival-body 820ms linear;
+}
+
+.pet__marks {
+  position: absolute;
+  top: -24px;
+  left: calc(50% - 20px);
+  width: 40px;
+  height: 22px;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.pet__marks path {
+  fill: none;
+  stroke: var(--glyph-b);
+  stroke-width: 3;
+  stroke-linecap: round;
+  /* pathLength=1: one dash the length of the stroke, then an equal gap. */
+  stroke-dasharray: 1 1;
+  stroke-dashoffset: 1;
+}
+
+.pet[data-arrival="startle"]:not([data-menu="true"]) .pet__marks path {
+  animation: arrival-marks 460ms linear 150ms backwards;
+}
+
+/* The centre stroke leads by a beat, so the three read as a burst, not a comb. */
+.pet[data-arrival="startle"]:not([data-menu="true"]) .pet__marks path:nth-child(2) {
+  animation-delay: 110ms;
+}
+
+.pet[data-arrival="startle"]:not([data-menu="true"]) .pet__count {
+  animation: arrival-badge 380ms linear 440ms backwards;
+}
+
+/* A nudge is the badge alone, on Rev and on the menu's findings item. */
+.pet[data-arrival="nudge"] .pet__count,
+.radial[data-arrival="nudge"] .radial__badge {
+  animation: arrival-knock 460ms linear;
+}
+
 /* ============================================================== thread === */
 
 /*
@@ -983,6 +1053,122 @@ body {
   }
   45% {
     transform: scale(1.015);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/*
+ * An issue arrives. Split across two elements on one 820ms clock: the hop moves
+ * the whole button, so the badge and marks travel with Rev, while the squash
+ * and the settle stay on the glyph and pivot on its feet.
+ *
+ *   0–14%  crouch     14–38%  rise, slowing     38–56%  fall, speeding up
+ *   56%    touchdown  56–100% settle
+ */
+@keyframes arrival-hop {
+  0%,
+  14% {
+    transform: translateY(0);
+    animation-timing-function: cubic-bezier(0.2, 0.6, 0.35, 1);
+  }
+  38% {
+    transform: translateY(-16px);
+    animation-timing-function: cubic-bezier(0.55, 0, 0.8, 0.45);
+  }
+  56%,
+  100% {
+    transform: translateY(0);
+  }
+}
+
+/* Every keyframe spells out rotate and scale, so each step interpolates
+   function by function instead of falling back to matrix decomposition. */
+@keyframes arrival-body {
+  0% {
+    transform: rotate(0deg) scale(1, 1);
+    animation-timing-function: cubic-bezier(0.3, 0, 0.6, 1);
+  }
+  14% {
+    transform: rotate(0deg) scale(1.07, 0.9);
+    animation-timing-function: cubic-bezier(0.2, 0.7, 0.4, 1);
+  }
+  26% {
+    transform: rotate(0deg) scale(0.95, 1.06);
+    animation-timing-function: ease-out;
+  }
+  40% {
+    transform: rotate(0deg) scale(1, 1);
+    animation-timing-function: cubic-bezier(0.55, 0, 0.9, 0.5);
+  }
+  56% {
+    transform: rotate(0deg) scale(1.09, 0.88);
+    animation-timing-function: cubic-bezier(0.2, 0.7, 0.4, 1);
+  }
+  68% {
+    transform: rotate(-3deg) scale(0.98, 1.02);
+    animation-timing-function: ease-in-out;
+  }
+  81% {
+    transform: rotate(2deg) scale(1, 1);
+    animation-timing-function: ease-in-out;
+  }
+  91% {
+    transform: rotate(-1deg) scale(1, 1);
+    animation-timing-function: ease-in-out;
+  }
+  100% {
+    transform: rotate(0deg) scale(1, 1);
+  }
+}
+
+/* Draw out from the head, then retract toward the tip: a flick, not a blink. */
+@keyframes arrival-marks {
+  0% {
+    stroke-dashoffset: 1;
+    animation-timing-function: cubic-bezier(0.2, 0.7, 0.4, 1);
+  }
+  45% {
+    stroke-dashoffset: 0;
+    animation-timing-function: cubic-bezier(0.5, 0, 0.8, 0.5);
+  }
+  100% {
+    stroke-dashoffset: -1;
+  }
+}
+
+/* The badge lands as Rev does. */
+@keyframes arrival-badge {
+  0% {
+    transform: scale(0);
+    animation-timing-function: cubic-bezier(0.2, 0.8, 0.4, 1);
+  }
+  55% {
+    transform: scale(1.22);
+    animation-timing-function: ease-in-out;
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes arrival-knock {
+  0% {
+    transform: scale(1);
+    animation-timing-function: cubic-bezier(0.2, 0.7, 0.4, 1);
+  }
+  28% {
+    transform: scale(1.3);
+    animation-timing-function: ease-in-out;
+  }
+  52% {
+    transform: scale(0.92);
+    animation-timing-function: ease-in-out;
+  }
+  74% {
+    transform: scale(1.05);
+    animation-timing-function: ease-in-out;
   }
   100% {
     transform: scale(1);
