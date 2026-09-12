@@ -765,3 +765,24 @@ test("a workplace with only task-adjacent tools does not invent a target", () =>
   assert.equal(pickTaskTool(["create_task_comment", "tasks_labels_create"]), "create_task_comment");
   assert.equal(pickTaskTool(["list_tasks", "get_task", "tasks_export"]), undefined);
 });
+
+test("the task payload satisfies create_task's real constraints", () => {
+  // From the live schema: title is required, min 1, max 255; description is a
+  // markdown string. A discrepancy can be long and can contain newlines, and
+  // a title that overruns is rejected by the workplace after the card is
+  // already posted — the worst moment to find out.
+  const wordy = {
+    ...FINDING,
+    discrepancy:
+      "Section 3 of the r2 document states a bus capacitance of 680 uF, while the caption on the section 2 diagram states 750 uF, and the printed settling time of 2.435 s reproduces only against 750 uF; separately, section 4's worked example prints 6.91 s for a 2 mF bank where the recomputed value is 6.4933 s, so neither printed figure follows from the document's own stated inputs.\nA second line, for good measure.",
+  };
+  const title = followupTitle(wordy);
+  assert.ok(title.length >= 1 && title.length <= 255, `title was ${title.length} chars`);
+  assert.doesNotMatch(title, /[\r\n]/, "a title with a newline in it is not a title");
+  assert.ok(followupBody(wordy).length > 0);
+
+  // And the clean-control case still produces a usable title.
+  const clean = { ...FINDING, discrepancy: "none" };
+  assert.match(followupTitle(clean), /^ThreadRev: Review reproduced/);
+  assert.ok(followupTitle(clean).length <= 255);
+});

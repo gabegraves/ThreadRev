@@ -3,7 +3,25 @@
 import type { EvidenceGraph, Finding } from "agent-core/shared";
 import { orderedFindings } from "./graph-utils";
 
-function FindingDetail({ f }: { f: Finding }) {
+/**
+ * What happened to this finding in the workplace, if anything.
+ *
+ * It lives on the graph node rather than on the Finding, because filing is
+ * something that happened *to* a finding after it was published — the card
+ * itself is already posted and unchanged by it.
+ */
+interface Followup {
+  filed: boolean;
+  tool?: string;
+  detail: string;
+  at?: string;
+}
+
+function followupOf(graph: EvidenceGraph, findingId: string): Followup | undefined {
+  return graph.nodes.find((n) => n.id === findingId)?.data.followup as Followup | undefined;
+}
+
+function FindingDetail({ f, followup }: { f: Finding; followup?: Followup }) {
   return (
     <details className="ck-tr-issue" data-status={f.status}>
       <summary>
@@ -57,6 +75,16 @@ function FindingDetail({ f }: { f: Finding }) {
         {f.question && (<><dt>Question</dt><dd><strong>{f.question.to}:</strong> {f.question.ask}</dd></>)}
         <dt>Resolution</dt><dd>{f.resolution}</dd>
         <dt>Checker run</dt><dd><code>{f.checker_run.checker} v{f.checker_run.version} · {f.checker_run.run_id}</code></dd>
+        {followup && (
+          <>
+            <dt>Follow-up</dt>
+            <dd>
+              {followup.filed
+                ? <>Filed in the workplace{followup.tool ? <> via <code>{followup.tool}</code></> : null} — {followup.detail}</>
+                : <span className="ck-muted">Not filed — {followup.detail}</span>}
+            </dd>
+          </>
+        )}
       </dl>
     </details>
   );
@@ -65,5 +93,11 @@ function FindingDetail({ f }: { f: Finding }) {
 export function IssuesTab({ graph }: { graph: EvidenceGraph }) {
   const findings = orderedFindings(graph);
   if (findings.length === 0) return <p className="ck-empty">No findings yet.</p>;
-  return <div className="ck-tr-list">{findings.map((f) => <FindingDetail key={f.finding_id} f={f} />)}</div>;
+  return (
+    <div className="ck-tr-list">
+      {findings.map((f) => (
+        <FindingDetail key={f.finding_id} f={f} followup={followupOf(graph, f.finding_id)} />
+      ))}
+    </div>
+  );
 }
