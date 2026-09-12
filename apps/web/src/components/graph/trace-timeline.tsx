@@ -18,6 +18,7 @@ const KIND_LABEL: Record<EvidenceEvent["kind"], string> = {
   edit_proposed: "edit proposed",
   edit_decided: "edit decided",
   edit_applied: "edit applied",
+  followup_filed: "follow-up",
 };
 
 const TONE: Partial<Record<EvidenceEvent["kind"], string>> = {

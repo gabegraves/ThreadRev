@@ -22,9 +22,10 @@ export const KIND_LABEL: Record<EventKind, string> = {
   edit_proposed: "edit proposed",
   edit_decided: "edit decided",
   edit_applied: "edit applied",
+  followup_filed: "follow-up filed",
 };
 
-export const KIND_ORDER: EventKind[] = ["message_read", "workspace_search", "document_read", "check_run", "finding_published", "finding_superseded", "publish_refused", "silence", "edit_proposed", "edit_decided", "edit_applied"];
+export const KIND_ORDER: EventKind[] = ["message_read", "workspace_search", "document_read", "check_run", "finding_published", "finding_superseded", "publish_refused", "silence", "edit_proposed", "edit_decided", "edit_applied", "followup_filed"];
 
 /** Event kind → state tone. Hue is state only. */
 export function kindTone(kind: EventKind): StatusTone {
@@ -127,6 +128,7 @@ export function eventHref(ev: EvidenceEvent): string | null {
     case "finding_published":
       return hrefs.finding(ev.finding.finding_id);
     case "finding_superseded":
+    case "followup_filed":
       return hrefs.finding(ev.finding_id);
     case "workspace_search":
       return "/workspace";
@@ -179,6 +181,8 @@ export function eventSubject(ev: EvidenceEvent): string {
       return `${ev.proposal_id} · ${ev.decision}${ev.by ? ` by ${ev.by}` : ""}`;
     case "edit_applied":
       return `${ev.proposal_id} · ${ev.output}`;
+    case "followup_filed":
+      return `${ev.finding_id} · ${ev.filed ? (ev.tool ?? "filed") : "not filed"}`;
   }
 }
 

@@ -130,6 +130,8 @@ function logLine(e: EvidenceEvent): string {
       return `edit ${e.decision}`;
     case "edit_applied":
       return `edit applied · ${e.sha256.slice(0, 8)}`;
+    case "followup_filed":
+      return `follow-up ${e.filed ? "filed" : "not filed"} for ${e.finding_id}`;
   }
 }
 
