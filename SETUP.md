@@ -25,7 +25,7 @@ The browser preview binds to `http://127.0.0.1:3100`. It remains the inherited i
 
 ## Credentials and the next setup gate
 
-Root `.env` exists, is Git-ignored and has owner-only permissions. Fill secrets there, not in chat or source files. The model configuration is `MODEL_PROVIDER=openai`, `MODEL=gpt-5.6-sol`; actual API access is untested. `OPENAI_API_KEY`, `INTELLIGENCE_API_KEY` and `CHANNEL_CODE` initially remain blank. Exa was configured here in the morning and removed at 2:15 PM; see the note under "Exa integration verification". The other credentials remain blank.
+Root `.env` exists, is Git-ignored and has owner-only permissions. Fill secrets there, not in chat or source files. The model configuration is `MODEL_PROVIDER=openai`, `MODEL=gpt-5.6-sol`; actual API access is untested. `OPENAI_API_KEY`, `INTELLIGENCE_API_KEY` and `CHANNEL_CODE` initially remain blank. Exa was configured here in the morning and removed at 1:33 PM; see the note under "Exa integration verification". The other credentials remain blank.
 
 CopilotKit `whoami` reported **Not logged in**. In this directory, the user must run:
 
@@ -68,7 +68,7 @@ Either a personal OpenAI key or OpenRouter key can be used. The current `.env` s
 
 ## Exa integration verification
 
-Superseded 2:15 PM, 2026-09-12: Exa is not part of ThreadRev. `EXA_API_KEY` was blanked in `.env`, the reviewer never registered `search_web`, and no doc or video lists Exa as a sponsor technology we use. The inherited capability and its tests stay in `packages/agent-core` untouched. The record below is kept for what was verified at the time.
+Superseded 1:33 PM, 2026-09-12: Exa is not part of ThreadRev. `EXA_API_KEY` was blanked in `.env`, the reviewer never registered `search_web`, and no doc or video lists Exa as a sponsor technology we use. The inherited capability and its tests stay in `packages/agent-core` untouched. The record below is kept for what was verified at the time.
 
 Installed the project-local [build-with-exa skill](.agents/skills/build-with-exa/SKILL.md) from `exa-labs/agent-skills` and followed its search reference. The existing `exa-js` 2.19.0 already resolves to the latest release. Shared `search_web` now uses `/search` with `contents: { highlights: true }`, Exa’s default search mode, and its default result count unless a count is explicitly requested. Removed `EXA_SEARCH_TYPE` and deprecated highlight controls. All returned highlights reach the model; the existing Slack source cards retain their exact links.
 

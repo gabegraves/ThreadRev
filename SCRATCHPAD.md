@@ -16,7 +16,7 @@ Decision: use Convex for the hosted version of ThreadRev's persistent evidence a
 
 Keep CopilotKit Channels and its BuiltInAgent loop for the hackathon, with the existing local Python checkers. Convex supplies persistence and retrieval; adopting its agent framework or replacing the Slack harness is not part of this decision. The model investigates; trusted checker outputs and application validation determine what a finding may claim.
 
-Exa is not used (decided 2:15 PM). The reviewer's truth is inside the workspace, and a web result cannot be bound to a revision or hashed. `EXA_API_KEY` is blank; the inherited capability stays in `agent-core` for its tests only. Do not add external search to the reviewer.
+Exa is not used (decided 1:33 PM). The reviewer's truth is inside the workspace, and a web result cannot be bound to a revision or hashed. `EXA_API_KEY` is blank; the inherited capability stays in `agent-core` for its tests only. Do not add external search to the reviewer.
 
 ### Correctness boundaries
 

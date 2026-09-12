@@ -1,6 +1,6 @@
 # ThreadRev: demo video description
 
-Draft 2:00 PM EDT, 2026-09-12. Demo lane refines wording; do not change the claims without checking README "What Slack already does, and what ThreadRev adds".
+Draft 1:28 PM EDT, 2026-09-12. Demo lane refines wording; do not change the claims without checking README "What Slack already does, and what ThreadRev adds".
 
 ## Spoken, in the video (after Card 1 goes stale, about 85 to 105 s)
 

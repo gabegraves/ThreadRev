@@ -1,6 +1,6 @@
 # What winning hackathon READMEs looked like, and what we ship
 
-Checked 2:40 PM EDT, 2026-09-12, against the three winner repositories named in `recent-hackathon-winners.md` (events ending July 12 to September 12, 2026) and the Agent Natives results page. Presentation only; the mechanism lessons are in that file.
+Checked 1:40 PM EDT, 2026-09-12, against the three winner repositories named in `recent-hackathon-winners.md` (events ending July 12 to September 12, 2026) and the Agent Natives results page. Presentation only; the mechanism lessons are in that file.
 
 | Winner | Logo | Hero image or screenshots | Demo video in README | Tagline | Notable |
 |---|---|---|---|---|---|
