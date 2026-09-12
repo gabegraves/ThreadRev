@@ -1,0 +1,133 @@
+"use client";
+
+/**
+ * Right-column / drawer body for a selected finding: the full card, a
+ * stale→live "What changed" diff when the card supersedes another, and the
+ * finding_superseded / publish_refused events that touch it.
+ */
+import type { EvidenceEvent, EvidenceGraph, Finding } from "agent-core/shared";
+import { cn } from "@/civic-ui/lib/cn";
+import { findingById, fmtTime } from "@/components/review-console/graph-utils";
+import { FindingCard, fmt } from "./finding-card";
+
+type DiffRow = { label: string; before: string; after: string };
+
+const reproText = (f: Finding) =>
+  f.reproduced.map((r) => `${r.label}: ${r.printed !== undefined ? `printed ${fmt(r.printed)} → ` : ""}${fmt(r.computed)} ${r.unit}`).join("\n");
+
+function diffRows(before: Finding, after: Finding): DiffRow[] {
+  return [
+    { label: "requirements_revision", before: before.requirements_revision, after: after.requirements_revision },
+    { label: "discrepancy", before: before.discrepancy, after: after.discrepancy },
+    { label: "reproduced", before: reproText(before), after: reproText(after) },
+    { label: "resolution", before: before.resolution, after: after.resolution },
+    { label: "question", before: before.question?.ask ?? "", after: after.question?.ask ?? "" },
+    { label: "sources", before: String(before.sources.length), after: String(after.sources.length) },
+  ];
+}
+
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return <h4 className="font-mono text-[11px] font-semibold uppercase tracking-[0.08em] text-faint">{children}</h4>;
+}
+
+function WhatChanged({ before, after }: { before: Finding; after: Finding }) {
+  return (
+    <section className="flex flex-col gap-2">
+      <SectionTitle>
+        What changed · <code className="font-mono normal-case tracking-normal">{before.finding_id}</code> → <code className="font-mono normal-case tracking-normal">{after.finding_id}</code>
+      </SectionTitle>
+      <div className="overflow-x-auto rounded-[var(--radius-md)] border border-hairline">
+        <table className="w-full min-w-[420px] border-collapse text-[12px]">
+          <thead>
+            <tr className="border-b border-hairline">
+              {["field", "stale", "live"].map((h) => (
+                <th key={h} className="px-2.5 py-1.5 text-left text-[10.5px] font-semibold uppercase tracking-[0.07em] text-faint">
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {diffRows(before, after).map((r) => {
+              const changed = r.before !== r.after;
+              return (
+                <tr key={r.label} className={cn("border-b border-hairline align-top last:border-0", changed && "bg-pastel-butter/60")}>
+                  <th scope="row" className="whitespace-nowrap px-2.5 py-1.5 text-left font-mono text-[11px] font-medium text-subtle">
+                    {changed && <span aria-hidden className="mr-1.5 inline-block size-1.5 rounded-full bg-[var(--color-warning)] align-middle" />}
+                    {r.label}
+                  </th>
+                  <td className="whitespace-pre-line px-2.5 py-1.5 text-subtle">{r.before || <span className="text-faint">—</span>}</td>
+                  <td className={cn("whitespace-pre-line px-2.5 py-1.5", changed ? "font-medium text-foreground" : "text-subtle")}>
+                    {r.after || <span className="text-faint">—</span>}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+type HistoryItem = { key: string; at: string; text: React.ReactNode };
+
+function historyOf(f: Finding, events: EvidenceEvent[]): HistoryItem[] {
+  const out: HistoryItem[] = [];
+  for (const ev of events) {
+    if (ev.kind === "finding_superseded" && ev.finding_id === f.finding_id) {
+      out.push({
+        key: ev.event_id,
+        at: ev.at,
+        text: (
+          <>
+            Marked stale, superseded by <code className="font-mono text-foreground">{ev.superseded_by}</code>
+            {ev.cause_ts && (
+              <>
+                {" "}
+                · cause <code className="font-mono text-foreground">{ev.cause_ts}</code> ({fmtTime(ev.cause_ts)})
+              </>
+            )}
+          </>
+        ),
+      });
+    } else if (ev.kind === "publish_refused" && ev.run_id === f.checker_run.run_id) {
+      out.push({
+        key: ev.event_id,
+        at: ev.at,
+        text: (
+          <>
+            Publish refused for run <code className="font-mono text-foreground">{ev.run_id}</code>: bound{" "}
+            <code className="font-mono text-foreground">{ev.bound_revision}</code> vs current <code className="font-mono text-foreground">{ev.current_revision}</code>
+            {ev.reason && <> · {ev.reason}</>}
+          </>
+        ),
+      });
+    }
+  }
+  return out.sort((a, b) => a.at.localeCompare(b.at));
+}
+
+export function FindingDetail({ finding, graph, events }: { finding: Finding; graph: EvidenceGraph; events: EvidenceEvent[] }) {
+  const before = finding.supersedes ? findingById(graph, finding.supersedes) : undefined;
+  const history = historyOf(finding, events);
+  return (
+    <div className="flex flex-col gap-5">
+      <FindingCard finding={finding} />
+      {before && <WhatChanged before={before} after={finding} />}
+      {history.length > 0 && (
+        <section className="flex flex-col gap-2">
+          <SectionTitle>History</SectionTitle>
+          <ul className="flex flex-col gap-1.5 text-[12px] text-subtle">
+            {history.map((h) => (
+              <li key={h.key} className="flex gap-2">
+                <span className="shrink-0 font-mono text-[11px] tabular-nums text-faint">{new Date(h.at).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
+                <span className="min-w-0">{h.text}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+    </div>
+  );
+}

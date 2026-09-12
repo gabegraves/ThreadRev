@@ -1,0 +1,195 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   Civic UI kit — design tokens.
+
+   Verbatim from Civic (MIT): "My projects Main/Civic/civic/src/app/globals.css"
+   lines 23–203. :root holds the LIGHT theme; `.dark` overrides give the DARK
+   theme. Framework-agnostic — these are plain CSS custom properties, usable as
+   var(--surface) from plain CSS, CSS modules, or Tailwind.
+
+   To compile the Tailwind semantic utilities (bg-surface, text-foreground,
+   border-hairline, …) that the kit's components use, you ALSO need theme.css,
+   which carries the `@theme inline` bridge. tokens.css alone is not enough for
+   the components; it IS enough if you consume the vars directly.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  color-scheme: light;
+  /* page + text — soft gray canvas, cards sit on it in pure white */
+  --background: #f7f7f8;
+  --foreground: #141415; /* primary text  (was text-white / zinc-100) */
+  --subtle: #52525b; /* secondary text (was zinc-300 / zinc-400) */
+  --faint: #67676e; /* tertiary text — holds WCAG AA (≥4.5:1) as 11–13px functional copy on --background #f7f7f8, --surface #fff, AND the #ededee raised/overlay wash (darkened from #6f6f76 which was only 4.26:1 on #ededee) */
+
+  /* surfaces */
+  --surface: #ffffff; /* cards / panels (was #1c1c1e / zinc-900)   */
+  --elevated: #ededf0; /* raised chips / avatars (was zinc-800)     */
+  --glass: rgba(255, 255, 255, 0.72); /* sticky header / popover casing */
+
+  /* translucent washes — hover fills + faint raises */
+  --overlay: rgba(0, 0, 0, 0.04); /* was bg-white/[0.02–0.05] */
+  --overlay-strong: rgba(0, 0, 0, 0.07); /* was bg-white/[0.06–0.10] */
+
+  /* hairline borders — crisp enough to edge white cards on the paper-white
+     page, still whisper-quiet */
+  --hairline: rgba(0, 0, 0, 0.08); /* was border-white/[0.04–0.10] */
+  --hairline-strong: rgba(0, 0, 0, 0.13); /* was border-white/[0.12+]      */
+
+  /* elevation — subtle two-layer float on light (pure hairline borders read
+     flat per vision QA); popovers/modals still float harder. Deep shadows on
+     dark (see .dark). Used via shadow-[var(--shadow-*)]. */
+  --shadow-card: 0 1px 2px rgba(16, 17, 20, 0.04), 0 2px 8px -2px rgba(16, 17, 20, 0.06);
+  --shadow-pop: 0 12px 32px -8px rgba(0, 0, 0, 0.16),
+    0 4px 12px rgba(0, 0, 0, 0.08);
+
+  --color-primary: #18181b;
+  --color-primary-hover: #2d2d31;
+  --color-primary-light: rgba(24, 24, 27, 0.08);
+
+  /* Ink accent — the monochrome enterprise accent (replaces the v3 emerald).
+     Used for active nav, primary CTA, positive deltas, chart primary series,
+     focus rings. Grayscale by design; hue is reserved for state/data only. */
+  --accent: #18181b;
+  --accent-contrast: #ffffff;
+  --accent-soft: rgba(24, 24, 27, 0.07);
+  --accent-text: #18181b;
+
+  /* Status FILL hues — muted enterprise tones (were bright Apple system
+     colors). The AA-tuned --status-*-fg TEXT tokens below are unchanged. */
+  --color-success: #3d9a63;
+  --color-warning: #c08a1d;
+  --color-danger: #cc4638;
+
+  /* Status TEXT tokens — kept SEPARATE from the bright FILL hues above. On a
+     near-white surface the saturated fills (#30d158 etc.) only reach ~1.7:1 as
+     text, far under the 4.5:1 AA floor, so the small status label switches to
+     these darkened variants while the dot/bar/pill-fill keep the bright hue.
+     Light values verified ≥4.5:1 against the pill's hue-tint over #fff (worst
+     case warning at 12% tint = 5.71:1). Flipped per-theme in .dark below.
+     in_progress (cyan fill) has no separate text tone and reads as -info. */
+  --status-success-fg: #1a7f37;
+  --status-warning-fg: #7a5c00;
+  --status-danger-fg: #b42318;
+  --status-info-fg: #0a66c2;
+  --status-neutral-fg: #475467;
+
+  --color-muted: #86868b;
+  /* Kept emitted for legacy var(--color-*) refs (login loading, skeleton);
+     pointed at the new sources so they track the theme too. */
+  --color-border: var(--hairline);
+  --color-surface: var(--surface);
+
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+
+  /* Category tokens kept under former names so existing class refs still resolve.
+     Muted enterprise categorical hues — same hue angles, chroma pulled down to
+     mid-lightness. These encode category ONLY on map data layers + chart series;
+     everywhere else the app is grayscale. */
+  --fg-deep-void: #000000;
+  --fg-electric-indigo: #5b6b8c;
+  --fg-neon-coral: #b0574c;
+  --fg-emerald-glow: #4d8a6a;
+  --fg-amber-pulse: #ad8434;
+  --fg-cyan-burst: #5f8ba6;
+
+  /* Pastel accent ramp — soft = fills / chips / chart areas, strong = strokes /
+     deltas / small emphasis. Decorative + data accents ONLY: body text stays on
+     --foreground/--subtle (pastels don't clear AA as copy). Matched lightness
+     across hues so mixed charts read as one family. Flipped per-theme below.
+
+     Every -strong value here is darkened to clear WCAG AA (>=4.5:1) against its
+     OWN pastel fill, because that is the pairing the delta chips actually
+     render: strong text on the matching tint, at 11px. The previous ramp was
+     labelled AA-tuned and was not — the six pairs measured 3.40 to 4.13, and
+     Lighthouse failed the one chip that happened to be on screen. Re-tuned
+     together so the family still reads as one set. Dark theme is unaffected:
+     its translucent fills over a near-black surface already measure 6.9-8.2:1. */
+  --pastel-mint: #d3ecdd;
+  --pastel-mint-strong: #2e7350;
+  --pastel-sky: #d6e6f5;
+  --pastel-sky-strong: #3c6892;
+  --pastel-lavender: #e2ddf3;
+  --pastel-lavender-strong: #6658a2;
+  --pastel-blush: #f5dde2;
+  --pastel-blush-strong: #9c4b5d;
+  --pastel-butter: #f4ecd2;
+  --pastel-butter-strong: #816724;
+  --pastel-peach: #f7e3d4;
+  --pastel-peach-strong: #925832;
+}
+
+/* DARK theme — overrides only the values that flip. */
+.dark {
+  color-scheme: dark;
+  /* Near-black canvas (not pitch black) — cards sit clearly lighter on it;
+     card/canvas contrast is the core of this theme. Dropped from #09090b so
+     the canvas recedes further behind the cards: the separation between them
+     is what gives the dark theme its structure, and every text ratio measured
+     against the canvas only improves as it darkens. --surface and --glass move
+     with it by a smaller step, so panels and modals stay legibly above the
+     canvas instead of merging into it. */
+  --background: #040406;
+  --foreground: #ffffff;
+  --subtle: #b3b3ba; /* secondary text — lifted from #a1a1a8 (≈7:1 → ≈9:1 on --background); dark surfaces swallow mid-grays, so secondary copy runs one step brighter than the zinc scale suggests */
+  --faint: #95959d; /* tertiary text — lifted from #85858c; ≥4.5:1 (AA) as 11–13px functional copy on both --surface #161619 and --background #0e0e10, with headroom */
+
+  --surface: #0c0c0f;
+  --elevated: #232327; /* lifted from #26262a so active/selected fills read against both canvas and cards */
+  --glass: rgba(7, 7, 10, 0.68);
+
+  --overlay: rgba(255, 255, 255, 0.06);
+  --overlay-strong: rgba(255, 255, 255, 0.11);
+
+  /* Lifted from 0.09/0.16 — with interior chrome dividers gone, the borders
+     that remain (card edges, the sidebar rail) must actually register. */
+  --hairline: rgba(255, 255, 255, 0.12);
+  --hairline-strong: rgba(255, 255, 255, 0.2);
+
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-pop: 0 20px 48px -12px rgba(0, 0, 0, 0.75);
+
+  --color-primary: #f4f4f5;
+  --color-primary-hover: #d4d4d8;
+  --color-primary-light: rgba(255, 255, 255, 0.1);
+
+  /* Ink accent, inverted for the dark canvas — near-white so primary CTAs read
+     as light-on-dark. Solid CTA text (--accent-contrast) is near-black; active
+     nav uses the soft tint + --accent-text. */
+  --accent: #f4f4f5;
+  --accent-contrast: #131316;
+  --accent-soft: rgba(255, 255, 255, 0.09);
+  --accent-text: #f4f4f5;
+
+  /* Dark theme: the bright system hues clear AA as text on the dark surface,
+     but two sat below 4.5:1 on the 10–12% pill-tint the chips actually use:
+     the brand blue #0a84ff (4.18) and the system red #ff453a (4.39 at badge's
+     12%). Both are lifted slightly here — info → #3a97f5 (≈5.0:1), danger →
+     #ff5347 (≈4.7:1) — so every status chip clears AA in both themes. The
+     brand primary / fill hues (--color-primary, the /10 pill fills) are
+     untouched; only the small chip TEXT shifts. */
+  --status-success-fg: #30d158;
+  --status-warning-fg: #ff9f0a;
+  --status-danger-fg: #ff5347;
+  --status-info-fg: #3a97f5;
+  --status-neutral-fg: #98989f;
+
+  --color-muted: #86868b;
+
+  /* Pastel ramp, dark: translucent tint fills so the surface shows through
+     (opaque light-theme pastels would glow like stickers on near-black);
+     strong variants lift toward pastel-lightness for strokes/deltas. */
+  --pastel-mint: rgba(122, 220, 168, 0.2);
+  --pastel-mint-strong: #7de8ab;
+  --pastel-sky: rgba(122, 180, 240, 0.2);
+  --pastel-sky-strong: #7fc4ff;
+  --pastel-lavender: rgba(170, 155, 245, 0.2);
+  --pastel-lavender-strong: #b7a5ff;
+  --pastel-blush: rgba(240, 145, 170, 0.2);
+  --pastel-blush-strong: #ff9fb6;
+  --pastel-butter: rgba(235, 200, 110, 0.2);
+  --pastel-butter-strong: #f5d078;
+  --pastel-peach: rgba(245, 165, 115, 0.2);
+  --pastel-peach-strong: #ffb083;
+}
+

@@ -1,0 +1,214 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   Civic UI kit — Tailwind v4 theme bridge + the global classes the components
+   depend on.
+
+   Import this from your app's entry stylesheet (it pulls tokens.css itself):
+
+       @import "./civic-ui-kit/theme.css";
+
+   Without the `@theme inline` block below, `bg-surface` / `text-foreground` /
+   `border-hairline` / `text-faint` / `bg-overlay` DO NOT COMPILE — that block
+   is what registers the semantic utilities against the tokens. This is the
+   load-bearing half of the CSS deliverable.
+
+   Source: "My projects Main/Civic/civic/src/app/globals.css" (MIT).
+   ══════════════════════════════════════════════════════════════════════════ */
+
+@import "tailwindcss";
+@import "./tokens.css";
+
+/* Class-based dark mode. `dark:` utilities apply when `.dark` is present on
+   <html> (or any ancestor) instead of keying off the OS `prefers-color-scheme`.
+   :where() holds specificity at 0 so normal source order still wins. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-subtle: var(--subtle);
+  --color-faint: var(--faint);
+  --color-surface: var(--surface);
+  --color-elevated: var(--elevated);
+  --color-glass: var(--glass);
+  --color-overlay: var(--overlay);
+  --color-overlay-strong: var(--overlay-strong);
+  --color-hairline: var(--hairline);
+  --color-hairline-strong: var(--hairline-strong);
+
+  --color-accent: var(--accent);
+  --color-accent-contrast: var(--accent-contrast);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-text: var(--accent-text);
+
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+  --font-display: var(--font-display);
+  --font-hero: var(--font-hero);
+
+  --color-deep-void: var(--fg-deep-void);
+  --color-electric-indigo: var(--fg-electric-indigo);
+  --color-neon-coral: var(--fg-neon-coral);
+  --color-emerald-glow: var(--fg-emerald-glow);
+  --color-amber-pulse: var(--fg-amber-pulse);
+  --color-cyan-burst: var(--fg-cyan-burst);
+
+  --color-pastel-mint: var(--pastel-mint);
+  --color-pastel-mint-strong: var(--pastel-mint-strong);
+  --color-pastel-sky: var(--pastel-sky);
+  --color-pastel-sky-strong: var(--pastel-sky-strong);
+  --color-pastel-lavender: var(--pastel-lavender);
+  --color-pastel-lavender-strong: var(--pastel-lavender-strong);
+  --color-pastel-blush: var(--pastel-blush);
+  --color-pastel-blush-strong: var(--pastel-blush-strong);
+  --color-pastel-butter: var(--pastel-butter);
+  --color-pastel-butter-strong: var(--pastel-butter-strong);
+  --color-pastel-peach: var(--pastel-peach);
+  --color-pastel-peach-strong: var(--pastel-peach-strong);
+}
+
+/* ── Skeleton shimmer (loading placeholders) ──
+   A diagonal highlight sweeps across a neutral surface. Compositor-friendly
+   (background-position only). prefers-reduced-motion drops the sweep but keeps
+   the resting surface so the placeholder still reads as "loading", just static. */
+@keyframes skeleton-shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+/* One-shot ease-in so skeleton blocks fade up on mount instead of popping. */
+@keyframes skeleton-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+/* In @layer components (not unlayered) so Tailwind's `rounded-*` utilities —
+   which live in the higher `utilities` layer — win over the `inherit` default. */
+@layer components {
+  .skeleton {
+    border-radius: inherit;
+    background-color: var(--elevated);
+    background-image: linear-gradient(
+      90deg,
+      transparent 0%,
+      var(--overlay-strong) 50%,
+      transparent 100%
+    );
+    background-size: 200% 100%;
+    background-repeat: no-repeat;
+    animation:
+      skeleton-in 0.4s ease-out both,
+      skeleton-shimmer 2s ease-in-out 0.4s infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .skeleton {
+      animation: none;
+      background-image: none;
+    }
+  }
+}
+
+/* ── Sliding-pill indicator (segmented controls / nav) ──
+   Drives the eased slide for the active-segment pill. Authored as a real class
+   (not a Tailwind arbitrary `transition-[...]`) so the multi-property transition
+   is emitted reliably and reduced motion can be honored centrally. Geometry
+   (transform/width) is supplied inline by the component via useSlidingPill. */
+.pill-slide {
+  transition:
+    transform 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    width 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.2s ease-out;
+  will-change: transform, width;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pill-slide {
+    transition: opacity 0.2s ease-out;
+  }
+}
+
+/* ── Safe-area utilities (notch / home-indicator insets) ── */
+.pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.pl-safe {
+  padding-left: env(safe-area-inset-left);
+}
+.pr-safe {
+  padding-right: env(safe-area-inset-right);
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--hairline-strong);
+  border-radius: 999px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--faint);
+}
+
+/* ── AG Grid skin (only needed if you use components/ag-grid-theme.ts) ──
+   Scoped to .civic-grid so nothing leaks into other AG Grid instances. These
+   are the looks the Theming API can't express as params: uppercase micro
+   headers, a per-row hover accent (left inset bar + tint transition), and true
+   vertical centering for flex cell content.
+   Source: globals.css `.wo-grid` block. */
+.civic-grid .ag-header-cell-text {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+/* Custom renderers are inline-flex spans; without this they baseline-align
+   against the theme's line-height and sit high in the row. */
+.civic-grid .ag-cell {
+  display: flex;
+  align-items: center;
+}
+.civic-grid .ag-right-aligned-cell {
+  justify-content: flex-end;
+}
+
+.civic-grid .ag-row {
+  transition:
+    background-color 120ms ease,
+    box-shadow 120ms ease;
+}
+.civic-grid .ag-row-hover {
+  box-shadow: inset 2px 0 0 var(--color-primary);
+}
+/* Landing flag for a deep-linked row. Painted so an operator can see WHICH row
+   the link dropped them on; the accent bar matches the hover affordance,
+   doubled in width to read as deliberate rather than as a stray hover. */
+.civic-grid .ag-row.civic-row-focus {
+  background-color: var(--accent-soft);
+  box-shadow: inset 4px 0 0 var(--color-primary);
+}
+
+/* FLIP row animation on sort/filter. The base .ag-row rule above (for the hover
+   accent) omits `transform`, which clobbers the Theming API's own
+   `.ag-row-animation .ag-row` transition at equal specificity — so without this
+   rule rows JUMP to their new positions instead of sliding. Re-add the theme's
+   exact transition, scoped one class deeper so it wins. */
+.civic-grid .ag-row-animation .ag-row {
+  transition:
+    transform 0.4s,
+    top 0.4s,
+    opacity 0.2s,
+    background-color 120ms ease,
+    box-shadow 120ms ease;
+}

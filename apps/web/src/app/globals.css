@@ -1,3 +1,7 @@
+@import "../civic-ui/theme.css";
+
+/* Starter + review-console rules, layered so Civic utilities win on shared elements. */
+@layer base {
 /* Calm defaults shared by the web example, voice page, and agent cards. */
 :root {
   --ground: #ededf5;
@@ -11,13 +15,34 @@
 * {
   box-sizing: border-box;
 }
+/* Civic renders the whole app at 90%; everything downstream keys off this.
+   Viewport units resolve BEFORE zoom, so full-height surfaces divide by it:
+   calc(100dvh / var(--app-zoom, 1)). Copied from Civic globals.css. */
+html {
+  scroll-behavior: smooth;
+  --app-zoom: 0.8;
+  zoom: var(--app-zoom);
+}
 body {
   margin: 0;
-  background: var(--ground);
-  color: var(--text);
-  font-family: "Plus Jakarta Sans", system-ui, sans-serif;
-  font-size: 14px;
-  line-height: 1.6;
+  background: var(--background);
+  color: var(--foreground);
+  font-family:
+    var(--font-sans), -apple-system, BlinkMacSystemFont, "SF Pro Text",
+    "SF Pro Display", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "kern", "liga", "calt";
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: contain;
+}
+.pt-city-content {
+  padding-top: calc(env(safe-area-inset-top) + 8rem);
+}
+@media (min-width: 768px) {
+  .pt-city-content {
+    padding-top: 2rem;
+  }
 }
 button,
 input,
@@ -38,7 +63,7 @@ summary:focus-visible {
 }
 code,
 time {
-  font-family: "Spline Sans Mono", monospace;
+  font-family: var(--font-mono), "JetBrains Mono", ui-monospace, monospace;
   font-size: 12px;
 }
 h1,
@@ -891,7 +916,7 @@ p {
   margin-top: 6px;
 }
 .ck-tr-chip {
-  font-family: "Spline Sans Mono", monospace;
+  font-family: var(--font-mono), "JetBrains Mono", ui-monospace, monospace;
   font-size: 11px;
   border-radius: 999px;
   padding: 1px 8px;
@@ -1029,4 +1054,131 @@ p {
 .ck-tr-timeline li div {
   min-width: 0;
   overflow-wrap: anywhere;
+}
+
+}
+
+/* ── Civic work-order grid (AG Grid) polish — ported from Civic globals.css
+   `.wo-grid`, renamed `.civic-grid`. civic-ui/theme.css already carries the
+   header / cell / row-hover / focus / FLIP rules; this block adds the rest:
+   the page-size slot, the popup-editor chrome reset (the custom dropdown draws
+   its own card), and thin overlay-style scrollbars. Scoped so nothing leaks
+   into other AG Grid instances. */
+@layer components {
+  /* Page-size selector spliced into AG Grid's pagination panel (see
+     work-order-grid.tsx mountPagingSlot). Give it breathing room from the row
+     summary on its left and the page nav on its right. */
+  .civic-grid .ag-paging-panel .civic-page-size-slot {
+    display: flex;
+    align-items: center;
+    margin: 0 16px;
+  }
+
+  .civic-grid .ag-header-cell-text {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+  }
+
+  /* Custom renderers are inline-flex spans; without this they baseline-align
+     against the theme's line-height and sit high in the row. */
+  .civic-grid .ag-cell {
+    display: flex;
+    align-items: center;
+  }
+  .civic-grid .ag-right-aligned-cell {
+    justify-content: flex-end;
+  }
+
+  .civic-grid .ag-row {
+    transition:
+      background-color 120ms ease,
+      box-shadow 120ms ease;
+  }
+  .civic-grid .ag-row-hover {
+    box-shadow: inset 2px 0 0 var(--color-primary);
+  }
+  /* Deep-link landing flag (?id=<finding>). Painted for a few seconds so an
+     operator can see WHICH row the link dropped them on; the accent bar
+     matches the hover affordance, doubled in width to read as deliberate
+     rather than as a stray hover. */
+  .civic-grid .ag-row.civic-row-focus {
+    background-color: var(--accent-soft);
+    box-shadow: inset 4px 0 0 var(--color-primary);
+  }
+
+  /* FLIP row animation on sort/filter. The base .ag-row rule above (for the
+     hover accent) omits `transform`, which clobbers the Theming API's own
+     `.ag-row-animation .ag-row { transition: transform .4s, top .4s, opacity .2s }`
+     at equal specificity — so without this rule rows JUMP to their new
+     positions instead of sliding. Re-add the theme's exact transition, scoped
+     one class deeper so it wins, and only while AG Grid is in its animation
+     phase. AG Grid adds `.ag-prevent-animation { transition:none !important }`
+     during scroll virtualization, so recycled rows never slide. */
+  .civic-grid .ag-row-animation .ag-row {
+    transition:
+      transform 0.4s,
+      top 0.4s,
+      opacity 0.2s,
+      background-color 120ms ease,
+      box-shadow 120ms ease;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .civic-grid .ag-row,
+    .civic-grid .ag-row-animation .ag-row {
+      transition: none;
+    }
+  }
+
+  /* The custom dropdown editor draws its own rounded card — strip AG Grid's
+     popup-editor frame (background/border) AND the square --ag-popup-shadow
+     the .ag-popup-child wrapper paints behind it, which would otherwise render
+     as a second, square-cornered shadow around the rounded menu. The :has()
+     variant only matches popups containing our listbox, so filter/column menus
+     keep their stock shadow. */
+  .civic-grid .ag-popup-editor,
+  .civic-grid .ag-popup-child:has([role="listbox"]) {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 0;
+  }
+
+  /* The listbox styles its own affordance; without this, the app-wide
+     *:focus-visible outline stacks a third ring around the focused menu. */
+  .civic-grid [role="listbox"]:focus-visible {
+    outline: none;
+  }
+
+  /* Thin, rounded, track-less scrollbars (grid body + the dropdown list). */
+  .civic-grid ::-webkit-scrollbar {
+    width: 9px;
+    height: 9px;
+  }
+  .civic-grid ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .civic-grid ::-webkit-scrollbar-thumb {
+    border: 2px solid transparent;
+    border-radius: 999px;
+    background-color: rgba(0, 0, 0, 0.22);
+    background-clip: content-box;
+  }
+  .civic-grid ::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(0, 0, 0, 0.38);
+  }
+  .dark .civic-grid ::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 255, 255, 0.22);
+  }
+  .dark .civic-grid ::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(255, 255, 255, 0.38);
+  }
+  .civic-grid * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0, 0, 0, 0.25) transparent;
+  }
+  .dark .civic-grid * {
+    scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+  }
 }
