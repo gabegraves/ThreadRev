@@ -507,3 +507,19 @@ test("text that fits is returned untouched", () => {
   assert.equal(fitText("short enough"), "short enough");
   assert.equal(fitLines(["• a", "• b"]), "• a\n• b");
 });
+
+test("the work trail shows the cross-channel search, not just its results", () => {
+  const events = [
+    { event_id: "e1", at: "2026-09-12T16:00:00.000Z", thread: "t", kind: "workspace_search",
+      query: { unit: "uF" }, cutoff: "1787166300.000600", total: 3, returned: 3, hit_ts: ["1785946800.000501"] },
+    { event_id: "e2", at: "2026-09-12T16:00:01.000Z", thread: "t", kind: "message_read",
+      ts: "1785946800.000501", from: "Dara Voss", is_bot: false, is_change: true,
+      text: "With it the HV bus is 820 uF, not 680.", channel: "#ks4-purchasing", via: "workspace_search" },
+  ] as unknown as EvidenceEvent[];
+
+  const rendered = JSON.stringify(renderWorkTrail(events));
+  assert.match(rendered, /searched the workspace for unit=uF/, "the search itself must appear");
+  assert.match(rendered, /found in #ks4-purchasing/, "a hit from elsewhere must say where it came from");
+  assert.match(rendered, /1 workspace search/);
+  assert.match(rendered, /1 message from other channels/);
+});

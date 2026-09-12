@@ -21,10 +21,28 @@ function when(at: string): string {
   return Number.isNaN(d.getTime()) ? at : d.toISOString().slice(11, 19);
 }
 
+/** Where a message came from, when it was not this thread. */
+function origin(e: { channel?: string; via?: string }): string {
+  if (e.via !== "workspace_search") return "";
+  return e.channel ? ` (found in ${e.channel})` : " (found by workspace search)";
+}
+
 /** One line per event, in the order they happened. */
 function line(e: EvidenceEvent): string | undefined {
   switch (e.kind) {
+    case "workspace_search": {
+      const terms = Object.entries(e.query ?? {})
+        .filter(([, v]) => v !== undefined && v !== "")
+        .map(([k, v]) => `${k}=${String(v)}`)
+        .join(", ");
+      return `• ${when(e.at)} searched the workspace for ${terms || "everything"} up to ${e.cutoff ?? "the trigger"} — ${e.returned} of ${e.total} match${e.total === 1 ? "" : "es"}`;
+    }
     case "message_read":
+      // A message pulled out of another channel is the interesting case and
+      // was previously indistinguishable from one in this thread.
+      if (e.via === "workspace_search") {
+        return `• ${when(e.at)} read ${e.from}'s message${origin(e)}${e.is_change ? ", a change" : ""}: "${e.text.slice(0, 90)}"`;
+      }
       return e.is_change
         ? `• ${when(e.at)} read ${e.from}'s message and treated it as a change: "${e.text.slice(0, 90)}"`
         : undefined;
@@ -70,6 +88,10 @@ export function renderWorkTrail(events: EvidenceEvent[]) {
 
   const lines = events.map(line).filter(Boolean) as string[];
   const quiet = silences(events);
+  const searches = events.filter((e) => e.kind === "workspace_search").length;
+  const elsewhere = events.filter(
+    (e) => e.kind === "message_read" && (e as { via?: string }).via === "workspace_search",
+  ).length;
   const docs = new Set(
     events.filter((e) => e.kind === "document_read").map((e) => (e as { sha256: string }).sha256),
   ).size;
@@ -81,7 +103,15 @@ export function renderWorkTrail(events: EvidenceEvent[]) {
         <Markdown>{lines.length > 0 ? lines.join("\n") : "I read the thread and found nothing worth a card."}</Markdown>
       </Section>
       <Context>
-        {`${events.length} recorded events · ${docs} document${docs === 1 ? "" : "s"} read · stayed silent ${quiet} time${quiet === 1 ? "" : "s"}. Recorded as I worked, not reconstructed afterwards.`}
+        {[
+          `${events.length} recorded events`,
+          `${docs} document${docs === 1 ? "" : "s"} read`,
+          searches > 0 ? `${searches} workspace search${searches === 1 ? "" : "es"}` : undefined,
+          elsewhere > 0 ? `${elsewhere} message${elsewhere === 1 ? "" : "s"} from other channels` : undefined,
+          `stayed silent ${quiet} time${quiet === 1 ? "" : "s"}`,
+        ]
+          .filter(Boolean)
+          .join(" · ") + ". Recorded as I worked, not reconstructed afterwards."}
       </Context>
     </Message>
   );
