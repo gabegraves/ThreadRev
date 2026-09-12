@@ -14,6 +14,7 @@ export {
 } from "./capabilities/workplace";
 export * from "./shared";
 export { REVIEWER_ROLE, REVIEWER_PROMPT } from "./reviewer-prompt";
+export { connect, firstSseData, McpHttpError, type McpSession, type McpToolInfo, type McpCallResult } from "./capabilities/mcp-http";
 export {
   appendEvidence,
   readEvidence,
