@@ -6,12 +6,13 @@ Four people and their agents work on this repo in parallel until 5:00 PM EDT on 
 
 | Lane | Owner | Owns | Does not touch |
 |---|---|---|---|
-| Backend / reviewer | Gabe | `apps/channel/`, `packages/agent-core/`, `checkers/`, `extractors/`, `contracts/`, `fixtures/` | `apps/web/`, `submission/` |
+| Backend / reviewer | Gabe | `apps/channel/`, `packages/agent-core/`, `checkers/`, `extractors/`, `contracts/`, `fixtures/` except `fixtures/adversarial/` | `apps/web/`, `submission/`, `evals/` |
 | Web console | fill in | `apps/web/` | everything else; `contracts/` and `packages/agent-core/src/contracts/` are read-only inputs |
 | Demo and submission | fill in | `submission/`, `SUBMISSION.md`, `research/handoff-*.md`, `research/setup-evidence/` | all code |
 | Slack environment and credentials | fill in | local `.env` (never committed), `research/environment-audit.md`, `research/card-design-notes.md` | all code |
+| Eval / red team | fill in (ML teammate) | `evals/`, `fixtures/adversarial/`, `research/red-team-results.md` | all other code; reports failures, does not fix the bot |
 
-Lane handoffs: [research/handoff-frontend-demo.md](research/handoff-frontend-demo.md) (state of the project, demo story, video plan), [research/handoff-demo-narrative.md](research/handoff-demo-narrative.md), [research/handoff-slack-environment.md](research/handoff-slack-environment.md), [research/handoff-openai-key.md](research/handoff-openai-key.md).
+Lane handoffs: [research/handoff-frontend-demo.md](research/handoff-frontend-demo.md) (state of the project, demo story, video plan), [research/handoff-demo-narrative.md](research/handoff-demo-narrative.md), [research/handoff-slack-environment.md](research/handoff-slack-environment.md), [research/handoff-openai-key.md](research/handoff-openai-key.md). Eval lane: [research/handoff-eval-lane.md](research/handoff-eval-lane.md) and [research/handoff-red-team.md](research/handoff-red-team.md).
 
 If you need a change outside your lane, write the request to the owner and keep working. Do not make the edit. The seam between lanes is the contracts: `contracts/` and `packages/agent-core/src/contracts/`. Only the backend lane edits them, and announces every change in `STATUS.md`.
 
