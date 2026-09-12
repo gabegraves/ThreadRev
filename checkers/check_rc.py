@@ -39,6 +39,14 @@ def compute(inputs):
         raise MalformedRequest("inputs: 'R_ohm' must be positive")
     if not 0 < threshold < 1:
         raise MalformedRequest("inputs: 'threshold' must be in (0, 1)")
+    # The checker is the trust anchor: the caller validates these too, but a
+    # checker that depends on its caller for correctness is not independent.
+    # A non-positive timer yields a negative charge fraction and a confident
+    # "does not reach threshold" verdict from nonsense.
+    if timer <= 0:
+        raise MalformedRequest("inputs: 'timer_s' must be positive")
+    if tolerance <= 0:
+        raise MalformedRequest("inputs: 'tolerance_s' must be positive")
     if not caps:
         raise MalformedRequest("inputs: 'capacitances' must not be empty")
 
