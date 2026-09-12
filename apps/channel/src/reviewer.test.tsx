@@ -920,3 +920,32 @@ test("a document named in prose is indexed, not only one attached", () => {
   });
   assert.deepEqual(both.documents, ["precharge-review-r2.docx"]);
 });
+
+test("a busy thread's work trail still fits in a Slack message", () => {
+  // One workspace search records an event per hit. Unbounded, 40 hits rendered
+  // 6,679 characters against Slack's 3000 limit, so the post was rejected and
+  // "show your work" failed silently — at the moment someone is checking the
+  // reviewer, which is the worst time for it to say nothing.
+  const busy = Array.from({ length: 40 }, (_, i) => ({
+    event_id: `e${i}`, at: "2026-09-12T16:00:00.000Z", thread: "t", kind: "message_read",
+    ts: `178${i}`, from: "Dara Voss", is_bot: false, is_change: true,
+    text: "Rowan, please add a 140 uF snubber bank on the motor controller side to the August order. With it the HV bus is 820 uF, not 680.",
+    channel: "#ks4-purchasing", via: "workspace_search",
+  })) as unknown as EvidenceEvent[];
+
+  let longest = 0;
+  let saysWhatItDropped = false;
+  const walk = (o: unknown): void => {
+    if (typeof o === "string") {
+      longest = Math.max(longest, o.length);
+      if (/and \d+ more/.test(o)) saysWhatItDropped = true;
+      return;
+    }
+    if (Array.isArray(o)) { o.forEach(walk); return; }
+    if (o && typeof o === "object") Object.values(o).forEach(walk);
+  };
+  walk(renderWorkTrail(busy));
+
+  assert.ok(longest <= 3000, `longest rendered text was ${longest} chars`);
+  assert.ok(saysWhatItDropped, "a truncated trail must say how much it left out");
+});

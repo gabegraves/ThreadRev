@@ -13,6 +13,7 @@
  */
 import { Message, Header, Section, Markdown, Context } from "@copilotkit/channels";
 import type { EvidenceEvent } from "agent-core";
+import { fitLines } from "./finding-card";
 
 const ACCENT = "#5B6478";
 
@@ -104,7 +105,14 @@ export function renderWorkTrail(events: EvidenceEvent[]) {
     <Message accent={ACCENT}>
       <Header>What I did in this thread</Header>
       <Section>
-        <Markdown>{lines.length > 0 ? lines.join("\n") : "I read the thread and found nothing worth a card."}</Markdown>
+        {/*
+          One workspace search records an event per hit, so a busy thread
+          overruns Slack's 3000-character section limit and the post is
+          rejected outright — "show your work" failing silently at the moment
+          someone is checking the reviewer. Measured at 6,679 characters for 40
+          hits. fitLines keeps whole lines and says how many it left out.
+        */}
+        <Markdown>{lines.length > 0 ? fitLines(lines) : "I read the thread and found nothing worth a card."}</Markdown>
       </Section>
       <Context>
         {[
