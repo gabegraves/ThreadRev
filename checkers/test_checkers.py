@@ -220,3 +220,43 @@ class CheckRouteTest(unittest.TestCase, ResponseEnvelope):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class HarnessContract(unittest.TestCase):
+    """run() promises exactly one JSON object on stdout, whatever compute does."""
+
+    def _run_with(self, compute):
+        import io
+        import os
+        import sys
+
+        # The checkers put their own directory on sys.path before importing
+        # common; the suite runs from the repo root, so it has to do the same.
+        checkers_dir = os.path.dirname(os.path.abspath(__file__))
+        if checkers_dir not in sys.path:
+            sys.path.insert(0, checkers_dir)
+        from common import run
+
+        out = io.StringIO()
+        envelope = json.dumps({"checker": "rc", "version": "1", "inputs": {}})
+        code = run("rc", "1", compute, stdin=io.StringIO(envelope), stdout=out)
+        return code, out.getvalue()
+
+    def test_an_unexpected_exception_still_produces_a_json_envelope(self):
+        def explodes(_inputs):
+            raise IndexError("list index out of range")
+
+        code, raw = self._run_with(explodes)
+        self.assertEqual(code, 1)
+        response = json.loads(raw)
+        self.assertIn("IndexError", response["error"])
+        self.assertEqual(response["outputs"], {})
+        self.assertEqual(response["checks"], [])
+        self.assertTrue(response["run_id"])
+
+    def test_a_completed_run_reports_no_error(self):
+        code, raw = self._run_with(lambda _inputs: ({"ok": True}, []))
+        self.assertEqual(code, 0)
+        response = json.loads(raw)
+        self.assertIsNone(response["error"])
+        self.assertEqual(response["outputs"], {"ok": True})
