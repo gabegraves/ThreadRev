@@ -343,9 +343,11 @@ export const runCheck = defineChannelTool({
 
 /* -------------------------------------------------------- publish_result */
 
-interface ReviewState {
+export interface ReviewState {
   cards: Array<{ finding: Finding; ref: MessageRef }>;
   staleRuns: Array<{ run_id: string; bound: string; current: string }>;
+  /** Set when a human told the reviewer to stand down in this thread. */
+  muted?: boolean;
 }
 
 function capLabel(name: string, suffix: RegExp) {
