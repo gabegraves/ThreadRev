@@ -89,7 +89,7 @@ export function renderFindingCard(f: Finding) {
           <Markdown>{`*Inferred, not recomputed*\n${f.inferred.map((i) => `• ${i}`).join("\n")}`}</Markdown>
         </Section>
       )}
-      {f.evidence_notices.length > 0 && (
+      {f.evidence_notices && f.evidence_notices.length > 0 && (
         <Section>
           <Markdown>{`*Noticed in the evidence*\n${f.evidence_notices.map((n) => `• ${n}`).join("\n")}`}</Markdown>
         </Section>

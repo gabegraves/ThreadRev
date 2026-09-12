@@ -80,9 +80,13 @@ export const finding = z.object({
    *
    * Detected by application code on the extracted text, not reported by the
    * model — a model that complied with such an instruction would also decline
-   * to mention it. Empty is the normal case.
+   * to mention it. Absent is the normal case.
+   *
+   * Optional rather than defaulted: zod's .default() makes a field required on
+   * the output type, which would break every Finding literal already written
+   * against this schema.
    */
-  evidence_notices: z.array(z.string()).default([]),
+  evidence_notices: z.array(z.string()).optional(),
   /** The specific correction or evidence that closes the finding. */
   resolution: z.string().min(1),
   /** Present when evidence conflicts and a person must decide (RC2). */
