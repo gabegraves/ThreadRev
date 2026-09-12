@@ -213,3 +213,33 @@ test("the reviewer does not silence itself on overheard conversation", () => {
   // And a bot repeating the words cannot mute the reviewer either.
   assert.equal(parseControl("reviewer stand down", false), undefined);
 });
+
+import { renderWorkTrail } from "./work-trail";
+import type { EvidenceEvent } from "agent-core";
+
+test("asking how it got there is a question, not another stop", () => {
+  assert.equal(parseControl("reviewer, show your work"), "explain");
+  assert.equal(parseControl("@reviewer how did you get 2.435?"), "explain");
+  // Contains "stop", but it is asking, so it must not mute.
+  assert.equal(parseControl("reviewer, why did you stop on this one?"), "explain");
+});
+
+test("the work trail is built from recorded events, including unflattering ones", () => {
+  const events = [
+    { event_id: "e1", at: "2026-09-12T15:00:00.000Z", thread: "t", kind: "document_read",
+      document: "precharge-review-r2.docx", revision: "r2", sha256: "a".repeat(64), line_count: 12 },
+    { event_id: "e2", at: "2026-09-12T15:00:05.000Z", thread: "t", kind: "publish_refused",
+      run_id: "rc-1", bound_revision: "100.1", current_revision: "200.2",
+      reason: "requirements changed after the run" },
+    { event_id: "e3", at: "2026-09-12T15:00:09.000Z", thread: "t", kind: "silence", reason: "gate_closed" },
+  ] as EvidenceEvent[];
+
+  const rendered = JSON.stringify(renderWorkTrail(events));
+  assert.match(rendered, /precharge-review-r2\.docx/);
+  assert.match(rendered, /refused to publish run rc-1/, "a refused publish must appear, not be hidden");
+  assert.match(rendered, /stayed silent 1 time/);
+});
+
+test("an empty trail says so rather than inventing one", () => {
+  assert.match(JSON.stringify(renderWorkTrail([])), /no trail to show/);
+});
