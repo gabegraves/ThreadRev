@@ -251,7 +251,7 @@ export const runCheck = defineChannelTool({
   description:
     "Run the trusted precharge RC checker on values you extracted from the evidence. Returns recomputed times, the fraction charged when the relay closes, and named pass/fail checks. These are the only numbers you may put on a card. Pass every capacitance the evidence mentions, including ones from later messages.",
   parameters: z.object({
-    checker: z.literal("rc"),
+    checker: z.literal("rc").describe('Always "rc". It is the only checker.'),
     inputs: rcInputs,
   }),
   async handler({ checker, inputs }, { thread }) {
@@ -360,7 +360,9 @@ export const publishResult = defineChannelTool({
           kind: z.enum(["document", "message"]),
           id: z.string().min(1).describe("Document filename or message ts."),
           revision: z.string().optional(),
-          sha256: z.string().optional().describe("From read_evidence, verbatim."),
+          sha256: z
+            .preprocess((v) => (typeof v === "string" && v.trim() === "" ? undefined : v), z.string().optional())
+            .describe("Documents only, verbatim from read_evidence. Omit for messages."),
           locator: z.string().optional().describe('e.g. "line 9" or "section 3".'),
           quote: z.string().max(300).optional(),
         }),

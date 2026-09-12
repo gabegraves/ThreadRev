@@ -282,8 +282,9 @@ export async function runReplay(options: ReplayOptions): Promise<ReplayResult> {
   const trigger = split.visible.find((m) => m.role === "trigger");
   assert.ok(trigger, "fixture must contain a trigger message at or before the cutoff");
   const state: ReplayState = { visible: [...split.visible], checkerRuns: [] };
-  const gateway = new ManagedGateway();
   const agentFactory = options.agent;
+  // A real model turn takes seconds per tool call; the scripted reviewer is instant.
+  const gateway = new ManagedGateway({ deliverTimeoutMs: agentFactory ? 300_000 : 1_000 });
   if (!agentFactory) assert.ok(options.steps, "runReplay needs either steps or an agent factory");
   const channel = createChannel({
     name: "support",
