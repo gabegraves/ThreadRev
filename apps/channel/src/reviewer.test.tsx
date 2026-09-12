@@ -481,3 +481,29 @@ test("single-letter symbols stay case-sensitive so prose is not a quantity", () 
   assert.deepEqual(extractQuantities("draws 5 A").map((q) => q.unit), ["A"]);
   assert.deepEqual(extractQuantities("bus at 120 V").map((q) => q.unit), ["V"]);
 });
+
+import { fitLines, fitText } from "./finding-card";
+
+test("a card with many sources still posts, and says what it left out", () => {
+  // Slack rejects a section over 3000 chars outright, so an unbounded sources
+  // list loses the whole card rather than part of it.
+  const many = Array.from({ length: 40 }, (_, i) => `• precharge-review-r2.docx · r2 · line ${i}\n  > ${"x".repeat(280)}`);
+  const rendered = fitLines(many);
+  assert.ok(rendered.length <= 2900, `section was ${rendered.length} chars`);
+  assert.match(rendered, /…and \d+ more, in the evidence log/);
+  // Whole lines only: no half-quoted source pretending to be evidence.
+  assert.ok(!rendered.split("\n").some((l) => l.endsWith("x".repeat(10)) && !l.includes("> ")));
+});
+
+test("free text is truncated on a word boundary and admits it", () => {
+  const long = "the bus capacitance ".repeat(400);
+  const out = fitText(long);
+  assert.ok(out.length <= 2900);
+  assert.match(out, /… \(truncated\)$/);
+  assert.doesNotMatch(out, /capacit… \(truncated\)$/, "should not cut mid-word");
+});
+
+test("text that fits is returned untouched", () => {
+  assert.equal(fitText("short enough"), "short enough");
+  assert.equal(fitLines(["• a", "• b"]), "• a\n• b");
+});

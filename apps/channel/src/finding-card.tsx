@@ -38,6 +38,47 @@ function headline(f: Finding) {
   return "Review check: discrepancy";
 }
 
+/**
+ * Slack's limits, with headroom.
+ *
+ * A section over 3000 characters is rejected outright, and a rejected post
+ * means no card at all — the failure mode is losing the finding, not showing a
+ * cramped one. Sources are the realistic way to get there: each one carries a
+ * quote of up to 300 characters, so half a dozen sources is enough, and a
+ * cross-channel review cites more sources than a single-thread one.
+ */
+const SECTION_LIMIT = 2900;
+const HEADER_LIMIT = 150;
+
+/** Truncate free text on a word boundary, saying that it was truncated. */
+export function fitText(text: string, limit = SECTION_LIMIT): string {
+  if (text.length <= limit) return text;
+  const cut = text.slice(0, limit - 20);
+  const at = cut.lastIndexOf(" ");
+  return `${(at > limit / 2 ? cut.slice(0, at) : cut).trimEnd()}… (truncated)`;
+}
+
+/**
+ * Keep as many whole lines as fit and count the rest.
+ *
+ * Never cuts a line in half: half a quoted source still reads as a quote, and
+ * a reader cannot tell what was removed. The count can be followed up in the
+ * evidence log, which has all of them.
+ */
+export function fitLines(lines: string[], limit = SECTION_LIMIT): string {
+  const kept: string[] = [];
+  let used = 0;
+  for (const line of lines) {
+    // Leave room for the "and N more" footer.
+    if (used + line.length + 1 > limit - 40) break;
+    kept.push(line);
+    used += line.length + 1;
+  }
+  const dropped = lines.length - kept.length;
+  if (dropped > 0) kept.push(`• …and ${dropped} more, in the evidence log`);
+  return kept.join("\n");
+}
+
 function fmt(n: number) {
   return Number.isInteger(n) ? String(n) : n.toFixed(4).replace(/0+$/, "").replace(/\.$/, "");
 }
@@ -64,46 +105,48 @@ export function renderFindingCard(f: Finding) {
   const stale = f.status === "stale";
   return (
     <Message accent={accentFor(f)}>
-      <Header>{headline(f)}</Header>
+      <Header>{fitText(headline(f), HEADER_LIMIT)}</Header>
       {stale && (
         <Context>
           {`This card was computed against revision ${f.requirements_revision} and has been superseded. Kept for the record; do not act on it.`}
         </Context>
       )}
-      {!stale && f.supersedes_reason && (
-        <Context>{f.supersedes_reason}</Context>
-      )}
+      {!stale && f.supersedes_reason && <Context>{fitText(f.supersedes_reason)}</Context>}
       <Section>
-        <Markdown>{f.discrepancy === "none" ? "*No discrepancy found.*" : `*${f.discrepancy}*`}</Markdown>
+        <Markdown>
+          {f.discrepancy === "none" ? "*No discrepancy found.*" : `*${fitText(f.discrepancy)}*`}
+        </Markdown>
       </Section>
       <Section>
-        <Markdown>{`*Why it matters*\n${f.why_it_matters}`}</Markdown>
+        <Markdown>{`*Why it matters*\n${fitText(f.why_it_matters)}`}</Markdown>
       </Section>
       {f.reproduced.length > 0 && (
         <Section>
-          <Markdown>{`*Reproduced by checker*\n${reproducedLines(f).join("\n")}`}</Markdown>
+          <Markdown>{`*Reproduced by checker*\n${fitLines(reproducedLines(f))}`}</Markdown>
         </Section>
       )}
       {f.inferred.length > 0 && (
         <Section>
-          <Markdown>{`*Inferred, not recomputed*\n${f.inferred.map((i) => `• ${i}`).join("\n")}`}</Markdown>
+          <Markdown>{`*Inferred, not recomputed*\n${fitLines(f.inferred.map((i) => `• ${i}`))}`}</Markdown>
         </Section>
       )}
       {f.evidence_notices && f.evidence_notices.length > 0 && (
         <Section>
-          <Markdown>{`*Noticed in the evidence*\n${f.evidence_notices.map((n) => `• ${n}`).join("\n")}`}</Markdown>
+          <Markdown>
+            {`*Noticed in the evidence*\n${fitLines(f.evidence_notices.map((n) => `• ${n}`))}`}
+          </Markdown>
         </Section>
       )}
       <Section>
-        <Markdown>{`*Sources*\n${sourceLines(f).join("\n")}`}</Markdown>
+        <Markdown>{`*Sources*\n${fitLines(sourceLines(f))}`}</Markdown>
       </Section>
       {f.question && (
         <Section>
-          <Markdown>{`*Question for ${f.question.to}*\n${f.question.ask}`}</Markdown>
+          <Markdown>{`*Question for ${f.question.to}*\n${fitText(f.question.ask)}`}</Markdown>
         </Section>
       )}
       <Fields>
-        <Field label="Resolves it">{f.resolution}</Field>
+        <Field label="Resolves it">{fitText(f.resolution, 1000)}</Field>
         <Field label="Bound to revision">{f.requirements_revision}</Field>
       </Fields>
       <Divider />
