@@ -21,12 +21,20 @@ type Notes = Record<string, string>;
 
 /** {nodeId: text} in localStorage; empty text deletes the entry. Read after
  *  mount so SSR and hydration agree. */
+/** Seed notes for the demo thread, shown until this browser saves its own. */
+const DEMO_NOTES: Notes = {
+  "fnd-a-r2-001": "Card 1. Text 680 uF vs diagram 750 uF. Diagram matched the printed 2.435 s, so the text is the typo.",
+  "fnd-a-820-002": "Card 2 supersedes card 1 after Dara's 820 uF correction. 2.66 s > 2.5 s timer; relay closes early.",
+  "rc-20260912T153100Z-b21c": "Second rc run. 4 of 7 fail once the bus is 820 uF. Numbers copied to card 2 unchanged.",
+  "1787171400.000200": "The correction message. Everything downstream of this ts went stale.",
+};
+
 function useNotes(): [Notes, (id: string, value: string) => void] {
   const [map, setMap] = useState<Notes>({});
   useEffect(() => {
     try {
       const raw = localStorage.getItem(NOTES_KEY);
-      const parsed: unknown = raw ? JSON.parse(raw) : {};
+      const parsed: unknown = raw ? JSON.parse(raw) : DEMO_NOTES;
       if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
         setMap(Object.fromEntries(Object.entries(parsed as Record<string, unknown>).filter(([, v]) => typeof v === "string")) as Notes);
       }
