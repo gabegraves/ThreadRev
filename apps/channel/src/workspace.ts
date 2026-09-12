@@ -213,6 +213,20 @@ function authorMatches(m: IndexedMessage, from: string): boolean {
   return name.split(/\s+/).includes(from);
 }
 
+/**
+ * Whether a message is in the channel the query named.
+ *
+ * Same reasoning as authorMatches: `#ks4-purchasing` is what the channel is
+ * called, but "purchasing" is what someone looking for it types, and an exact
+ * match answers that with silence. A hyphen-separated part counts, so "ks4"
+ * legitimately spans every ks4-* channel — a broad query honestly answered
+ * beats a narrow one answered wrongly.
+ */
+function channelMatches(m: IndexedMessage, channel: string): boolean {
+  const name = m.channel_name.toLowerCase();
+  return name === channel || name.split("-").includes(channel);
+}
+
 export function queryIndex(index: WorkspaceIndex, q: WorkspaceQuery): WorkspaceResult {
   const limit = Math.max(1, Math.min(q.limit ?? 40, 100));
   const unit = q.unit ? normalizeUnit(q.unit) : undefined;
@@ -234,7 +248,7 @@ export function queryIndex(index: WorkspaceIndex, q: WorkspaceQuery): WorkspaceR
     }
     if (keyword && !m.text.toLowerCase().includes(keyword)) continue;
     if (from && !authorMatches(m, from)) continue;
-    if (channel && m.channel_name.toLowerCase() !== channel) continue;
+    if (channel && !channelMatches(m, channel)) continue;
     if (q.changes_only && !m.is_change) continue;
     matches.push(m);
   }
