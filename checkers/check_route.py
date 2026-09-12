@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Checker `route`: Scenario B constant-speed segment energy.
 
-Model (toy closed form, no array input):
+Model (toy closed form, no regen or auxiliary load):
   F_roll = m * g * Crr
   F_aero = 0.5 * rho * CdA * v^2
   E_kWh  = (F_roll + F_aero) * d / 3.6e6

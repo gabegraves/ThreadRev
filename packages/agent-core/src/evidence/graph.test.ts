@@ -52,7 +52,7 @@ test("runs get read and checked_with edges, change messages get revisions, silen
     "1787062320.000100",
     "1787064000.000200",
     "1787166300.000300",
-    "bef5a5dc15a5e31fbaaceb77e8150767f421e55c86e5c14db33f3b54eefbd282",
+    "b63f3e53bb2651e37c05c8d341f9c331e34a6edf516d2b91994dda8128b66c18",
   ]);
   assert.ok(graph.edges.some((e) => e.kind === "checked_with" && e.from === "1787062320.000100" && e.to === run1));
   assert.ok(graph.edges.some((e) => e.kind === "changes" && e.from === CHANGE_TS && e.to === revisionNodeId(CHANGE_TS)));
@@ -73,7 +73,7 @@ test("downstreamOf the change message reaches the superseding finding and the st
   assert.ok(down.nodes.has("rc-20260912T153100Z-b21c"));
   assert.ok(!down.nodes.has("rc-20260912T151200Z-7f3a"), "first run does not depend on the later change");
   assert.ok(down.edges.some((e) => e.kind === "supersedes"));
-  const fromDoc = downstreamOf(graph, "bef5a5dc15a5e31fbaaceb77e8150767f421e55c86e5c14db33f3b54eefbd282");
+  const fromDoc = downstreamOf(graph, "b63f3e53bb2651e37c05c8d341f9c331e34a6edf516d2b91994dda8128b66c18");
   assert.ok(fromDoc.nodes.has(OLD) && fromDoc.nodes.has(NEW));
 });
 

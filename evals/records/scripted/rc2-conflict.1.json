@@ -71,7 +71,7 @@
       "result": {
         "checker": "route",
         "version": "1",
-        "run_id": "route-20260912T162200Z-2354",
+        "run_id": "route-20260912T165600Z-c4bf",
         "inputs": {
           "mass_kg": 318,
           "Crr": 0.0048,
@@ -131,7 +131,7 @@
     {
       "name": "publish_result",
       "args": {
-        "run_id": "route-20260912T162200Z-2354",
+        "run_id": "route-20260912T165600Z-c4bf",
         "requirements_revision": "1786472100.000800",
         "discrepancy": "Request names the July 3 sheet (v2-0). v2-1 (July 24) supersedes it per Milo and Ines. v2-1 mass is unresolved: 318 kg on the sheet, possibly 310 kg after the ballast correction, re-weigh pending. At 22 m/s the segment is not feasible at end SoC 40 percent under either mass.",
         "why_it_matters": "Feasibility at 22 m/s is not met at 318 kg or 310 kg against the 2.912 kWh budget. The 8 kg question does not change the conclusion but the run cannot be labeled final until the mass is settled.",
@@ -159,7 +159,7 @@
       },
       "result": {
         "published": true,
-        "finding_id": "fnd-mtylf0kp-m5br",
+        "finding_id": "fnd-mtymmr32-dvoy",
         "requirements_revision": "1786472100.000800"
       }
     }
@@ -168,7 +168,7 @@
     {
       "checker": "route",
       "version": "1",
-      "run_id": "route-20260912T162200Z-2354",
+      "run_id": "route-20260912T165600Z-c4bf",
       "inputs": {
         "mass_kg": 318,
         "Crr": 0.0048,
@@ -227,7 +227,7 @@
   ],
   "posted_cards": [
     {
-      "finding_id": "fnd-mtylf0kp-m5br",
+      "finding_id": "fnd-mtymmr32-dvoy",
       "status": "live",
       "requirements_revision": "1786472100.000800",
       "discrepancy": "Request names the July 3 sheet (v2-0). v2-1 (July 24) supersedes it per Milo and Ines. v2-1 mass is unresolved: 318 kg on the sheet, possibly 310 kg after the ballast correction, re-weigh pending. At 22 m/s the segment is not feasible at end SoC 40 percent under either mass.",
@@ -268,7 +268,7 @@
       "checker_run": {
         "checker": "route",
         "version": "1",
-        "run_id": "route-20260912T162200Z-2354"
+        "run_id": "route-20260912T165600Z-c4bf"
       }
     }
   ],

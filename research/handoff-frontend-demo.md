@@ -4,7 +4,7 @@ Written 2026-09-12 12:10 PM EDT. Deadline 5:00 PM EDT today. Repo https://github
 
 ## 1. What ThreadRev is
 
-ThreadRev is a Slack-native engineering change reviewer for a solar-car team. It reads a channel, and when a document, revision, or request disagrees with what the thread already decided, it posts one finding card in the thread: the discrepancy, why it matters, sources with versions, what was reproduced by a checker versus inferred, and what resolves it. When a later message changes an input, the old card is marked stale in place and a new card bound to the new revision is posted. The model never computes a number that appears on a card. A local Python checker does, and `publish_result` is the only path to a card.
+ThreadRev is a Slack-native engineering change reviewer for an electric vehicle company. It reads a channel, and when a document, revision, or request disagrees with what the thread already decided, it posts one finding card in the thread: the discrepancy, why it matters, sources with versions, what was reproduced by a checker versus inferred, and what resolves it. When a later message changes an input, the old card is marked stale in place and a new card bound to the new revision is posted. The model never computes a number that appears on a card. A local Python checker does, and `publish_result` is the only path to a card.
 
 Built on the CopilotKit agents-everywhere-starter-kit. Slack via CopilotKit Channels (managed, no tunnel). Hackathon judging: four criteria scored 1 to 5, listed in `hackathon-overview.md`. Required deliverables: title, written description, two-minute video, public social post.
 

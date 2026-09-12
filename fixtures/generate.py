@@ -68,10 +68,10 @@ def build_precharge_doc(path, *, caption, section3_calc, section4_example, secti
     cp.revision = 2
     cp.created = PINNED
     cp.modified = PINNED
-    cp.comments = "Kestrel Solar Racing, Halvern Institute of Technology. Synthetic fixture."
+    cp.comments = "Kestrel Motors. Synthetic fixture."
 
     doc.add_heading("Precharge Board r2 Design Review", level=0)
-    doc.add_paragraph("Kestrel Solar Racing, KS-4 electrical. Revision r2. Author: Dara Voss.")
+    doc.add_paragraph("Kestrel Motors, KS-4 electrical. Revision r2. Author: Dara Voss.")
 
     doc.add_heading("1. Bus and resistor", level=1)
     doc.add_paragraph("HV bus nominal 120 V. Precharge resistor R = 470 ohm, 10 W.")

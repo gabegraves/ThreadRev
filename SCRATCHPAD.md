@@ -35,6 +35,6 @@ The motivating solar-car cases are repeated historical research, existing hardwa
 
 - [Convex transactions and serializability](https://docs.convex.dev/database/advanced/occ)
 - [Convex full-text search](https://docs.convex.dev/search/text-search)
-- [Solar-car failure patterns and synthetic fixtures](research/synthetic-fixture-spec.md)
+- [Engineering failure patterns and synthetic fixtures](research/synthetic-fixture-spec.md)
 - [Prior harness comparison](research/harness-hermes-vs-channels.md)
 - [Current runtime setup and verification](SETUP.md)

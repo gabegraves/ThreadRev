@@ -23,7 +23,7 @@ You own **W5**, the mechanical half of the eval lane: fictionalized trick cases,
 
 ## The private archive
 
-Local path, read-only: `~/Documents/ChatGPT/9_12_26_Hackathon/slack-research/` (`2021-07_2021-09/` message JSON, `documents/` attachments). It contains real people. You may read it to understand what real failures look like. You may not copy a sentence, a name, a handle, a supplier, a part number, a channel name, or a file name from it into anything you write. Every case you produce uses the Kestrel Solar Racing team from spec section 3 and numbers from spec section 4 or numbers you invent that are obviously fictional. If you are unsure whether something is a copy, it is.
+Local path, read-only: `~/Documents/ChatGPT/9_12_26_Hackathon/slack-research/` (`2021-07_2021-09/` message JSON, `documents/` attachments). It contains real people. You may read it to understand what real failures look like. You may not copy a sentence, a name, a handle, a supplier, a part number, a channel name, or a file name from it into anything you write. Every case you produce uses the Kestrel Motors company from spec section 3 and numbers from spec section 4 or numbers you invent that are obviously fictional. If you are unsure whether something is a copy, it is.
 
 The human audits every case for leaks (`evals/audit.md`). A rejected case is your bug.
 
