@@ -127,7 +127,11 @@ for x in msgs:
     seen.add(x["ts"])
 
 out = Path(__file__).resolve().parent / "workspace" / "kestrel-workspace.json"
-out.write_text(json.dumps(msgs, indent=2) + "\n")
+# Explicit encoding and newline. write_text otherwise uses the platform's
+# locale encoding — cp1252 on Windows, which cannot carry Ω — and translates
+# "\n" into "\r\n", so the same script produced different bytes per platform
+# and README.md's byte-for-byte reproducibility held only on macOS.
+out.write_text(json.dumps(msgs, indent=2) + "\n", encoding="utf-8", newline="\n")
 print(f"{out.relative_to(Path.cwd())}: {len(msgs)} messages, "
       f"{len({x['channel'] for x in msgs})} channels, "
       f"{msgs[0]['ts']} .. {msgs[-1]['ts']}")
