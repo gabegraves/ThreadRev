@@ -15,6 +15,29 @@ function TraceItem({ ev }: { ev: EvidenceEvent }) {
           <div><strong>{ev.trigger_ts === ev.ts ? "trigger" : "message read"}</strong> · {ev.from}{ev.is_change && <span className="ck-tr-change">change</span>}<p>{ev.text}</p></div>
         </li>
       );
+    case "workspace_search":
+      return (
+        <li data-kind="search">
+          {time}
+          <div>
+            <strong>searched workspace</strong> · {ev.returned} of {ev.total} hits
+            <p>
+              {Object.entries(ev.query)
+                .map(([k, v]) => `${k}=${typeof v === "string" ? v : JSON.stringify(v)}`)
+                .join(" · ")}
+              {ev.cutoff ? ` · cutoff ${fmtTime(ev.cutoff)}` : ""}
+            </p>
+            {ev.hit_ts.length > 0 && (
+              <p>
+                hits:{" "}
+                {ev.hit_ts.map((ts) => (
+                  <code key={ts}>{fmtTime(ts)} </code>
+                ))}
+              </p>
+            )}
+          </div>
+        </li>
+      );
     case "document_read":
       return (
         <li data-kind="document">
