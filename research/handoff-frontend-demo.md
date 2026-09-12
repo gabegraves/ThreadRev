@@ -50,6 +50,21 @@ Channel `#ks4-electrical`. Precharge RC timing, `t_99.9 = R * C * 6.907755`, R =
 
 That is the whole two minutes: context, trigger, verified card, change, stale card, new card. Scenario B (stale simulation inputs) is stretch and stays out of the video unless Scenario A is recorded and safe.
 
+### 4a. Scenario B and replay cards, for the frontend
+
+Added 12:20 PM, commit `01c9466`. Every number below was produced by running `checkers/check_route.py`; run ids are in each file. Document sources carry the real values from `fixtures/SHA256SUMS`. Slack scripts in `fixtures/slack/scenario-b.json`, `rc2-conflict.json`, `rc3-midrun.json`. Channel `#ks4-strategy-sim`. Model: `E = (m * g * Crr + 0.5 * rho * CdA * v^2) * d`, 220 km at 22 m/s, pack 5.2 kWh.
+
+| File | Card | Bound to | Question | Use it to render |
+|---|---|---|---|---|
+| `contracts/examples/finding-scenario-b.json` | `fnd-b-40-001`, live | Juno's trigger `1786472100.000800` | to Juno Marsh | a live card whose conclusion flips between two document versions (v2-0 feasible at 2.825 kWh, v2-1 not at 3.045 kWh, budget 2.912) |
+| `contracts/examples/finding-scenario-b-stale.json` | `fnd-b-40-001`, stale | same trigger | none | the same card after Milo's 35 percent message: same id, same run id, `why_it_matters` names the successor |
+| `contracts/examples/finding-scenario-b-superseding.json` | `fnd-b-35-002`, live, supersedes `fnd-b-40-001` | Milo's change `1786474920.000900` | none | a superseding card where the conclusion no longer flips (budget 3.172, v2-1 feasible) |
+| `contracts/examples/finding-rc2-conflict.json` | `fnd-rc2-001`, live | Juno's trigger | to Milo Trent | a card that computes two candidate masses (318 and 310 kg) and asks instead of choosing |
+
+Scenario B thread order: Milo posts v2-0 (July 3), Milo posts v2-1 and says "Use v2-1 for anything after today" (July 24), Ines confirms 318 kg in thread, Juno's trigger names the July 3 sheet (August 11 13:15), Milo's change to end SoC 35 percent (14:02, threaded under the trigger). RC2 adds Milo's July 30 "v2-1 mass may be 8 kg high" message. RC3 is the same thread with the 14:02 message injected mid-run; its stale record is `finding-scenario-b-stale.json` and its live card is `finding-scenario-b-superseding.json`.
+
+Card shapes the console must handle, all present across the examples: `status: stale`, `supersedes`, `question` present and absent, `discrepancy: "none"` (RC1), `reproduced` entries with and without `printed`/`matches`, five sources on one card, and `inferred` with three entries.
+
 ## 5. Frontend lane
 
 Owner decides, but here is what exists and what is missing.
@@ -99,7 +114,7 @@ Video rules from `hackathon-rules.md`: two minutes, one complete interaction, vi
 
 1. `AGENTS.md`, then `SCRATCHPAD.md`.
 2. `research/synthetic-fixture-spec.md` sections 3 to 5.
-3. `contracts/examples/finding-scenario-a.json` and `finding-scenario-a-superseding.json`.
+3. `contracts/examples/finding-scenario-a.json` and `finding-scenario-a-superseding.json`. Frontend also: the four Scenario B and RC2 cards in section 4a.
 4. `hackathon-overview.md` judging table, `hackathon-rules.md`, `SUBMISSION.md`.
 5. `research/handoff-demo-narrative.md` and `research/handoff-slack-environment.md` for the decisions those lanes own.
 6. Frontend only: `.agents/skills/build-channels-agent/SKILL.md`, `apps/channel/src/finding-card.tsx`, `apps/web/src/app/api/evidence/route.ts`.
