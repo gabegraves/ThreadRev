@@ -847,3 +847,32 @@ test("a complete search does not cry incomplete", async () => {
   assert.notEqual(out.truncated, true);
   assert.doesNotMatch(String(out.note), /INCOMPLETE/);
 });
+
+import { buildIndex, queryIndex } from "./workspace";
+
+const PEOPLE = buildIndex([
+  { ts: "100.000100", channel: "C1", channel_name: "ks4-electrical", user: "U1", user_name: "Dara Voss", thread_ts: null, text: "bus is now 680 uF", files: [] },
+  { ts: "100.000200", channel: "C2", channel_name: "ks4-purchasing", user: "U2", user_name: "Rowan Ibe", thread_ts: null, text: "ordered the 140 uF snubber", files: [] },
+  { ts: "100.000300", channel: "C1", channel_name: "ks4-electrical", user: "U3", user_name: "Dara Okonkwo", thread_ts: null, text: "unrelated 12 V note", files: [] },
+]);
+
+test("an author search finds a person by the name a colleague would type", () => {
+  const byFirst = queryIndex(PEOPLE, { from: "Dara" });
+  assert.equal(byFirst.total, 2, "both Daras — a first name is genuinely ambiguous, not a miss");
+
+  const bySurname = queryIndex(PEOPLE, { from: "Voss" });
+  assert.deepEqual(bySurname.hits.map((h) => h.from), ["Dara Voss"]);
+
+  const byFull = queryIndex(PEOPLE, { from: "dara voss" });
+  assert.deepEqual(byFull.hits.map((h) => h.from), ["Dara Voss"]);
+
+  const byId = queryIndex(PEOPLE, { from: "u2" });
+  assert.deepEqual(byId.hits.map((h) => h.from), ["Rowan Ibe"]);
+});
+
+test("a partial word is not a name", () => {
+  // "Dar" would start returning other people's messages; an empty result that
+  // means "you typed it wrong" is safer than one that means "she said nothing".
+  assert.equal(queryIndex(PEOPLE, { from: "Dar" }).total, 0);
+  assert.equal(queryIndex(PEOPLE, { from: "oss" }).total, 0);
+});
