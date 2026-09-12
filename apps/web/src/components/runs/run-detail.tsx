@@ -6,7 +6,7 @@ import { useCallback, useState } from "react";
 import type { EvidenceGraph } from "agent-core/shared";
 import { DetailPanel, DetailSection, Field, FieldGrid } from "@/civic-ui/components/DetailPanel";
 import { fmtTime } from "@/components/review-console/graph-utils";
-import { ChecksTable, KvTable, type Rec } from "./kv-table";
+import { ChecksTable, RecordFields } from "./kv-table";
 import { LINK, type RunRow } from "./runs-table";
 
 function ThreadLink({ ts }: { ts: string }) {
@@ -29,8 +29,6 @@ export function RefusalBlock({ bound, current, reason }: { bound: string; curren
     </div>
   );
 }
-
-const prefix = (tag: string, rec: Rec | undefined): Rec => Object.fromEntries(Object.entries(rec ?? {}).map(([k, v]) => [`${tag}.${k}`, v]));
 
 function CopyId({ id }: { id: string }) {
   const [done, setDone] = useState(false);
@@ -73,8 +71,16 @@ export function RunDetail({ row, graph, className }: { row: RunRow | null; graph
       )}
 
       <DetailSection title="Inputs and outputs">
-        {/* One list, prefixed so an input and an output of the same name cannot collide. */}
-        <KvTable data={{ ...prefix("in", run.inputs), ...prefix("out", run.outputs) }} emptyMessage="Nothing recorded." />
+        <div className="flex flex-col gap-5">
+          <div className="flex flex-col gap-3">
+            <h5 className="text-[11px] font-medium uppercase tracking-[0.08em] text-faint">Inputs</h5>
+            <RecordFields data={run.inputs} />
+          </div>
+          <div className="flex flex-col gap-3">
+            <h5 className="text-[11px] font-medium uppercase tracking-[0.08em] text-faint">Outputs</h5>
+            <RecordFields data={run.outputs} />
+          </div>
+        </div>
       </DetailSection>
 
       {node && (
