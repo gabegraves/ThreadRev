@@ -40,6 +40,21 @@ export function editOutputDir() {
   return process.env.EDIT_OUTPUT_DIR ? resolve(process.env.EDIT_OUTPUT_DIR) : DOCUMENTS_DIR;
 }
 
+const XLSX_EXTRACTOR = resolve(REPO_ROOT, "extractors", "xlsx_text.py");
+
+/**
+ * Which extractor reads a document, by extension.
+ *
+ * Both emit the same envelope — path, sha256, paragraphs — so everything
+ * downstream of here, quoting, hashing, locators and the instruction scan,
+ * works identically for a spreadsheet and a review document.
+ */
+function extractorFor(name: string): string | undefined {
+  if (name.toLowerCase().endsWith(".docx")) return DOCX_EXTRACTOR;
+  if (name.toLowerCase().endsWith(".xlsx")) return XLSX_EXTRACTOR;
+  return undefined;
+}
+
 /* -------------------------------------------------------------- duplicates */
 
 /**
@@ -324,25 +339,29 @@ function runPython(script: string, args: string[], input?: string): Promise<stri
   });
 }
 
-const DOC_NAME = /^[A-Za-z0-9._-]+\.(docx)$/;
+const DOC_NAME = /^[A-Za-z0-9._-]+\.(docx|xlsx)$/i;
 
 export const readEvidence = defineChannelTool({
   name: "read_evidence",
   description:
-    "Read a document named in the thread and return its text, sha256, and revision label. Quote the exact lines that carry the values you will check. Documents are served from the team's document store by filename.",
+    "Read a document or spreadsheet named in the thread and return its text, sha256, and revision label. A spreadsheet comes back one row per line as `<sheet> row <n>: a | b | c`. Quote the exact lines that carry the values you will check. Documents are served from the team's document store by filename.",
   parameters: z.object({
     document: z
       .string()
-      .describe("Filename exactly as it appears in the thread, e.g. precharge-review-r2.docx"),
+      .describe("Filename exactly as it appears in the thread, e.g. precharge-review-r2.docx or ks4-sim-inputs-v2-1.xlsx"),
   }),
   async handler({ document }, { thread }) {
     const name = basename(document);
     if (!DOC_NAME.test(name)) {
       return {
-        error: `Cannot read "${name}". Only .docx documents from the store are readable; ask for the values in the thread instead.`,
+        error: `Cannot read "${name}". Only .docx and .xlsx documents from the store are readable; ask for the values in the thread instead.`,
       };
     }
-    const raw = await runPython(DOCX_EXTRACTOR, [resolve(DOCUMENTS_DIR, name)]);
+    const extractor = extractorFor(name);
+    if (!extractor) {
+      return { error: `No extractor for "${name}".` };
+    }
+    const raw = await runPython(extractor, [resolve(DOCUMENTS_DIR, name)]);
     let parsed: { sha256?: string; paragraphs?: string[]; error?: string };
     try {
       parsed = JSON.parse(raw);
@@ -408,14 +427,39 @@ const rcInputs = z.object({
   tolerance_s: z.number().positive().default(0.0005),
 });
 
+
+/**
+ * Constant-speed route energy, Scenario B. Mirrors check_route.py's contract.
+ *
+ * The checker validates all of this itself — it is the trust anchor and cannot
+ * depend on its caller — but rejecting a bad request here means the model gets
+ * a usable message instead of a subprocess error.
+ */
+const routeInputs = z.object({
+  mass_kg: z.number().positive(),
+  Crr: z.number().positive().describe("Rolling resistance coefficient, e.g. 0.0048."),
+  CdA: z.number().positive().describe("Drag area in m^2."),
+  v_mps: z.number().positive().describe("Constant speed in metres per second."),
+  d_m: z.number().positive().describe("Segment distance in metres."),
+  pack_kWh: z.number().positive(),
+  soc_start: z.number().gt(0).lte(1).describe("State of charge at the start, 0 to 1."),
+  soc_end: z.number().gte(0).lt(1).describe("State of charge allowed at the end, 0 to 1."),
+  rho: z.number().positive().optional().describe("Air density; defaults to the checker's value."),
+  g: z.number().positive().optional(),
+  alternative_mass_kg: z
+    .array(z.number().positive())
+    .optional()
+    .describe("Extra masses to evaluate in the same run, for a conflicting-evidence case."),
+});
+
 export const runCheck = defineChannelTool({
   name: "run_check",
   description:
-    "Run the trusted precharge RC checker on values you extracted from the evidence. Returns recomputed times, the fraction charged when the relay closes, and named pass/fail checks. These are the only numbers you may put on a card. Pass every capacitance the evidence mentions, including ones from later messages.",
-  parameters: z.object({
-    checker: z.literal("rc").describe('Always "rc". It is the only checker.'),
-    inputs: rcInputs,
-  }),
+    "Run a trusted checker on values you extracted from the evidence, and use its outputs as the only source of computed numbers on a card. `rc` is precharge timing: pass every capacitance the evidence mentions, including ones from later messages, and it returns recomputed times and the fraction charged when the relay closes. `route` is constant-speed segment energy: pass the vehicle and segment parameters, and `alternative_mass_kg` when two sources disagree about a mass, so both are evaluated in one run.",
+  parameters: z.discriminatedUnion("checker", [
+    z.object({ checker: z.literal("rc"), inputs: rcInputs }),
+    z.object({ checker: z.literal("route"), inputs: routeInputs }),
+  ]),
   async handler({ checker, inputs }, { thread }) {
     try {
       const res = await runChecker({ checker, version: "1", inputs });

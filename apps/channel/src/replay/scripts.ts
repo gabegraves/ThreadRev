@@ -23,7 +23,7 @@ export const readThread: ToolCall = { name: "read_thread", args: {} };
 export const searchWorkspace = (args: Record<string, unknown>): ToolCall => ({ name: "search_workspace", args });
 export const readEvidence = (document: string): ToolCall => ({ name: "read_evidence", args: { document } });
 export const rcCheck = (inputs: unknown): ToolCall => ({ name: "run_check", args: { checker: "rc", inputs } });
-export const routeCheck = (inputs: unknown): ToolCall => ({ name: "run_route_check", args: { inputs } });
+export const routeCheck = (inputs: unknown): ToolCall => ({ name: "run_check", args: { checker: "route", inputs } });
 export const publish = (args: Record<string, unknown>): ToolCall => ({ name: "publish_result", args });
 export const proposeEdit = (args: Record<string, unknown>): ToolCall => ({ name: "propose_edit", args });
 

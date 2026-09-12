@@ -571,3 +571,48 @@ test("ordinary chatter is silent, review moments run", () => {
 test("a bot cannot mute the reviewer by repeating the words", () => {
   assert.deepEqual(incoming("reviewer, stand down", { isHuman: false }), { kind: "gate_closed" });
 });
+
+import { readEvidence, runCheck } from "./reviewer-tools";
+
+test("a spreadsheet is readable evidence, in the same envelope as a document", async () => {
+  const ctx = runContext("xlsx-thread");
+  ctx.trigger_ts = "1787166300.000600";
+  const result = (await readEvidence.handler(
+    { document: "ks4-sim-inputs-v2-1.xlsx" },
+    stubCtx({ conversationKey: "xlsx-thread" }),
+  )) as { error?: string; sha256?: string; lines?: { n: number; text: string }[] };
+
+  assert.equal(result.error, undefined, result.error);
+  assert.match(String(result.sha256), /^[0-9a-f]{64}$/, "a spreadsheet must be hashed like a document");
+
+  const rows = (result.lines ?? []).map((l) => l.text);
+  assert.ok(rows.some((r) => /mass_kg \| 318 \| kg/.test(r)), "the corrected mass must be quotable");
+  assert.ok(rows.some((r) => /Crr \| 0.0048/.test(r)));
+  assert.ok(
+    rows.some((r) => /suspension swap/.test(r)),
+    "the change note in A8 is evidence too and must survive",
+  );
+});
+
+test("an unsupported file type is refused rather than guessed at", async () => {
+  const result = (await readEvidence.handler(
+    { document: "notes.txt" },
+    stubCtx({ conversationKey: "xlsx-thread" }),
+  )) as { error?: string };
+  assert.match(String(result.error), /Only \.docx and \.xlsx/);
+});
+
+test("run_check reaches the route checker, not only rc", async () => {
+  const result = (await runCheck.handler(
+    {
+      checker: "route",
+      inputs: { mass_kg: 318, Crr: 0.0048, CdA: 0.12, v_mps: 22, d_m: 220000, pack_kWh: 5.2, soc_start: 0.96, soc_end: 0.4 },
+    },
+    stubCtx({ conversationKey: "route-thread" }),
+  )) as { checker?: string; error?: string | null; outputs?: { cases?: Record<string, { feasible: boolean }> } };
+
+  assert.equal(result.checker, "route");
+  assert.equal(result.error, null);
+  // Scenario B's expectation: v2-1 is not feasible at 40 percent.
+  assert.equal(result.outputs?.cases?.["mass_318kg"]?.feasible, false);
+});

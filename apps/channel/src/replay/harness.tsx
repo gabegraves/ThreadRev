@@ -166,33 +166,10 @@ function dropTranscriptCache(thread: unknown) {
 }
 
 /**
- * Scenario B checker. The real `run_check` is rc-only, so route runs go
- * through this test-local tool and are remembered the same way, which is what
- * the real `publish_result` looks up by run_id.
+ * Wraps the real run_check so the harness records the run and can inject a
+ * mid-run revision. Parameters and handler are the production tool's, so both
+ * checkers are reached exactly the way the live channel reaches them.
  */
-export function createRouteCheckTool(state: ReplayState, options: ReplayOptions) {
-  return defineChannelTool({
-    name: "run_route_check",
-    description: "Run the trusted route energy checker (Scenario B).",
-    parameters: z.object({ inputs: z.record(z.string(), z.unknown()) }),
-    async handler({ inputs }, { thread }) {
-      const response = await runChecker({ checker: "route", version: "1", inputs });
-      rememberRun(response, await revisionNow(thread, runContext(threadKey(thread)).trigger_ts));
-      state.checkerRuns.push(response);
-      const injected = options.afterChecker?.(response, state);
-      if (injected) {
-        state.visible.push(injected);
-        dropTranscriptCache(thread);
-        // Harness self-check: the thread now serves the injected message.
-        const seen = await thread.getMessages();
-        assert.ok(seen.some((m) => m.text === injected.text), "injected message not visible after cache drop");
-      }
-      return response;
-    },
-  });
-}
-
-/** Wraps the real rc tool so the harness records the run too. */
 function recordingRunCheck(state: ReplayState, options: ReplayOptions) {
   return defineChannelTool({
     name: runCheck.name,
@@ -303,7 +280,6 @@ export async function runReplay(options: ReplayOptions): Promise<ReplayResult> {
       recordingRunCheck(state, options),
       publishResult,
       proposeEdit,
-      createRouteCheckTool(state, options),
     ],
   });
   let failure: unknown;
