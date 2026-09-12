@@ -2,7 +2,7 @@
 
 ## ThreadRev workspace
 
-This checkout is the infrastructure baseline for ThreadRev, a Slack-native engineering change investigator. Current scope is environment setup; engineering extraction, calculation, verification and revision invalidation are not implemented yet. Do not describe inherited incident tools as engineering checks.
+This checkout is ThreadRev, a Slack-native engineering change reviewer built on the CopilotKit starter. Built during the event: `apps/channel/src/reviewer-tools.tsx`, `finding-card.tsx`, `review-moment.ts`, `revision.ts`, the silence filter in `agent.ts`, `checkers/`, `extractors/`, `contracts/`, `fixtures/`, `apps/channel/src/replay/`, and `packages/agent-core/src/reviewer-prompt.ts`. Inherited: everything else, including the incident tools and components in `tools.tsx` and `components.tsx`, which are no longer registered on the channel but remain for their tests. The reviewer never computes a number it shows; `publish_result` copies numbers from a checker run and is the only path to a card.
 
 Start with [SETUP.md](SETUP.md). The research and proposed design live in [../RESEARCH.md](../RESEARCH.md) and [../research/hackathon-design.md](../research/hackathon-design.md), outside this checkout. Preserve them. Use the Slack template first; web is an optional local preview, not another required product surface.
 
