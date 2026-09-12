@@ -21,13 +21,15 @@ interface RunContext {
   trigger_ts?: string;
   documents: Array<{ sha256: string; named_in_ts?: string }>;
   changes: string[];
+  /** Instructions addressed to the reviewer found inside evidence it read. */
+  notices: string[];
 }
 const contexts = new Map<string, RunContext>();
 
 export function runContext(threadId: string): RunContext {
   let c = contexts.get(threadId);
   if (!c) {
-    c = { documents: [], changes: [] };
+    c = { documents: [], changes: [], notices: [] };
     contexts.set(threadId, c);
   }
   return c;
