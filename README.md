@@ -80,9 +80,19 @@ Slack thread ──▶ CopilotKit Channels ──▶ review gate (is this a revi
 
 ## What Slack already does, and what ThreadRev adds
 
-Slack's own AI covers the generic pitch. [Enterprise search](https://slack.com/features/enterprise-search) searches and summarizes conversations, files, and connected sources such as Google Drive and GitHub. [Slackbot](https://slack.com/help/articles/202026038-How-to-work-with-Slackbot) runs reusable skills and scheduled tasks. The [Notion integration](https://api.slack.com/marketplace/A049JV0H0KC-notion) creates, edits, and organizes pages. "We summarize Slack," "we run automatically," and "we update your docs" are not differences, and ThreadRev does not claim them.
+Slack AI tells you what was said. ThreadRev tells you what was decided, and whether it still holds.
 
-On Scenario A, a thread summary says what the thread says: the bus is 680 uF, the relay timer is 2.5 s, the document matches. That is a correct summary and the wrong answer. The document disagrees with itself, its printed result only reproduces with a capacitance the thread replaced, and the correction that breaks the timer has not been written into any document yet.
+Take the demo thread. Dara posts a review document and says the bus is 680 uF. Tam says the firmware timer is 2.5 s and matches the doc. Ask Slack AI to summarize and it says exactly that. The summary is accurate. It is also wrong, because the document contradicts itself, its printed result only works with a capacitance the thread already replaced, and the correction that breaks the timer has not been written into any document yet.
+
+ThreadRev does three things a summary never does:
+
+1. **It recomputes.** The model reads the numbers, but a local Python checker does the arithmetic and the card copies the checker's output. A summary repeats what the text says. A card says what the text should have said.
+2. **It binds the answer to a version.** Every card names the document revision, its SHA-256, and the timestamp of the last message that changed an input. A summary is about "the doc." A card is about this doc, as of that message.
+3. **It goes stale.** When Dara changes the bus to 820 uF, the first card is edited to say stale and a new card is posted against her message. In Slack, the old summary and the new one sit side by side and nobody knows which is current.
+
+Slack already covers the generic pitch: [Enterprise search](https://slack.com/features/enterprise-search) searches and summarizes conversations, files, and connected sources, [Slackbot](https://slack.com/help/articles/202026038-How-to-work-with-Slackbot) runs skills and scheduled tasks, and the [Notion integration](https://api.slack.com/marketplace/A049JV0H0KC-notion) edits pages. A Slackbot skill can call a calculator. That is not the difference. The difference is the discipline around the result: hash what was read, tie the answer to a revision, refuse to post if the revision moved mid-check, and mark the old answer stale instead of leaving two truths in the thread.
+
+In one line: **Slack keeps the conversation. ThreadRev keeps the decision, what it was decided against, and whether it is still true.**
 
 | | Slack AI summary or search | ThreadRev card |
 |---|---|---|
@@ -90,8 +100,6 @@ On Scenario A, a thread summary says what the thread says: the bus is 680 uF, th
 | Version | Answers about "the doc" | Names the docx revision and SHA-256, and binds the card to the message ts of the latest requirement change. |
 | Later corrections | The earlier summary stays as written next to the new one | The earlier card is edited to **stale** in place and a new card bound to the new revision is posted. A result whose revision moved mid-run is refused before it posts. |
 | Silence | Answers when asked | Stays silent on normal chatter, posts a clean card when everything reproduces, asks instead of deciding when sources conflict. |
-
-A Slackbot skill can call a webhook that runs a calculator. The discipline around the result is the product: hash what was read, bind the answer to a revision, refuse when the revision moved, mark the old answer stale. In one sentence: **ThreadRev keeps a record of what the team decided, bound to the revision it was decided against, with the numbers recomputed, so the next engineer can trust it or see exactly why not.**
 
 What we are building toward, and how much of it exists on `main` today:
 
