@@ -277,7 +277,11 @@ function rc2Conflict(messages: FixtureMessage[]): Script {
   return {
     steps: [
       () => readThread,
-      () => routeCheck({ ...ROUTE_V21, soc_end: 0.4, alternative_mass_kg: [310] }),
+      () => readEvidence("ks4-sim-inputs-v2-1.xlsx"),
+      // The sheet supplies the parameters; the 310 kg alternative comes from
+      // Milo's re-weigh message, which is exactly why it is an alternative and
+      // not a value.
+      (ctx) => routeCheck({ ...routeFromSheet(ctx.evidence[0]!, 0.4), alternative_mass_kg: [310] }),
       (ctx) =>
         publish({
           run_id: ctx.checker!.run_id,
@@ -287,6 +291,7 @@ function rc2Conflict(messages: FixtureMessage[]): Script {
           why_it_matters:
             "Feasibility at 22 m/s is not met at 318 kg or 310 kg against the 2.912 kWh budget. The 8 kg question does not change the conclusion but the run cannot be labeled final until the mass is settled.",
           sources: [
+            sheetSource(ctx.evidence[0]!, "mass_kg"),
             { kind: "message", id: useV21.ts, quote: "Use v2-1 for anything after today." },
             { kind: "message", id: reweigh.ts, quote: "v2-1 mass may be 8 kg high, the ballast was on the scale. Re-weigh pending." },
           ],
