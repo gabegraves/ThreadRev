@@ -49,7 +49,7 @@ import { createPortal } from "react-dom";
 import { cn } from "@/civic-ui/lib/cn";
 import { KIND_META, WorkOrderExplorer } from "@/civic/grid/work-order-explorer";
 import type { GridReportRow } from "@/civic/lib/grid/dashboard-grid-data";
-import { teamIcon } from "@/civic/lib/grid/team-icon";
+import { channelIcon } from "@/civic/lib/grid/team-icon";
 import { TEAMS } from "@/civic/lib/grid/teams";
 import { useTheme } from "@/civic/lib/grid/use-theme";
 
@@ -443,7 +443,7 @@ function CategoryCell({ data }: ICellRendererParams<GridReportRow>) {
 function TeamCell({ data }: ICellRendererParams<GridReportRow>) {
   if (!data) return null;
   const team = TEAMS[data.team_key] ?? TEAMS.general_admin;
-  const Icon = teamIcon(team.icon);
+  const Icon = channelIcon(data.team_label);
   return (
     <span className="flex items-center gap-2">
       <span
