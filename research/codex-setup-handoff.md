@@ -18,13 +18,9 @@ Platform facts and the fallback Slack manifest: `~/Desktop/9_12_26_Hackathon/age
 
 ## Steps
 
-### 1. GitHub repo
+### 1. GitHub repo (already done)
 
-1. Commit the current uncommitted changes in the starter checkout as one commit titled `Environment baseline: starter configured for ThreadRev`. Confirm `.env` is not staged (`git status` must not list it; it is gitignored).
-2. Copy `~/Desktop/9_12_26_Hackathon/agents-everywhere-starter-kit/research/` and `~/Desktop/9_12_26_Hackathon/RESEARCH.md` into the checkout root and commit as `Add ThreadRev research and fixture spec`.
-3. Rename the CopilotKit remote: `git remote rename origin upstream`.
-4. Create a **private** repo named `ThreadRev` under the account the user names (ask if not given), add it as `origin`, push `main`. Keep full upstream history; the fork point is how we prove what was built during the event.
-5. Evidence: `git remote -v` and `git log --oneline -5` output.
+The checkout is already the ThreadRev repo: `origin` is https://github.com/gabegraves/ThreadRev (private), `upstream` is the CopilotKit starter, and `research/` plus `RESEARCH.md` are committed at the repo root. Verify with `git remote -v` and `git log --oneline -3`, then move on. Commit and push after every step below that changes a tracked file.
 
 ### 2. Slack workspace
 
