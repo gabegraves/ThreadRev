@@ -21,7 +21,7 @@ import {
   type PetFinding,
   type Reproduced,
 } from "./findings.js";
-import { applyFilter, formatValue, unreadCount, type Filter } from "../logic.js";
+import { applyFilter, formatValue, severityOf, unreadCount, type Filter } from "../logic.js";
 
 interface PetSettings {
   alwaysOnTop: boolean;
@@ -453,6 +453,9 @@ function render(conn: Connection): void {
     petRev.textContent = rev.length <= 3 ? rev : rev.slice(0, 3);
   }
 
+  // The eye colour: red for a number that did not reproduce, yellow for an open
+  // discrepancy, green when nothing live is wrong.
+  petEl.dataset.severity = severityOf(findings);
   liveCount.textContent = String(findings.filter((f) => f.status === "live").length);
   staleCount.textContent = String(findings.filter((f) => f.status === "stale").length);
   const liveTab = document.querySelector<HTMLElement>('.tab[data-filter="live"]');

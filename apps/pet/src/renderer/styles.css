@@ -26,7 +26,8 @@
   /* Semantics lifted straight from the product. */
   --accent: #54b4ff; /* reading / working            */
   --alert: #f0a33c; /* discrepancy found            */
-  --danger: #e5484d; /* live finding needs a decision */
+  --danger: #e5484d; /* critical: asserted discrepancy or failed recomputation */
+  --warn: #f5c542; /* minor: open question, numbers reproduce */
   --ok: #4fc38a; /* reproduces, nothing to flag  */
   --stale: #7b828c; /* superseded                   */
 
@@ -196,12 +197,12 @@ body {
 
 /* Soft bloom behind the iris dot; carries the state colour without a filter. */
 .pet__glow {
-  fill: var(--tone, var(--accent));
+  fill: var(--eye, var(--tone, var(--accent)));
   opacity: 0.22;
 }
 
 .pet__iris-dot {
-  fill: var(--tone, var(--accent));
+  fill: var(--eye, var(--tone, var(--accent)));
   transition: fill 320ms ease;
 }
 
@@ -277,11 +278,25 @@ body {
 
 .pet[data-state="found"] {
   --aperture: 0.95;
+  --tone: var(--warn);
+}
+.pet[data-state="found"][data-severity="critical"] {
   --tone: var(--danger);
 }
-/* Hop only for a live finding nobody has opened yet; acknowledging stops it. */
-.pet[data-state="found"][data-unread="true"] .pet__svg {
+/* Hop only for a critical finding nobody has opened yet; acknowledging stops it. */
+.pet[data-state="found"][data-severity="critical"][data-unread="true"] .pet__svg {
   animation: alert 1.8s ease-in-out infinite;
+}
+
+/* The eye is the severity light whatever the state ring is doing. */
+.pet[data-severity="critical"] {
+  --eye: var(--danger);
+}
+.pet[data-severity="minor"] {
+  --eye: var(--warn);
+}
+.pet[data-severity="passing"] {
+  --eye: var(--ok);
 }
 
 .pet[data-state="clear"] {

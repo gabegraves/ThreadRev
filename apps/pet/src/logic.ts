@@ -114,3 +114,35 @@ export function unreadCount<T extends { status: "live" | "stale"; finding_id: st
 ): number {
   return items.filter((f) => f.status === "live" && !seen.has(f.finding_id)).length;
 }
+
+/** What the eye says at a glance. */
+export type Severity = "critical" | "minor" | "passing";
+
+/**
+ * Severity across the current findings, for the eye colour.
+ *
+ * critical: a live card that asserts a discrepancy, or where a printed number
+ *           did not reproduce. Someone has to change a document.
+ * minor:    every live card is a question to a person and every recomputed
+ *           number that had a printed value reproduced. Something to settle,
+ *           nothing shown to be wrong yet.
+ * passing:  no live discrepancy. Stale cards are history, not a status, and a
+ *           "none" discrepancy is the clean control.
+ */
+export function severityOf<
+  T extends {
+    status: "live" | "stale";
+    discrepancy: string;
+    reproduced: ReadonlyArray<{ matches?: boolean }>;
+    question?: unknown;
+  },
+>(findings: readonly T[]): Severity {
+  const live = findings.filter(
+    (f) => f.status === "live" && f.discrepancy.trim().toLowerCase() !== "none",
+  );
+  if (live.length === 0) return "passing";
+  const critical = live.some(
+    (f) => !f.question || f.reproduced.some((r) => r.matches === false),
+  );
+  return critical ? "critical" : "minor";
+}

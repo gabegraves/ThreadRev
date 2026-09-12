@@ -8,6 +8,7 @@ import {
   rectContains,
   shouldCapture,
   unreadCount,
+  severityOf,
 } from "./logic.js";
 
 const rect = (l: number, t: number, r: number, b: number) => ({
@@ -92,4 +93,19 @@ test("unreadCount ignores stale cards and anything already seen", () => {
   // A superseded card is not news; badging it would train the user to ignore
   // the badge.
   assert.equal(unreadCount(FINDINGS, new Set(["a", "c"])), 0);
+});
+
+test("severityOf: assertion or failed recomputation is critical, a question with reproducing numbers is minor, else passing", () => {
+  const q = { to: "Dara", ask: "680 or 750 uF?" };
+  const bad = { status: "live" as const, discrepancy: "6.91 s printed", reproduced: [{ matches: false }], question: q };
+  const assertion = { status: "live" as const, discrepancy: "relay closes early", reproduced: [{}] };
+  const ask = { status: "live" as const, discrepancy: "680 or 750 uF?", reproduced: [{ matches: true }, {}], question: q };
+  const none = { status: "live" as const, discrepancy: "none", reproduced: [{ matches: false }] };
+  const old = { status: "stale" as const, discrepancy: "6.91 s printed", reproduced: [{ matches: false }] };
+  assert.equal(severityOf([bad, ask]), "critical");
+  assert.equal(severityOf([assertion]), "critical");
+  assert.equal(severityOf([ask]), "minor");
+  assert.equal(severityOf([ask, old]), "minor");
+  assert.equal(severityOf([none, old]), "passing");
+  assert.equal(severityOf([]), "passing");
 });

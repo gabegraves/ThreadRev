@@ -62,6 +62,10 @@ the look is a status display rather than decoration:
   drives; the iris is a scaled hexagon because that is a single composited
   transform, which matters inside a transparent window.
 - The **ring arc** carries the state colour, so status is legible across a room.
+- The **eye** carries severity: red when a card asserts a discrepancy or a
+  printed number did not reproduce, yellow when every live card is a question
+  and the numbers reproduce, green when nothing live is wrong. Only a critical
+  card makes Rev hop.
 - The **tab** on top shows the revision the findings are bound to.
 - The **hairline crack** appears when a card has been superseded.
 - The **thread** unspools from Rev up to the panel as it opens, drawn with
@@ -73,7 +77,7 @@ the look is a status display rather than decoration:
 | `reading`   | open, pupil scanning                 | reading the thread            |
 | `searching` | wide, sonar ring                     | searching the workspace       |
 | `checking`  | stopped down, tick marks             | a checker is recomputing      |
-| `found`     | wide, red, hops until opened          | live findings need a decision |
+| `found`     | wide, red or yellow, hops until opened| live findings need a decision |
 | `clear`     | relaxed, green                       | nothing to flag               |
 | `stale`     | desaturated, fracture across the lens| superseded                    |
 | `asleep`    | shut, zzz                            | idle past the sleep threshold |
