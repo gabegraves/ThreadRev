@@ -12,6 +12,8 @@ One line per lane. Update yours after every push. Read all four before you start
 
 ## Decisions and announcements
 
+- 1:50 Differentiation is now written down once, in README "What Slack already does, and what ThreadRev adds": Slack summarizes what was said; ThreadRev keeps what was decided, bound to a revision, numbers recomputed, cards go stale. The video gets one comparison beat right after Card 1 goes stale (exact words in `research/hackathon-design.md` step 5). `AGENTS.md` carries the same framing for agents. Demo lane: the description must match that section.
+
 - 1:20 Slack lane handoff for a computer-use agent is in `research/handoff-slack-lane.md`: A1 CopilotKit login and project select, A2 Channel create and Slack install, A3 model key, A4 live Card 1 and stale-to-Card 2 with screenshots. Report format and stop conditions are in the file. 3:00 PM Path B checkpoint unchanged.
 
 - 12:59 Historical-research demonstration plan and example-customer profile ready in `docs/plans/2026-09-12-1250-feat-historical-research-demo-plan.md`. Aligned with Kestrel Motors reframe; plan-only, no contract or runtime changes. Independent model recovery and live Slack delivery remain separate unproven gates; implementation awaits selection.

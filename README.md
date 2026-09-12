@@ -6,7 +6,7 @@
 
 **A Slack-native engineering change reviewer. It reads the thread, searches the rest of the workspace by document and unit, recomputes the numbers, and marks its own findings stale when the inputs change.**
 
-[What it does](#what-it-does) · [Demo](#the-demo-scenario-a) · [How it works](#how-it-works) · [Why search, not RAG](#why-search-by-identifier-not-rag) · [Status](#status) · [Run it](#run-it) · [Repo map](#repo-map) · [Team](#team-and-working-rules)
+[What it does](#what-it-does) · [Demo](#the-demo-scenario-a) · [How it works](#how-it-works) · [Versus Slack AI](#what-slack-already-does-and-what-threadrev-adds) · [Why search, not RAG](#why-search-by-identifier-not-rag) · [Status](#status) · [Run it](#run-it) · [Repo map](#repo-map) · [Team](#team-and-working-rules)
 
 </div>
 
@@ -77,6 +77,32 @@ Slack thread ──▶ CopilotKit Channels ──▶ review gate (is this a revi
 - **Evidence log and graph** in [`packages/agent-core/src/evidence/`](packages/agent-core/src/evidence/). Every message read, document hashed, checker run, card published, and silence decision is appended as an event. The graph builder turns the log into message, document, run, finding, and revision nodes with a downstream walk, so "what did this change invalidate" is a query.
 - **Replay harness** in [`apps/channel/src/replay/`](apps/channel/src/replay/). Replays a fixture Slack script through the real channel handlers and real checkers offline, with a scripted agent standing in for the model, and asserts the card that gets posted. This is the contract test for the checker-to-card seam and the scorecard for the three replay cases.
 - **Web review console** in [`apps/web/src/components/review-console/`](apps/web/src/components/review-console/), served by [`/api/evidence`](apps/web/src/app/api/evidence/route.ts). A browser view of the thread, the cards, and the evidence graph, polling the live log and falling back to the Scenario A sample. Secondary surface; Slack is the product.
+
+## What Slack already does, and what ThreadRev adds
+
+Slack's own AI covers the generic pitch. [Enterprise search](https://slack.com/features/enterprise-search) searches and summarizes conversations, files, and connected sources such as Google Drive and GitHub. [Slackbot](https://slack.com/help/articles/202026038-How-to-work-with-Slackbot) runs reusable skills and scheduled tasks. The [Notion integration](https://api.slack.com/marketplace/A049JV0H0KC-notion) creates, edits, and organizes pages. "We summarize Slack," "we run automatically," and "we update your docs" are not differences, and ThreadRev does not claim them.
+
+On Scenario A, a thread summary says what the thread says: the bus is 680 uF, the relay timer is 2.5 s, the document matches. That is a correct summary and the wrong answer. The document disagrees with itself, its printed result only reproduces with a capacitance the thread replaced, and the correction that breaks the timer has not been written into any document yet.
+
+| | Slack AI summary or search | ThreadRev card |
+|---|---|---|
+| Numbers | Repeats what the text says | Recomputed by a stdlib Python checker. The model never writes a number on a card. |
+| Version | Answers about "the doc" | Names the docx revision and SHA-256, and binds the card to the message ts of the latest requirement change. |
+| Later corrections | The earlier summary stays as written next to the new one | The earlier card is edited to **stale** in place and a new card bound to the new revision is posted. A result whose revision moved mid-run is refused before it posts. |
+| Silence | Answers when asked | Stays silent on normal chatter, posts a clean card when everything reproduces, asks instead of deciding when sources conflict. |
+
+A Slackbot skill can call a webhook that runs a calculator. The discipline around the result is the product: hash what was read, bind the answer to a revision, refuse when the revision moved, mark the old answer stale. In one sentence: **ThreadRev keeps a record of what the team decided, bound to the revision it was decided against, with the numbers recomputed, so the next engineer can trust it or see exactly why not.**
+
+What we are building toward, and how much of it exists on `main` today:
+
+| Difference to prove | In practice | Today |
+|---|---|---|
+| Which decisions still apply | Separate proposals, accepted decisions, and superseded conclusions; tie each to its component and revision | Built narrowly: every card binds to a revision; a later change marks it stale; conflicting sources produce a question, not a pick |
+| A reviewable evidence trail | Exact source versions, assumptions, conflicting evidence, and the record of changes | Built: the evidence log records every message read, document hash, checker run, card, and silence decision; the graph answers "what did this change invalidate" |
+| Check the underlying work | Reproduce the calculation; keep runnable checks another engineer or agent can inspect | Built: `checkers/`, `run_check`, `publish_result`, run ids on every card |
+| Continue existing work correctly | Update the right task, carry unresolved questions forward, never turn a tentative discussion into a decision or open a duplicate | Not built. The historical supplier-acceptance case in the research notes is the target: an old acceptance of one configuration is not approval of the new geometry, and the open confirmation has to travel to the right project |
+
+What we do not claim: a market gap ([`research/engineering-change-competitors.md`](research/engineering-change-competitors.md)), that Slack cannot be configured to approximate this, or that a summary is the wrong tool for open-ended questions. The next proof is the same historical cases run through a configured Slackbot and through ThreadRev. If they tie, the workflow gets built on Slack's tooling and the specialized part is the checker and revision contract.
 
 ## Why search by identifier, not RAG
 
