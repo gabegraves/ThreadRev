@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { EvidenceGraphMap, MapLegend } from "@/components/graph/graph-map";
 import { EdgeLegend, EvidenceGraphSvg } from "@/components/graph/graph-svg";
 import { NodeDetail } from "@/components/graph/node-detail";
 import { TraceTimeline } from "@/components/graph/trace-timeline";
@@ -9,7 +10,24 @@ import { PageHeader } from "@/components/shell/page-header";
 import { PillGroup } from "@/civic-ui/components/Tile";
 import { useEvidence } from "@/lib/demo/use-evidence";
 
+type GraphView = "columns" | "map";
+const VIEW_KEY = "threadrev.graph-view";
+
 export default function Page() {
+  // Default to map; read the saved choice after mount so SSR and hydration agree.
+  const [view, setView] = useState<GraphView>("map");
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(VIEW_KEY);
+      if (saved === "columns" || saved === "map") setView(saved);
+    } catch {}
+  }, []);
+  const pickView = (v: GraphView) => {
+    setView(v);
+    try {
+      localStorage.setItem(VIEW_KEY, v);
+    } catch {}
+  };
   const { graph, events } = useEvidence();
   const traces = useMemo(() => runTraces(events), [events]);
   const [pickedTrace, setPickedTrace] = useState<string | null>(null);
@@ -52,18 +70,35 @@ export default function Page() {
         </aside>
 
         <section className="flex min-w-0 flex-col gap-3">
-          <EvidenceGraphSvg graph={graph} selected={selected} onSelect={setSelected} />
-          <div className="flex flex-wrap items-center justify-between gap-3 px-1">
-            <EdgeLegend />
-            <ul className="flex items-center gap-3 font-mono text-[10.5px] uppercase tracking-[0.1em] text-faint">
-              {(["live", "stale", "refused"] as const).map((s) => (
-                <li key={s} className="flex items-center gap-1.5">
-                  <span className="size-2.5 rounded-[3px] border-[1.5px] bg-surface" style={{ borderColor: `var(--color-${s === "live" ? "success" : s === "stale" ? "warning" : "danger"})` }} aria-hidden />
-                  {s}
-                </li>
-              ))}
-            </ul>
+          <div className="flex items-center justify-between gap-3 px-1">
+            <p className="font-mono text-[10.5px] font-medium uppercase tracking-[0.12em] text-faint">
+              {graph.nodes.length} nodes · {graph.edges.length} edges
+            </p>
+            <PillGroup<GraphView> options={[{ value: "columns", label: "Columns" }, { value: "map", label: "Map" }]} value={view} onChange={pickView} />
           </div>
+          {view === "map" ? (
+            <>
+              <EvidenceGraphMap graph={graph} selected={selected} onSelect={setSelected} />
+              <div className="px-1">
+                <MapLegend />
+              </div>
+            </>
+          ) : (
+            <>
+              <EvidenceGraphSvg graph={graph} selected={selected} onSelect={setSelected} />
+              <div className="flex flex-wrap items-center justify-between gap-3 px-1">
+                <EdgeLegend />
+                <ul className="flex items-center gap-3 font-mono text-[10.5px] uppercase tracking-[0.1em] text-faint">
+                  {(["live", "stale", "refused"] as const).map((s) => (
+                    <li key={s} className="flex items-center gap-1.5">
+                      <span className="size-2.5 rounded-[3px] border-[1.5px] bg-surface" style={{ borderColor: `var(--color-${s === "live" ? "success" : s === "stale" ? "warning" : "danger"})` }} aria-hidden />
+                      {s}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </>
+          )}
         </section>
 
         <NodeDetail graph={graph} node={node} onPick={setSelected} />
