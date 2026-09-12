@@ -126,6 +126,28 @@ export async function revisionNow(thread: { getMessages(): Promise<Array<{ ts?: 
   return latestRevision(messages.map((m) => ({ ts: m.ts, text: m.text, isBot: m.isBot })), fallback);
 }
 
+/** How many runs a thread keeps. Enough to publish after a bounce, not a log. */
+const KEEP_RUNS = 5;
+
+/**
+ * Mirror a run onto the thread so publish_result can still find it after this
+ * process restarts. Never throws: losing the mirror costs a recovery path, and
+ * failing the check that produced it would cost the review.
+ */
+async function persistRun(
+  thread: { state<T>(): Promise<T | undefined>; setState(v: unknown): Promise<unknown> },
+  res: CheckerResponse,
+): Promise<void> {
+  try {
+    const state = (await thread.state<ReviewState>()) ?? { cards: [], staleRuns: [] };
+    const kept = Object.entries(state.runs ?? {}).slice(-(KEEP_RUNS - 1));
+    state.runs = Object.fromEntries([...kept, [res.run_id, res]]);
+    await thread.setState(state);
+  } catch (e) {
+    console.warn("[runs] not persisted:", (e as Error).message);
+  }
+}
+
 /* ---------------------------------------------------------- read_thread */
 
 export const readThread = defineChannelTool({
@@ -345,6 +367,7 @@ export const runCheck = defineChannelTool({
       const res = await runChecker({ checker, version: "1", inputs });
       const ctx = runContext(threadKey(thread));
       rememberRun(res, await revisionNow(thread, ctx.trigger_ts));
+      await persistRun(thread, res);
       record({
         kind: "check_run",
         thread: threadKey(thread),
@@ -375,6 +398,14 @@ export interface ReviewState {
   staleRuns: Array<{ run_id: string; bound: string; current: string }>;
   /** Set when a human told the reviewer to stand down in this thread. */
   muted?: boolean;
+  /**
+   * Checker runs, kept with the thread so they survive a process restart.
+   *
+   * The in-process Map below is the fast path; this is what makes a publish
+   * still possible after a bounce, when the Map is empty and the only trace of
+   * the run is the id the model is holding.
+   */
+  runs?: Record<string, CheckerResponse>;
 }
 
 function capLabel(name: string, suffix: RegExp) {
@@ -462,7 +493,11 @@ export const publishResult = defineChannelTool({
     supersedes: z.string().optional().describe("finding_id of the earlier card this replaces."),
   }),
   async handler(args, { thread }) {
-    const run = recallRun(args.run_id);
+    const state = (await thread.state<ReviewState>()) ?? { cards: [], staleRuns: [] };
+    // The Map is process-local: a restart between the check and the publish
+    // empties it while the model still holds a perfectly good run_id. The
+    // thread's own copy is what makes that recoverable instead of a dead end.
+    const run = recallRun(args.run_id) ?? state.runs?.[args.run_id];
     if (!run) return { published: false, reason: `Unknown run_id ${args.run_id}. Call run_check first.` };
     if (run.error) return { published: false, reason: `Run ${args.run_id} ended with an error; nothing to publish.` };
 
@@ -506,7 +541,6 @@ export const publishResult = defineChannelTool({
       bound,
       unitsFromInputs(run.inputs),
     );
-    const state = (await thread.state<ReviewState>()) ?? { cards: [], staleRuns: [] };
 
     const decision = guardPublish({ requirements_revision: bound, status: "live" }, current);
     if (!decision.ok) {
