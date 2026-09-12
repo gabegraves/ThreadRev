@@ -7,20 +7,9 @@ import { DetailPanel, DetailSection } from "@/civic-ui/components/DetailPanel";
 import { StatusPill } from "@/civic-ui/components/StatusPill";
 import { cn } from "@/civic-ui/lib/cn";
 import { fmtAt } from "@/components/overview/metrics";
-import { fmtTime } from "@/components/review-console/graph-utils";
 import { LINK_CLASS, hrefs } from "@/lib/demo/links";
 import { STATUS_LABEL, STATUS_TONE } from "@/lib/demo/status";
 import type { DocCitation, DocRow } from "./document-model";
-
-const CHIP = "inline-flex items-center gap-1 rounded-lg border border-hairline bg-surface px-2.5 py-1 text-[12px] text-subtle";
-
-function Chip({ label, value, mono }: { label: string; value: React.ReactNode; mono?: boolean }) {
-  return (
-    <span className={CHIP}>
-      {label} <span className={cn("font-semibold text-foreground", mono && "font-mono")}>{value}</span>
-    </span>
-  );
-}
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
@@ -51,7 +40,7 @@ function lineLabel(locator?: string): string {
   return m ? `L${m[1]}` : locator;
 }
 
-function Citation({ c, graphLinked }: { c: DocCitation; graphLinked: boolean }) {
+function Citation({ c }: { c: DocCitation }) {
   return (
     <li className="flex flex-col gap-1.5">
       <div className="flex flex-wrap items-center gap-2">
@@ -59,22 +48,17 @@ function Citation({ c, graphLinked }: { c: DocCitation; graphLinked: boolean }) 
         <Link href={hrefs.finding(c.finding_id)} className={cn("font-mono text-[11px]", LINK_CLASS)}>
           {c.finding_id}
         </Link>
-        {graphLinked && (
-          <Link href={hrefs.graph(c.finding_id)} className={cn("text-[11px]", LINK_CLASS)}>
-            Open in graph
-          </Link>
-        )}
-        <span className="font-mono text-[10.5px] uppercase tracking-[0.08em] text-faint">{c.locator ?? "—"}</span>
+        <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-faint">{c.locator ?? "—"}</span>
       </div>
       {c.quote ? (
-        <blockquote className="flex gap-2.5 border-l-2 border-hairline-strong pl-3 text-[12.5px] leading-relaxed text-subtle">
+        <blockquote className="flex gap-2.5 border-l-2 border-hairline-strong pl-3 text-[12px] leading-relaxed text-subtle">
           <span className="shrink-0 select-none font-mono text-[11px] tabular-nums text-faint" title={c.locator}>
             {lineLabel(c.locator)}
           </span>
           <span>{c.quote}</span>
         </blockquote>
       ) : (
-        <p className="text-[12px] text-faint">— no quote recorded</p>
+        <p className="text-[12px] text-faint">no quote recorded</p>
       )}
     </li>
   );
@@ -84,34 +68,20 @@ function Citation({ c, graphLinked }: { c: DocCitation; graphLinked: boolean }) 
 export function DocumentDetailBody({ row, graphNodeIds }: { row: DocRow; graphNodeIds: Set<string> }) {
   return (
     <>
-      <div className="flex flex-wrap items-center gap-1.5">
-        <Chip label="revision" value={row.revision ?? "—"} mono />
-        {row.sha256 ? (
-          <span className={CHIP} title={row.sha256}>
-            sha256 <span className="font-mono font-semibold text-foreground">{row.sha256.slice(0, 12)}</span>
-            <CopyButton text={row.sha256} />
+      <div className="flex flex-col gap-1">
+        <span className="text-[11px] uppercase tracking-wider text-faint">sha256</span>
+        <span className="flex items-center gap-2">
+          <span className="min-w-0 truncate font-mono text-[13px] text-foreground" title={row.sha256 ?? undefined}>
+            {row.sha256 ?? "—"}
           </span>
-        ) : (
-          <Chip label="sha256" value="—" mono />
-        )}
-        <Chip label="lines" value={row.line_count ?? "—"} mono />
-        <Chip label="reader" value={row.reader ?? "—"} />
-        <Chip label="read at" value={row.read_at ? fmtAt(row.read_at) : "—"} mono />
-        {row.named_in_ts && (
-          <span className={CHIP}>
-            named in{" "}
-            <Link href={hrefs.thread(row.named_in_ts)} className={cn("font-mono font-semibold", LINK_CLASS)}>
-              {fmtTime(row.named_in_ts)}
-            </Link>
-          </span>
-        )}
-        {row.sha256 && graphNodeIds.has(row.sha256) && (
-          <Link href={hrefs.graph(row.sha256)} className={cn("text-[12px]", LINK_CLASS)}>
-            Open in graph
-          </Link>
-        )}
+          {row.sha256 && <CopyButton text={row.sha256} />}
+        </span>
       </div>
-      <p className="text-[11px] text-faint">{row.read ? "sha256 is the digest of the exact bytes the reviewer read" : "no document_read event carries this digest"}</p>
+      {row.sha256 && graphNodeIds.has(row.sha256) && (
+        <Link href={hrefs.graph(row.sha256)} className={cn("text-[12px]", LINK_CLASS)}>
+          Open in graph
+        </Link>
+      )}
       <DetailSection title="Cited by findings">
         {row.citations.length === 0 ? (
           <p className="text-[12px] text-faint">No finding cites this document.</p>
@@ -119,15 +89,13 @@ export function DocumentDetailBody({ row, graphNodeIds }: { row: DocRow; graphNo
           <ul className="flex flex-col gap-3">
             {row.citations.map((c, i) => (
               // biome-ignore lint/suspicious/noArrayIndexKey: one finding may cite the same document at several locators
-              <Citation key={`${c.finding_id}-${i}`} c={c} graphLinked={graphNodeIds.has(c.finding_id)} />
+              <Citation key={`${c.finding_id}-${i}`} c={c} />
             ))}
           </ul>
         )}
       </DetailSection>
-      <DetailSection title="Checker runs referencing it">
-        {row.run_refs.length === 0 ? (
-          <p className="text-[12px] text-faint">No check_run lists this digest in evidence_refs.</p>
-        ) : (
+      {row.run_refs.length > 0 && (
+        <DetailSection title="Checker runs">
           <ul className="flex flex-col gap-1">
             {row.run_refs.map((id) => (
               <li key={id}>
@@ -137,18 +105,21 @@ export function DocumentDetailBody({ row, graphNodeIds }: { row: DocRow; graphNo
               </li>
             ))}
           </ul>
-        )}
-      </DetailSection>
+        </DetailSection>
+      )}
     </>
   );
 }
 
 export function DocumentDetailPanel({ row, graphNodeIds }: { row: DocRow | null; graphNodeIds: Set<string> }) {
   if (!row) return <DetailPanel emptyMessage="Select a document to see who cites it." className="lg:sticky lg:top-4 lg:self-start" />;
+  const meta = [row.line_count ? `${row.line_count} lines` : null, row.read_at ? `read ${fmtAt(row.read_at)}` : null, row.reader ?? null]
+    .filter(Boolean)
+    .join(" · ");
   return (
     <DetailPanel
       title={row.document}
-      subtitle={row.sha256 ?? "no digest recorded"}
+      subtitle={meta || undefined}
       actions={<StatusPill tone={row.read ? "success" : "neutral"}>{row.read ? "read" : "named, not read"}</StatusPill>}
       className="lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:self-start"
     >

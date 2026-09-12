@@ -6,8 +6,10 @@
    - the columns are read-only: the SelectEditor / EditPill / onCellValueChanged
      machinery and the "Edits not saved" pill are gone, so every cell click
      opens the explorer.
-   - the Issue cell shows author + excerpt with a trigger/change/message glyph;
-     Dept and Crew are plain label cells.
+   - the Issue cell shows author + excerpt with a trigger/change/message glyph,
+     and the Status cell falls back to the message role when no card was
+     published. Team / Sev / Priority / Dept / Crew columns are dropped: they
+     restated the channel, the author, or the glyph.
    - the explorer is ThreadExplorer (message detail), not WorkOrderExplorer.
    Class strings are unchanged. */
 
@@ -30,8 +32,6 @@ import { Check, ChevronDown, CircleAlert, type LucideIcon, Maximize2, MessageSqu
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/civic-ui/lib/cn";
-import { teamIcon } from "@/civic/lib/grid/team-icon";
-import { TEAMS } from "@/civic/lib/grid/teams";
 import { useTheme } from "@/civic/lib/grid/use-theme";
 import type { ThreadGridRow, ThreadRowDept } from "@/lib/civic-adapters/thread-rows";
 import type { ThreadModel } from "./thread-model";
@@ -48,34 +48,6 @@ const DEPT_ICON: Record<ThreadRowDept, LucideIcon> = {
 const STATUSES = ["live", "stale", "refused"];
 
 const titleize = (s: string) => s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-
-const SEVERITY_HUE: Record<number, string> = {
-  1: "var(--status-success-fg)",
-  2: "color-mix(in srgb, var(--status-success-fg) 55%, var(--status-warning-fg))",
-  3: "var(--status-warning-fg)",
-  4: "color-mix(in srgb, var(--status-warning-fg) 50%, var(--status-danger-fg))",
-  5: "var(--status-danger-fg)",
-};
-
-function severityChipStyle(value: number): React.CSSProperties {
-  const hue = SEVERITY_HUE[value] ?? SEVERITY_HUE[3];
-  return {
-    color: hue,
-    backgroundColor: `color-mix(in srgb, ${hue} 14%, transparent)`,
-    borderColor: `color-mix(in srgb, ${hue} 42%, transparent)`,
-    borderWidth: 1,
-    borderStyle: "solid",
-  };
-}
-
-const PRIORITY_DOMAIN = 5;
-function priorityHue(score: number): string {
-  if (score <= 0) return SEVERITY_HUE[5];
-  if (score === 1) return SEVERITY_HUE[4];
-  if (score === 2) return SEVERITY_HUE[3];
-  if (score === 3) return SEVERITY_HUE[2];
-  return SEVERITY_HUE[1];
-}
 
 const STATUS_TEXT: Record<string, string> = {
   live: "text-[var(--status-success-fg)]",
@@ -131,12 +103,6 @@ const gridThemeDark = themeQuartz.withParams({
   wrapperBorder: false,
 });
 
-const ICON_TILE = "text-subtle";
-
-function iconTileStyle(color: string): React.CSSProperties {
-  return { color };
-}
-
 // ── cell renderers ──────────────────────────────────────────────────────────
 
 function excerpt(s: string, n: number): string {
@@ -150,7 +116,7 @@ function IssueCell({ data }: ICellRendererParams<ThreadGridRow>) {
   const Icon = DEPT_ICON[data.dept];
   return (
     <span className="inline-flex h-8 max-w-full items-center gap-1.5 py-1 pl-1.5 pr-1.5">
-      <span className={cn("flex h-5 w-5 shrink-0 items-center justify-center rounded-[var(--radius-sm)]", ICON_TILE)}>
+      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-[var(--radius-sm)] text-subtle">
         <Icon className="h-3.5 w-3.5" strokeWidth={2} />
       </span>
       <span className="shrink-0 truncate text-[13px] font-medium text-foreground" title={data.from}>
@@ -163,52 +129,9 @@ function IssueCell({ data }: ICellRendererParams<ThreadGridRow>) {
   );
 }
 
-function TeamCell({ data }: ICellRendererParams<ThreadGridRow>) {
-  if (!data) return null;
-  const team = TEAMS[data.team_key] ?? TEAMS.general_admin;
-  const Icon = teamIcon(team.icon);
-  return (
-    <span className="flex items-center gap-2">
-      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[var(--radius-md)]" style={iconTileStyle(team.color)}>
-        <Icon className="h-3.5 w-3.5" strokeWidth={2.25} />
-      </span>
-      <span className="truncate text-[13px] text-subtle">{data.team_label}</span>
-    </span>
-  );
-}
-
-function SeverityCell({ value }: ICellRendererParams<ThreadGridRow, number | null>) {
-  if (value == null) return <span className="text-faint">—</span>;
-  return (
-    <span className="inline-flex h-[22px] w-[22px] items-center justify-center rounded-full text-[11px] font-semibold" style={severityChipStyle(value)}>
-      {value}
-    </span>
-  );
-}
-
-function PriorityCell({ data }: ICellRendererParams<ThreadGridRow>) {
-  if (!data) return null;
-  if (data.priority == null) {
-    return <span className="text-faint">—</span>;
-  }
-  const score = data.priority;
-  const pct = Math.max(4, Math.min(100, (score / PRIORITY_DOMAIN) * 100));
-  const hue = priorityHue(score);
-  return (
-    <span className="flex items-center gap-2">
-      <span className="tabular-nums text-[13px] font-semibold" style={{ color: hue }}>
-        {score}
-      </span>
-      <span className="h-1.5 w-14 overflow-hidden rounded-full bg-elevated">
-        <span className="block h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: hue }} />
-      </span>
-    </span>
-  );
-}
-
 function StatusCell({ data }: ICellRendererParams<ThreadGridRow>) {
   if (!data) return null;
-  if (!data.status) return <span className="text-[13px] text-faint">—</span>;
+  if (!data.status) return <span className="pl-2.5 text-[13px] text-faint">{data.dept}</span>;
   return (
     <span className="flex flex-wrap items-center gap-1">
       <span className="inline-flex h-8 items-center gap-1.5 py-1 pl-2.5 pr-1.5">
@@ -217,20 +140,12 @@ function StatusCell({ data }: ICellRendererParams<ThreadGridRow>) {
       </span>
       {data.cards > 1 && (
         <span
-          className="inline-flex items-center gap-1 rounded-[var(--radius-sm)] border border-hairline bg-overlay px-1.5 py-0.5 text-[10px] font-bold text-subtle"
+          className="inline-flex items-center gap-1 rounded-[var(--radius-sm)] border border-hairline bg-overlay px-1.5 py-0.5 text-[11px] font-medium text-subtle"
           title={`${data.cards} cards published under this message`}
         >
           {data.cards} cards
         </span>
       )}
-    </span>
-  );
-}
-
-function LabelCell({ value }: ICellRendererParams<ThreadGridRow, string | null>) {
-  return (
-    <span className="inline-flex h-8 items-center py-1 pl-2 pr-1.5">
-      <span className={cn("truncate text-[13px]", value ? "text-foreground" : "text-faint")}>{value || "—"}</span>
     </span>
   );
 }
@@ -426,7 +341,7 @@ export function ThreadGrid({
     if (!query) return rows;
     const q = query.toLowerCase();
     return rows.filter((r) =>
-      [r.ts, r.from, r.text, r.dept, r.status, r.team_label]
+      [r.ts, r.from, r.text, r.dept, r.status]
         .filter(Boolean)
         .some((s) => {
           const str = String(s).toLowerCase();
@@ -509,32 +424,6 @@ export function ThreadGrid({
         minWidth: 280,
       },
       {
-        colId: "team",
-        headerName: "Team",
-        valueGetter: (p: ValueGetterParams<ThreadGridRow>) => (p.data ? p.data.team_label : ""),
-        cellRenderer: TeamCell,
-        initialFlex: 1,
-        minWidth: 160,
-      },
-      {
-        colId: "severity",
-        headerName: "Sev",
-        field: "severity",
-        cellRenderer: SeverityCell,
-        comparator: (a, b) => (a ?? -1) - (b ?? -1),
-        initialWidth: 96,
-        minWidth: 88,
-      },
-      {
-        colId: "priority",
-        headerName: "Priority",
-        field: "priority",
-        cellRenderer: PriorityCell,
-        comparator: (a, b) => (a ?? -1) - (b ?? -1),
-        initialWidth: 140,
-        minWidth: 130,
-      },
-      {
         colId: "status",
         headerName: "Status",
         field: "status",
@@ -542,22 +431,6 @@ export function ThreadGrid({
         filterValueGetter: (p: ValueGetterParams<ThreadGridRow>) => (p.data?.status ? titleize(p.data.status) : "—"),
         initialWidth: 160,
         minWidth: 140,
-      },
-      {
-        colId: "department",
-        headerName: "Dept",
-        field: "dept",
-        cellRenderer: LabelCell,
-        initialWidth: 130,
-        minWidth: 110,
-      },
-      {
-        colId: "crew",
-        headerName: "Crew",
-        field: "from",
-        cellRenderer: LabelCell,
-        initialWidth: 150,
-        minWidth: 130,
       },
       {
         colId: "actions",
@@ -634,17 +507,6 @@ export function ThreadGrid({
           ))}
         </fieldset>
 
-        <div className="ml-auto flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-[var(--radius-md)] border border-hairline bg-overlay px-2.5 py-1 text-[11px] font-medium text-subtle">
-            <span className="tabular-nums text-foreground">{rows.length}</span> messages
-            {graph.thread && (
-              <>
-                <span className="text-faint">·</span>
-                thread <span className="font-mono text-foreground">{graph.thread}</span>
-              </>
-            )}
-          </span>
-        </div>
       </div>
 
       <div ref={gridWrapRef} data-tour="grid-table" className="civic-grid relative min-h-0 flex-1">

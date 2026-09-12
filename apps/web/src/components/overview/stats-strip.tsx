@@ -5,10 +5,9 @@ import { cn } from "@/civic-ui/lib/cn";
 
 /**
  * Civic's stats-cards recipe (one hairline surface, mono micro-label, 28px
- * tabular value, hover:bg-overlay) at six cells with each cell a Link. The
- * civic-ui StatsCards is fixed at four cells and cannot carry an href, so the
- * shell is rebuilt here; dividers come from a 1px gap over the hairline colour
- * instead of per-index border classes.
+ * tabular value, hover:bg-overlay) with each cell a Link. The civic-ui
+ * StatsCards cannot carry an href, so the shell is rebuilt here; dividers come
+ * from a 1px gap over the hairline colour instead of per-index border classes.
  */
 export type LinkedStat = { label: string; value: string; href: string; hint?: string };
 
@@ -20,7 +19,7 @@ export function StatsStrip({ cards }: { cards: LinkedStat[] }) {
 .stat-val{animation:stat-roll 260ms cubic-bezier(0.22,1,0.36,1) both}
 @media (prefers-reduced-motion:reduce){.stat-val{animation:none}}
 `}</style>
-      <div className="grid grid-cols-2 gap-px sm:grid-cols-3 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-px sm:grid-cols-4">
         {cards.map((card) => (
           <Link
             key={card.label}

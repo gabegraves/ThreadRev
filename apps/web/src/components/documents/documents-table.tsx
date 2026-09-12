@@ -6,31 +6,16 @@ import { StatusPill } from "@/civic-ui/components/StatusPill";
 import { fmtTime } from "@/components/review-console/graph-utils";
 import type { DocRow } from "./document-model";
 
-/** Distinct quotes findings lifted from this document, joined for the one-line preview. */
-function citedLines(r: DocRow): string {
-  return [...new Set(r.citations.flatMap((c) => (c.quote ? [c.quote] : [])))].join("  ·  ");
-}
-
 const COLUMNS: Column<DocRow>[] = [
   {
     key: "document",
     header: "Document",
-    cell: (r) => {
-      const quotes = citedLines(r);
-      return (
-        <span className="flex max-w-[48ch] flex-col gap-0.5">
-          <span className="inline-flex items-center gap-2">
-            <span className="font-medium">{r.document}</span>
-            {!r.read && <StatusPill tone="neutral">named, not read</StatusPill>}
-          </span>
-          {quotes && (
-            <span className="block truncate whitespace-normal text-[11px] leading-snug text-faint" title={quotes}>
-              “{quotes}”
-            </span>
-          )}
-        </span>
-      );
-    },
+    cell: (r) => (
+      <span className="inline-flex min-w-0 items-center gap-2">
+        <span className="truncate font-medium">{r.document}</span>
+        {!r.read && <StatusPill tone="neutral">named, not read</StatusPill>}
+      </span>
+    ),
   },
   { key: "revision", header: "Revision", mono: true, cell: (r) => r.revision ?? "—" },
   {
@@ -39,7 +24,6 @@ const COLUMNS: Column<DocRow>[] = [
     mono: true,
     cell: (r) => (r.sha256 ? <span title={r.sha256}>{r.sha256.slice(0, 12)}</span> : "—"),
   },
-  { key: "lines", header: "Lines", align: "right", mono: true, cell: (r) => r.line_count ?? "—" },
   {
     key: "named_in",
     header: "Named in",
@@ -53,7 +37,6 @@ const COLUMNS: Column<DocRow>[] = [
         "—"
       ),
   },
-  { key: "runs", header: "Read in runs", align: "right", mono: true, cell: (r) => r.run_count },
   { key: "cited", header: "Cited by findings", align: "right", mono: true, cell: (r) => r.citations.length },
 ];
 

@@ -42,11 +42,8 @@ function DocumentsBody() {
 
   return (
     <>
-      <PageHeader
-        title="Documents"
-        subtitle="Every file the reviewer read, keyed by the sha256 of the exact bytes. A finding can only cite a digest that appears here."
-      />
-      <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+      <PageHeader title="Documents" subtitle="Which exact bytes a claim quotes." />
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
         <DocumentsTable rows={rows} loading={!loaded} selectedId={selectedId} onSelect={(r) => select(r.id)} />
         <div className="hidden lg:block">
           <DocumentDetailPanel row={selected} graphNodeIds={graphNodeIds} />

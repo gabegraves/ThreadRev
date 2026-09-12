@@ -7,8 +7,7 @@
  * page uses — checker rows, published / superseded / refused chain.
  *
  * Every id in the timeline is a link to its page (finding → /findings,
- * run → /runs, document sha → /documents, message ts → /thread), and the
- * message and its run both carry an "Open in graph" link.
+ * run → /runs, document sha → /documents, message ts → /thread).
  */
 import type { EvidenceEvent, EvidenceGraph } from "agent-core/shared";
 import { Waypoints } from "lucide-react";
@@ -54,22 +53,16 @@ export function ThreadMessageDetail({
           Open in graph
         </Link>
       </div>
-      <ol aria-label="Message" className="flex flex-col gap-1 rounded-[var(--radius-lg)] border border-hairline bg-surface p-3 shadow-[var(--shadow-card)] sm:p-4">
+      <ol aria-label="Message" className="flex flex-col gap-1">
         <Message m={m} model={model} graph={graph} channelId={channelId} onOpen={onOpen} />
       </ol>
       <section className="flex flex-col gap-2">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <SectionTitle>Reviewer run</SectionTitle>
           {runIds.map((id) => (
-            <span key={id} className="inline-flex items-center gap-2">
-              <Link href={`/runs?id=${encodeURIComponent(id)}`} className={LINK}>
-                {id}
-              </Link>
-              <Link href={graphHref(id)} className={LINK} aria-label={`Open run ${id} in graph`}>
-                <Waypoints className="size-3.5" strokeWidth={1.75} aria-hidden />
-                graph
-              </Link>
-            </span>
+            <Link key={id} href={`/runs?id=${encodeURIComponent(id)}`} className={LINK}>
+              {id}
+            </Link>
           ))}
         </div>
         {trace ? (
@@ -81,7 +74,7 @@ export function ThreadMessageDetail({
             }}
           />
         ) : (
-          <p className="text-[12.5px] text-faint">This message did not trigger a reviewer run.</p>
+          <p className="text-[12px] text-faint">This message did not trigger a reviewer run.</p>
         )}
       </section>
     </div>
