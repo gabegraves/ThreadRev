@@ -8,7 +8,8 @@
     "build": "node build.mjs",
     "dev": "node build.mjs && electron .",
     "start": "electron .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test \"src/**/*.test.ts\""
   },
   "devDependencies": {
     "electron": "^33.2.0"

@@ -2,84 +2,176 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>ThreadRev Pet</title>
+    <title>Rev — ThreadRev</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <div id="root">
+      <!-- The thread. Drawn from Rev up to the panel anchor while opening. -->
+      <svg id="thread" class="thread" aria-hidden="true">
+        <path id="thread-path" class="thread__path" />
+      </svg>
+
       <section
         id="panel"
         class="panel"
         role="dialog"
-        aria-label="ThreadRev review findings"
+        aria-label="ThreadRev findings"
         aria-hidden="true"
       >
         <header class="panel__head">
-          <span class="panel__title">ThreadRev</span>
-          <span id="panel-status" class="panel__status">idle</span>
-          <button id="panel-close" class="panel__close" type="button" aria-label="Close">
-            &times;
+          <span class="mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" class="mark__svg">
+              <circle class="mark__ring" cx="12" cy="12" r="8" />
+              <path class="mark__iris" d="M12 6.5 17 9.25 17 14.75 12 17.5 7 14.75 7 9.25Z" />
+            </svg>
+          </span>
+          <div class="panel__ident">
+            <span class="panel__name">Rev</span>
+            <span id="panel-sub" class="panel__sub">watching</span>
+          </div>
+          <span id="rev-chip" class="chip chip--rev" title="Revision these findings are bound to">
+            —
+          </span>
+          <button id="panel-close" class="icon-btn" type="button" aria-label="Close panel">
+            <svg viewBox="0 0 16 16" aria-hidden="true">
+              <path d="M4 4l8 8M12 4l-8 8" />
+            </svg>
           </button>
         </header>
-        <div id="panel-body" class="panel__body"></div>
+
+        <nav class="tabs" role="tablist" aria-label="Filter findings">
+          <button class="tab" role="tab" data-filter="live" aria-selected="true">
+            Live <span id="count-live" class="tab__n">0</span>
+          </button>
+          <button class="tab" role="tab" data-filter="stale" aria-selected="false">
+            Stale <span id="count-stale" class="tab__n">0</span>
+          </button>
+          <button class="tab" role="tab" data-filter="all" aria-selected="false">All</button>
+        </nav>
+
+        <div id="panel-body" class="panel__body" role="tabpanel"></div>
+
         <footer class="panel__foot">
-          <span id="panel-hint" class="panel__hint">Watching this thread</span>
-          <button id="panel-quit" class="panel__quit" type="button">Quit</button>
+          <span id="conn" class="conn" data-state="offline">
+            <i class="conn__dot" aria-hidden="true"></i>
+            <span id="conn-label">connecting…</span>
+          </span>
+          <button id="btn-hide" class="text-btn" type="button">Hide</button>
         </footer>
       </section>
 
-      <button
-        id="pet"
-        class="pet"
-        type="button"
-        data-state="idle"
-        aria-expanded="false"
-        aria-controls="panel"
-        aria-label="ThreadRev companion. Open findings."
-      >
-        <svg class="pet__svg" viewBox="0 0 120 132" aria-hidden="true">
-          <defs>
-            <linearGradient id="shell" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="var(--shell-top)" />
-              <stop offset="100%" stop-color="var(--shell-bottom)" />
-            </linearGradient>
-          </defs>
+      <!-- Rev. A revision stamp with an aperture for a face. -->
+      <div id="pet" class="pet" data-state="idle">
+        <button
+          id="pet-hit"
+          class="pet__hit"
+          type="button"
+          aria-expanded="false"
+          aria-controls="panel"
+          aria-label="Rev. Open findings."
+        >
+          <svg class="pet__svg" viewBox="0 0 140 164" aria-hidden="true">
+            <defs>
+              <linearGradient id="body" x1="0.2" y1="0" x2="0.5" y2="1">
+                <stop offset="0%" stop-color="var(--body-hi)" />
+                <stop offset="55%" stop-color="var(--body-mid)" />
+                <stop offset="100%" stop-color="var(--body-lo)" />
+              </linearGradient>
+              <linearGradient id="rimlight" x1="0" y1="0" x2="0.4" y2="1">
+                <stop offset="0%" stop-color="rgb(255 255 255 / 0.5)" />
+                <stop offset="45%" stop-color="rgb(255 255 255 / 0.06)" />
+                <stop offset="100%" stop-color="rgb(255 255 255 / 0.16)" />
+              </linearGradient>
+              <radialGradient id="glass" cx="0.34" cy="0.28" r="0.9">
+                <stop offset="0%" stop-color="var(--glass-hi)" />
+                <stop offset="100%" stop-color="var(--glass-lo)" />
+              </radialGradient>
+              <clipPath id="lens-clip">
+                <circle cx="70" cy="86" r="30" />
+              </clipPath>
+            </defs>
 
-          <!-- antenna -->
-          <line class="pet__stalk" x1="60" y1="18" x2="60" y2="6" />
-          <circle class="pet__bulb" cx="60" cy="5" r="5" />
+            <!-- revision tab, notched into the top of the stamp -->
+            <g class="pet__tab">
+              <path d="M46 40 v-13 a7 7 0 0 1 7-7 h34 a7 7 0 0 1 7 7 v13 Z" />
+              <text id="pet-rev" x="70" y="35" text-anchor="middle">r—</text>
+            </g>
 
-          <!-- body -->
-          <rect
-            class="pet__shell"
-            x="10"
-            y="16"
-            width="100"
-            height="98"
-            rx="34"
-            fill="url(#shell)"
-          />
+            <!-- stamp body -->
+            <rect x="14" y="34" width="112" height="112" rx="36" fill="url(#body)" />
+            <rect
+              class="pet__bevel"
+              x="14.75"
+              y="34.75"
+              width="110.5"
+              height="110.5"
+              rx="35.25"
+              stroke="url(#rimlight)"
+            />
 
-          <!-- visor -->
-          <rect class="pet__visor" x="24" y="38" width="72" height="42" rx="21" />
+            <!-- state ring: readable from across the room -->
+            <circle class="pet__state-ring" cx="70" cy="86" r="38.5" />
 
-          <!-- eyes: two shapes stacked, CSS swaps which is visible per state -->
-          <g class="pet__eyes">
-            <circle class="pet__eye pet__eye--open" cx="46" cy="59" r="8" />
-            <circle class="pet__eye pet__eye--open" cx="74" cy="59" r="8" />
-            <path class="pet__eye pet__eye--shut" d="M38 60 q8 -9 16 0" />
-            <path class="pet__eye pet__eye--shut" d="M66 60 q8 -9 16 0" />
-          </g>
+            <!-- lens -->
+            <circle class="pet__housing" cx="70" cy="86" r="34" />
+            <circle class="pet__glass" cx="70" cy="86" r="30" fill="url(#glass)" />
 
-          <!-- prompt badge -->
-          <text class="pet__badge" x="60" y="99" text-anchor="middle">&gt;_</text>
+            <g clip-path="url(#lens-clip)">
+              <!--
+                Six blades. Alternating tones give the iris visible edges: a
+                single flat fill reads as a hole, not as a mechanism.
+              -->
+              <g class="pet__blades">
+                <path d="M70 86 L70 34 L115 60 Z" />
+                <path class="alt" d="M70 86 L115 60 L115 112 Z" />
+                <path d="M70 86 L115 112 L70 138 Z" />
+                <path class="alt" d="M70 86 L70 138 L25 112 Z" />
+                <path d="M70 86 L25 112 L25 60 Z" />
+                <path class="alt" d="M70 86 L25 60 L70 34 Z" />
+              </g>
 
-          <!-- feet -->
-          <rect class="pet__foot" x="30" y="110" width="20" height="10" rx="5" />
-          <rect class="pet__foot" x="70" y="110" width="20" height="10" rx="5" />
-        </svg>
-        <span id="pet-badge" class="pet__count" hidden></span>
-      </button>
+              <!-- the opening -->
+              <g class="pet__iris">
+                <path
+                  class="pet__opening"
+                  d="M70 58 L94.2 72 L94.2 100 L70 114 L45.8 100 L45.8 72 Z"
+                />
+                <path
+                  class="pet__opening-edge"
+                  d="M70 58 L94.2 72 L94.2 100 L70 114 L45.8 100 L45.8 72 Z"
+                />
+                <g class="pet__pupil">
+                  <circle class="pet__glow" cx="70" cy="86" r="15" />
+                  <circle class="pet__iris-dot" cx="70" cy="86" r="9.5" />
+                  <circle class="pet__spec" cx="65.5" cy="81.5" r="3.2" />
+                </g>
+              </g>
+
+              <!-- staleness: a hairline fracture across the glass -->
+              <path class="pet__crack" d="M44 66 L62 84 L55 97 L79 109 L70 92 L98 72" />
+            </g>
+
+            <circle class="pet__rim" cx="70" cy="86" r="30" />
+
+            <!-- checker tick marks, shown while recomputing -->
+            <g class="pet__ticks">
+              <path d="M70 42 v8" />
+              <path d="M114 86 h-8" />
+              <path d="M70 130 v-8" />
+              <path d="M26 86 h8" />
+            </g>
+
+            <!-- sleep -->
+            <g class="pet__zzz">
+              <text x="110" y="44">z</text>
+              <text x="123" y="29">z</text>
+            </g>
+          </svg>
+
+          <span id="pet-count" class="pet__count" hidden></span>
+        </button>
+      </div>
     </div>
     <script src="renderer.js"></script>
   </body>

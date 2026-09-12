@@ -1,57 +1,117 @@
 /**
- * Renderer for the ThreadRev desktop companion.
+ * Rev's renderer: hit-testing, the state machine, drag, and the panel.
  *
- * Responsibilities, in order of how easy they are to get wrong:
+ * Ordered by how easy each is to get wrong:
  *
- *  1. Mouse pass-through. The window is a 420x560 transparent rectangle sitting
- *     over the corner of Slack. If it captured clicks everywhere, the corner of
- *     Slack would become dead. So the window ignores mouse events by default and
- *     we flip it live, based on whether the cursor is actually over the pet or
- *     the open panel. Electron keeps forwarding mousemove while click-through is
- *     on (`forward: true` in main.ts), which is what makes this hit test work.
- *  2. State. The pet's expression is the product's status display; it is driven
- *     by the findings feed, never set arbitrarily.
- *  3. The panel. Opens on click, closes on click, Escape, or the close button.
+ *  1. Mouse pass-through. The window is a transparent box over a corner of the
+ *     screen. If it captured input across that whole box, that corner of Slack
+ *     would go dead. So the window starts click-through and we hit-test the
+ *     cursor on every mousemove, enabling input only over Rev or the open panel.
+ *     Electron keeps delivering mousemove while click-through is on because main
+ *     passes `forward: true`; without that this never runs.
+ *  2. State. The aperture is a status display driven by the feed and the agent's
+ *     reported phase. It is never set for decoration.
+ *  3. Drag. The renderer cannot move the window, so it reports the grab offset
+ *     and main follows the OS cursor.
  */
-import { SAMPLE, watchFindings, type Connection, type PetFinding } from "./findings.js";
+import {
+  SAMPLE,
+  watchFindings,
+  type Connection,
+  type PetFinding,
+  type Reproduced,
+} from "./findings.js";
+import {
+  applyFilter,
+  formatValue,
+  shouldCapture,
+  unreadCount,
+  type Filter,
+} from "../logic.js";
+
+interface PetSettings {
+  alwaysOnTop: boolean;
+  sleepAfterMin: number;
+  reducedMotion: boolean;
+}
 
 declare global {
   interface Window {
     pet: {
-      setInteractive(interactive: boolean): void;
+      setInteractive(v: boolean): void;
+      drag(dx: number, dy: number): void;
+      dragEnd(): void;
+      reportState(state: string): void;
+      contextMenu(): void;
+      hide(): void;
       quit(): void;
+      openExternal(url: string): void;
+      onSettings(handler: (s: PetSettings) => void): void;
+      onOpen(handler: () => void): void;
+      onForceState(handler: (state: string) => void): void;
     };
   }
 }
 
-type PetState = "idle" | "think" | "found" | "ok";
+type PetState =
+  | "idle"
+  | "reading"
+  | "searching"
+  | "checking"
+  | "found"
+  | "clear"
+  | "stale"
+  | "asleep";
 
-const petEl = document.getElementById("pet") as HTMLButtonElement;
-const panelEl = document.getElementById("panel") as HTMLElement;
-const bodyEl = document.getElementById("panel-body") as HTMLElement;
-const statusEl = document.getElementById("panel-status") as HTMLElement;
-const hintEl = document.getElementById("panel-hint") as HTMLElement;
-const countEl = document.getElementById("pet-badge") as HTMLElement;
-const closeEl = document.getElementById("panel-close") as HTMLButtonElement;
-const quitEl = document.getElementById("panel-quit") as HTMLButtonElement;
+const $ = <T extends HTMLElement>(id: string): T =>
+  document.getElementById(id) as T;
+
+const petEl = $("pet");
+const hitEl = $<HTMLButtonElement>("pet-hit");
+const panelEl = $("panel");
+const bodyEl = $("panel-body");
+const subEl = $("panel-sub");
+const revChip = $("rev-chip");
+const petRev = document.getElementById("pet-rev") as unknown as SVGTextElement;
+const countEl = $("pet-count");
+const connEl = $("conn");
+const connLabel = $("conn-label");
+const threadEl = $("thread");
+const threadPath = document.getElementById("thread-path") as unknown as SVGPathElement;
+const liveCount = $("count-live");
+const staleCount = $("count-stale");
 
 let open = false;
 let interactive = false;
+let dragging = false;
+let grab = { dx: 0, dy: 0 };
+let moved = false;
+let state: PetState = "idle";
+let filter: Filter = "live";
+let findings: PetFinding[] = [];
+let isSample = true;
+let settings: PetSettings = { alwaysOnTop: true, sleepAfterMin: 5, reducedMotion: false };
+let lastActivity = Date.now();
+let seen = new Set<string>();
+/** Set by --state=<name>; freezes the aperture for visual verification. */
+let pinnedState: PetState | null = null;
 
 /* ------------------------------------------------------------- hit test --- */
 
 /**
- * True when (x, y) is over something the user can actually hit. Rect tests
- * rather than elementFromPoint: the pet is an SVG with transparent gaps between
- * its limbs, and making the user thread the needle between them feels broken.
+ * Rect tests rather than elementFromPoint: Rev is an SVG with transparent gaps
+ * between its parts, and making the user thread the needle between them would
+ * feel broken. The decision itself lives in logic.ts so it can be tested.
  */
 function overSolid(x: number, y: number): boolean {
-  const inside = (el: Element): boolean => {
-    const r = el.getBoundingClientRect();
-    return x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
-  };
-  if (inside(petEl)) return true;
-  return open && inside(panelEl);
+  return shouldCapture({
+    x,
+    y,
+    pet: petEl.getBoundingClientRect(),
+    panel: panelEl.getBoundingClientRect(),
+    open,
+    dragging,
+  });
 }
 
 function setInteractive(next: boolean): void {
@@ -60,128 +120,390 @@ function setInteractive(next: boolean): void {
   window.pet.setInteractive(next);
 }
 
+/* ----------------------------------------------------------------- gaze --- */
+
+/** Pupil drifts toward the cursor. Small on purpose: attention, not googly eyes. */
+function gaze(x: number, y: number): void {
+  const r = petEl.getBoundingClientRect();
+  const cx = r.left + r.width / 2;
+  const cy = r.top + r.height * 0.52;
+  const d = Math.hypot(x - cx, y - cy) || 1;
+  const reach = Math.min(d, 260) / 260;
+  petEl.style.setProperty("--gaze-x", `${((x - cx) / d) * 5 * reach}px`);
+  petEl.style.setProperty("--gaze-y", `${((y - cy) / d) * 5 * reach}px`);
+}
+
 document.addEventListener("mousemove", (e) => {
   setInteractive(overSolid(e.clientX, e.clientY));
+  gaze(e.clientX, e.clientY);
+  if (dragging) {
+    moved = true;
+    window.pet.drag(grab.dx, grab.dy);
+  }
+  wake();
 });
 
 // The cursor can leave through the window edge without a final mousemove
-// inside; without this the window would stay interactive and eat Slack's clicks.
-document.addEventListener("mouseleave", () => setInteractive(false));
+// inside; without this the window stays interactive and eats Slack's clicks.
+document.addEventListener("mouseleave", () => {
+  if (!dragging) setInteractive(false);
+});
+
+/* ----------------------------------------------------------------- drag --- */
+
+hitEl.addEventListener("mousedown", (e) => {
+  if (e.button !== 0) return;
+  dragging = true;
+  moved = false;
+  grab = { dx: e.screenX - window.screenX, dy: e.screenY - window.screenY };
+  petEl.dataset.dragging = "true";
+  petEl.dataset.press = "true";
+});
+
+window.addEventListener("mouseup", () => {
+  if (!dragging) return;
+  dragging = false;
+  delete petEl.dataset.dragging;
+  delete petEl.dataset.press;
+  if (moved) {
+    window.pet.dragEnd();
+  } else {
+    // A click, not a drag.
+    pop();
+    setOpen(!open);
+  }
+});
+
+hitEl.addEventListener("contextmenu", (e) => {
+  e.preventDefault();
+  window.pet.contextMenu();
+});
+
+/** The squash-and-snap on click. */
+function pop(): void {
+  petEl.dataset.pop = "true";
+  window.setTimeout(() => delete petEl.dataset.pop, 470);
+}
 
 /* ---------------------------------------------------------------- state --- */
 
-function setState(state: PetState): void {
-  petEl.dataset.state = state;
-  const label: Record<PetState, string> = {
-    idle: "idle",
-    think: "reviewing…",
-    found: "findings",
-    ok: "all clear",
-  };
-  statusEl.textContent = label[state];
-  petEl.setAttribute(
-    "aria-label",
-    `ThreadRev companion, ${label[state]}. ${open ? "Close" : "Open"} findings.`,
-  );
+const SUBTITLE: Record<PetState, string> = {
+  idle: "watching",
+  reading: "reading the thread",
+  searching: "searching the workspace",
+  checking: "recomputing",
+  found: "needs a decision",
+  clear: "nothing to flag",
+  stale: "superseded",
+  asleep: "dozing",
+};
+
+function setState(next: PetState): void {
+  if (pinnedState) next = pinnedState;
+  if (next === state) return;
+  state = next;
+  petEl.dataset.state = next;
+  subEl.textContent = SUBTITLE[next];
+  hitEl.setAttribute("aria-label", `Rev, ${SUBTITLE[next]}. ${open ? "Close" : "Open"} findings.`);
+  window.pet.reportState(next);
 }
 
-function setCount(n: number): void {
-  countEl.hidden = n === 0;
-  countEl.textContent = String(n);
+/** Blink on a randomised cadence. A creature that never blinks reads as dead. */
+function scheduleBlink(): void {
+  const wait = 2600 + Math.random() * 4200;
+  window.setTimeout(() => {
+    if (state !== "asleep" && !settings.reducedMotion) {
+      petEl.dataset.blink = "true";
+      window.setTimeout(() => delete petEl.dataset.blink, 110);
+    }
+    scheduleBlink();
+  }, wait);
+}
+scheduleBlink();
+
+function wake(): void {
+  lastActivity = Date.now();
+  if (state === "asleep") recomputeState();
 }
 
-/* ---------------------------------------------------------------- panel --- */
+/** Doze off after the configured idle period. */
+window.setInterval(() => {
+  if (!settings.sleepAfterMin || open) return;
+  const idleMs = Date.now() - lastActivity;
+  if (idleMs > settings.sleepAfterMin * 60_000 && state !== "found") setState("asleep");
+}, 5000);
+
+/* --------------------------------------------------------------- panel --- */
+
+/**
+ * Draw the thread from Rev's top edge up to the panel's bottom-right corner, as
+ * a curve. Measured from real rects so it stays correct wherever the panel and
+ * Rev end up.
+ */
+function drawThread(): void {
+  const p = panelEl.getBoundingClientRect();
+  const r = petEl.getBoundingClientRect();
+  const x1 = r.left + r.width * 0.5;
+  const y1 = r.top + r.height * 0.18;
+  const x2 = p.right - 26;
+  const y2 = p.bottom;
+  const d = `M${x1} ${y1} C ${x1} ${y1 - 30}, ${x2} ${y2 + 34}, ${x2} ${y2}`;
+  threadPath.setAttribute("d", d);
+  const len = threadPath.getTotalLength();
+  threadEl.style.setProperty("--len", String(Math.ceil(len)));
+}
 
 function setOpen(next: boolean): void {
   open = next;
   panelEl.dataset.open = String(next);
   panelEl.setAttribute("aria-hidden", String(!next));
-  petEl.setAttribute("aria-expanded", String(next));
-  if (next) closeEl.focus();
+  hitEl.setAttribute("aria-expanded", String(next));
+  petEl.dataset.open = String(next);
+
+  if (next) {
+    drawThread();
+    threadEl.dataset.open = "true";
+    // Opening is acknowledgement: clear the unread badge.
+    for (const f of findings) seen.add(f.finding_id);
+    renderBadge();
+    window.setTimeout(() => $<HTMLButtonElement>("panel-close").focus(), 60);
+  } else {
+    delete threadEl.dataset.open;
+    hitEl.focus();
+  }
+  wake();
 }
 
-petEl.addEventListener("click", () => setOpen(!open));
-closeEl.addEventListener("click", () => {
+$("panel-close").addEventListener("click", () => setOpen(false));
+$("btn-hide").addEventListener("click", () => {
   setOpen(false);
-  petEl.focus();
+  window.pet.hide();
 });
-quitEl.addEventListener("click", () => window.pet.quit());
 
 document.addEventListener("keydown", (e) => {
-  if (e.key === "Escape" && open) {
-    setOpen(false);
-    petEl.focus();
-  }
+  wake();
+  if (e.key === "Escape" && open) setOpen(false);
 });
+
+for (const tab of document.querySelectorAll<HTMLButtonElement>(".tab")) {
+  tab.addEventListener("click", () => {
+    filter = tab.dataset.filter as Filter;
+    for (const t of document.querySelectorAll(".tab")) {
+      t.setAttribute("aria-selected", String(t === tab));
+    }
+    renderList();
+  });
+}
 
 /* -------------------------------------------------------------- render --- */
 
-function findingNode(f: PetFinding): HTMLElement {
-  const el = document.createElement("article");
-  el.className = "finding";
-  el.dataset.status = f.status;
-
-  const what = document.createElement("p");
-  what.className = "finding__what";
-  what.textContent = f.discrepancy;
-
-  const why = document.createElement("p");
-  why.className = "finding__why";
-  why.textContent = f.status === "stale" ? f.resolution : f.why_it_matters;
-
-  const meta = document.createElement("div");
-  meta.className = "finding__meta";
-  const tags = [
-    f.status === "stale" ? "superseded" : `rev ${f.requirements_revision}`,
-    ...f.sources.map((s) => (s.revision ? `${s.id} ${s.revision}` : s.id)),
-  ];
-  for (const t of tags) {
-    const tag = document.createElement("span");
-    tag.className = "finding__tag";
-    tag.textContent = t;
-    meta.append(tag);
-  }
-
-  el.append(what, why, meta);
-  return el;
+function el<K extends keyof HTMLElementTagNameMap>(
+  tag: K,
+  cls?: string,
+  text?: string,
+): HTMLElementTagNameMap[K] {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text !== undefined) n.textContent = text;
+  return n;
 }
 
-function renderEmpty(message: string): void {
-  bodyEl.replaceChildren();
-  const p = document.createElement("p");
-  p.className = "empty";
-  p.textContent = message;
-  bodyEl.append(p);
+function reproTable(rows: Reproduced[]): HTMLElement {
+  const table = el("table", "repro");
+  const head = el("tr");
+  for (const [label, cls] of [
+    ["", ""],
+    ["printed", ""],
+    ["computed", ""],
+    ["", "repro__flag"],
+  ] as const) {
+    const th = el("th", cls || undefined, label);
+    head.append(th);
+  }
+  table.append(head);
+
+  for (const r of rows) {
+    const tr = el("tr");
+    if (r.matches !== undefined) tr.dataset.match = String(r.matches);
+    tr.append(el("td", undefined, r.label));
+    tr.append(el("td", undefined, r.printed === undefined ? "—" : formatValue(r.printed)));
+    tr.append(el("td", undefined, `${formatValue(r.computed)}${r.unit ? ` ${r.unit}` : ""}`));
+    const flag = el("td", "repro__flag");
+    flag.textContent = r.matches === undefined ? "" : r.matches ? "✓" : "✗";
+    tr.append(flag);
+    table.append(tr);
+  }
+  return table;
 }
 
-function render(state: Connection): void {
-  if (state.kind === "offline") {
-    // Show the sample set so the pet is demonstrable without the reviewer, but
-    // never let it read as real output.
-    bodyEl.replaceChildren(...SAMPLE.map(findingNode));
-    hintEl.textContent = "Sample data — reviewer not connected";
-    setCount(0);
-    setState("idle");
-    return;
+function section(label: string, node: Node): HTMLElement {
+  const wrap = el("div");
+  wrap.append(el("span", "label", label), node);
+  return wrap;
+}
+
+function findingNode(f: PetFinding, i: number): HTMLElement {
+  const card = el("article", "finding");
+  card.dataset.status = f.status;
+  card.style.setProperty("--i", String(i));
+
+  const top = el("button", "finding__top");
+  top.type = "button";
+  top.append(el("p", "finding__what", f.discrepancy));
+
+  const caret = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  caret.setAttribute("viewBox", "0 0 16 16");
+  caret.setAttribute("class", "finding__caret");
+  const cp = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  cp.setAttribute("d", "M6 3l5 5-5 5");
+  caret.append(cp);
+  top.append(caret);
+
+  const detail = el("div", "finding__detail");
+  const inner = el("div", "finding__inner");
+  const pad = el("div", "finding__pad");
+
+  pad.append(
+    section(
+      f.status === "stale" ? "Why it was superseded" : "Why it matters",
+      el("p", "body-text", f.status === "stale" ? (f.supersedes_reason ?? f.resolution) : f.why_it_matters),
+    ),
+  );
+
+  if (f.reproduced.length) {
+    pad.append(section("Reproduced by the checker", reproTable(f.reproduced)));
   }
 
-  const live = state.findings.filter((f) => f.status === "live");
-  hintEl.textContent = "Connected to reviewer";
-
-  if (state.findings.length === 0) {
-    renderEmpty("Nothing to flag.");
-    setCount(0);
-    setState("ok");
-    return;
+  if (f.sources.length) {
+    const list = el("div");
+    for (const s of f.sources) {
+      const row = el("div", "source");
+      row.append(el("span", "source__id", s.id));
+      const meta = [s.revision, s.locator, s.sha256?.slice(0, 8)].filter(Boolean).join(" · ");
+      row.append(el("span", "source__meta", meta));
+      list.append(row);
+    }
+    pad.append(section("Sources", list));
   }
 
-  bodyEl.replaceChildren(...state.findings.map(findingNode));
-  setCount(open ? 0 : live.length);
-  setState(live.length > 0 ? "found" : "ok");
+  if (f.inferred?.length) {
+    pad.append(section("Inferred, not recomputed", el("p", "body-text", f.inferred.join(" "))));
+  }
+
+  if (f.status !== "stale") {
+    pad.append(section("What resolves it", el("p", "body-text", f.resolution)));
+  }
+
+  if (f.question) {
+    const ask = el("div", "ask");
+    ask.append(el("span", "ask__to", `${f.question.to}: `));
+    ask.append(document.createTextNode(f.question.ask));
+    pad.append(ask);
+  }
+
+  inner.append(pad);
+  detail.append(inner);
+  card.append(top, detail);
+
+  top.addEventListener("click", () => {
+    const expanded = card.dataset.expanded === "true";
+    card.dataset.expanded = String(!expanded);
+  });
+
+  return card;
+}
+
+function renderEmpty(title: string, detail: string): void {
+  const box = el("div", "empty");
+  box.append(el("span", "empty__title", title));
+  box.append(document.createTextNode(detail));
+  bodyEl.replaceChildren(box);
+}
+
+function renderList(): void {
+  const shown = applyFilter(findings, filter);
+
+  if (!shown.length) {
+    renderEmpty(
+      filter === "stale" ? "No superseded cards" : "Nothing to flag",
+      filter === "stale"
+        ? "Cards move here when a later revision invalidates them."
+        : "Rev is watching the thread. It speaks up when a number stops reproducing.",
+    );
+    return;
+  }
+  bodyEl.replaceChildren(...shown.map(findingNode));
+  // First card opens by default; the rest stay collapsed.
+  const first = bodyEl.firstElementChild as HTMLElement | null;
+  if (first) first.dataset.expanded = "true";
+}
+
+function renderBadge(): void {
+  const unread = unreadCount(findings, seen);
+  countEl.hidden = unread === 0;
+  countEl.textContent = String(unread);
+}
+
+function recomputeState(): void {
+  const live = findings.filter((f) => f.status === "live").length;
+  if (live > 0) setState("found");
+  else if (findings.length > 0) setState("clear");
+  else setState("idle");
+}
+
+function render(conn: Connection): void {
+  const wasSample = isSample;
+  isSample = conn.kind === "offline";
+
+  if (conn.kind === "offline") {
+    findings = SAMPLE;
+    connEl.dataset.state = "offline";
+    connLabel.textContent = "sample data — reviewer offline";
+    revChip.textContent = "sample";
+    petRev.textContent = "r?";
+  } else {
+    findings = conn.feed.findings;
+    connEl.dataset.state = "connected";
+    connLabel.textContent = "connected to reviewer";
+    const rev = conn.feed.revision ?? findings[0]?.requirements_revision ?? "—";
+    revChip.textContent = rev;
+    petRev.textContent = rev.length <= 3 ? rev : rev.slice(0, 3);
+  }
+
+  liveCount.textContent = String(findings.filter((f) => f.status === "live").length);
+  staleCount.textContent = String(findings.filter((f) => f.status === "stale").length);
+  const liveTab = document.querySelector<HTMLElement>('.tab[data-filter="live"]');
+  if (liveTab) liveTab.dataset.tone = findings.some((f) => f.status === "live") ? "alert" : "";
+
+  // A pushed phase wins: it reflects what the reviewer is doing right now.
+  const phase = conn.kind === "connected" ? conn.feed.phase : undefined;
+  if (phase && phase !== "idle") setState(phase);
+  else recomputeState();
+
+  if (isSample) seen = new Set(findings.map((f) => f.finding_id));
+  renderBadge();
+  if (wasSample !== isSample || !bodyEl.childElementCount) renderList();
+  else renderList();
+  if (open) drawThread();
 }
 
 /* ----------------------------------------------------------------- boot --- */
 
+window.pet.onSettings((s) => {
+  settings = s;
+  document.body.dataset.reducedMotion = String(s.reducedMotion);
+});
+
+window.pet.onOpen(() => setOpen(true));
+window.pet.onForceState((s) => {
+  pinnedState = s as PetState;
+  state = "idle";
+  setState(pinnedState);
+});
+
 setState("idle");
-renderEmpty("Starting up…");
+renderEmpty("Starting up", "Looking for the reviewer…");
 watchFindings(render);
+window.addEventListener("resize", () => {
+  if (open) drawThread();
+});
