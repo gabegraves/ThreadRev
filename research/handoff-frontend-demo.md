@@ -10,7 +10,7 @@ Built on the CopilotKit agents-everywhere-starter-kit. Slack via CopilotKit Chan
 
 ## 2. Where we stand, verified at 12:05 PM
 
-- F1. Backend is real and tested. `agent-core` 52 tests pass, `channel` 37 tests pass, Python checkers 10 tests pass, both TypeScript workspaces typecheck. The replay harness runs the real reviewer tools and real checkers against fixture Slack scripts offline.
+- F1. Backend is real and tested. `agent-core` 56 tests pass, `channel` 44 tests pass, Python checkers 10 tests pass, both TypeScript workspaces typecheck. The replay harness runs the real reviewer tools and real checkers against fixture Slack scripts offline.
 - F2. Slack is not connected. In `.env`, `OPENAI_API_KEY`, `CHANNEL_CODE`, and `INTELLIGENCE_API_KEY` are blank. No message has ever been posted to Slack by the bot. No Slack demo workspace has been confirmed to exist. `research/setup-evidence/` is empty. This is the single biggest risk to the video.
 - F3. A web review console is being written right now by another agent in `apps/web/src/components/review-console/`. Eleven files, all uncommitted, no CSS yet, and the web workspace typecheck currently fails on `review-console.tsx`. As of 12:12 PM that agent also rewrote `apps/web/src/app/page.tsx` to mount `ReviewConsole`, replacing the inherited incident page, also uncommitted. Do not edit, commit, or delete those files until that agent commits. Coordinate through Gabe.
 - F4. The evidence API at `apps/web/src/app/api/evidence/route.ts` is committed and returns the Scenario A sample graph when the live log is empty.
