@@ -39,6 +39,40 @@ export function editOutputDir() {
   return process.env.EDIT_OUTPUT_DIR ? resolve(process.env.EDIT_OUTPUT_DIR) : DOCUMENTS_DIR;
 }
 
+/* ------------------------------------------------------- dependency prose */
+
+interface ThreadMessageLike {
+  ts?: string;
+  text: string;
+  isBot?: boolean;
+  user?: { name?: string; handle?: string };
+}
+
+/**
+ * One sentence saying which earlier conclusion this card replaces and what
+ * broke it.
+ *
+ * Built here, from the thread, rather than asked of the model: the card's
+ * whole claim is that application code tracked the dependency, so the model
+ * writing its own justification would undo the point. Returns undefined when
+ * there is nothing truthful to say.
+ */
+export function supersedesReason(
+  prior: Finding | undefined,
+  messages: ThreadMessageLike[],
+  current: string,
+): string | undefined {
+  if (!prior) return undefined;
+
+  const cause = messages.find((m) => m.ts === current && !m.isBot);
+  const who = cause?.user?.name ?? cause?.user?.handle;
+  const quote = cause?.text.trim().replace(/\s+/g, " ").slice(0, 160);
+
+  const head = `Replaces ${prior.finding_id}, which was computed against revision ${prior.requirements_revision}.`;
+  if (!quote) return `${head} The thread has since moved to revision ${current}.`;
+  return `${head} ${who ? `${who} changed that` : "That changed"} at ${current}: "${quote}"`;
+}
+
 /* ------------------------------------------------------------------ runs */
 
 /** Checker runs this process has seen, by run_id. publish_result reads here. */
@@ -468,10 +502,15 @@ export const publishResult = defineChannelTool({
       return { published: false, reason: `Already posted as ${duplicate.finding.finding_id}. Do not repeat it.` };
     }
 
+    const priorCard = args.supersedes
+      ? state.cards.find((c) => c.finding.finding_id === args.supersedes)
+      : undefined;
+
     const built = finding.safeParse({
       finding_id: newFindingId(),
       status: "live",
       supersedes: args.supersedes,
+      supersedes_reason: supersedesReason(priorCard?.finding, messages, current),
       requirements_revision: bound,
       discrepancy: args.discrepancy,
       why_it_matters: args.why_it_matters,
@@ -489,7 +528,7 @@ export const publishResult = defineChannelTool({
     const f = built.data;
 
     if (args.supersedes) {
-      const prior = state.cards.find((c) => c.finding.finding_id === args.supersedes);
+      const prior = priorCard;
       if (prior && prior.finding.status === "live") {
         prior.finding = markStale(prior.finding);
         await thread.update(prior.ref, renderFindingCard(prior.finding));

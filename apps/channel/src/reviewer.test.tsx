@@ -104,6 +104,37 @@ test("prose without a run-relevant quantity does not move the revision", () => {
   assert.equal(mentionsQuantity("section 3 is the one I meant", units), false);
 });
 
+import { supersedesReason } from "./reviewer-tools";
+import type { Finding } from "agent-core";
+
+const PRIOR = {
+  finding_id: "fnd-a-r2-001",
+  requirements_revision: "1787062320.000100",
+} as Finding;
+
+test("a superseding card says in words which conclusion it replaced", () => {
+  const reason = supersedesReason(
+    PRIOR,
+    [
+      { ts: "1787062320.000100", text: "bus is now 680 uF" },
+      { ts: "1787171400.000400", text: "we're going with 820 uF", user: { name: "Dara Voss" } },
+    ],
+    "1787171400.000400",
+  );
+  assert.match(reason!, /Replaces fnd-a-r2-001/);
+  assert.match(reason!, /1787062320\.000100/);
+  assert.match(reason!, /Dara Voss changed that/);
+  assert.match(reason!, /we're going with 820 uF/);
+});
+
+test("dependency prose is omitted rather than invented", () => {
+  assert.equal(supersedesReason(undefined, [], "1787171400.000400"), undefined);
+  // Cause message absent from the transcript: still truthful, just thinner.
+  const reason = supersedesReason(PRIOR, [], "1787171400.000400");
+  assert.match(reason!, /moved to revision 1787171400\.000400/);
+  assert.doesNotMatch(reason!, /changed that/);
+});
+
 test("the quantity backstop closes a gap CHANGE_PATTERN leaves open", () => {
   const msgs = [
     { ts: "1787166300.000300", text: "can you check section 3 of the r2 doc?" },
