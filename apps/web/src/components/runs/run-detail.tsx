@@ -39,7 +39,7 @@ export function RunDetail({ row, graph, className }: { row: RunRow | null; graph
   return (
     <DetailPanel
       title={<span className="font-mono">{run.run_id}</span>}
-      subtitle={`${run.checker} v${run.version} · ${new Date(run.at).toLocaleString()}`}
+      subtitle={`${run.checker} v${run.version} · ${new Date(run.at).toLocaleString("en-US", { timeZone: "America/New_York" })}`}
       actions={
         <>
           <Outcome row={row} />

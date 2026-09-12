@@ -237,7 +237,7 @@ function LabelCell({ value }: ICellRendererParams<ThreadGridRow, string | null>)
 
 const dateFmt = (p: ValueFormatterParams<ThreadGridRow, string>) =>
   p.value
-    ? new Date(p.value).toLocaleDateString("en-US", {
+    ? new Date(p.value).toLocaleDateString("en-US", { timeZone: "America/New_York", 
         month: "short",
         day: "numeric",
         hour: "2-digit",

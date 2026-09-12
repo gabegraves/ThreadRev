@@ -130,7 +130,7 @@ export function FindingDetail({ finding, graph, events }: { finding: Finding; gr
           <ul className="flex flex-col gap-1.5 text-[12px] text-subtle">
             {history.map((h) => (
               <li key={h.key} className="flex gap-2">
-                <span className="shrink-0 font-mono text-[11px] tabular-nums text-faint">{new Date(h.at).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
+                <span className="shrink-0 font-mono text-[11px] tabular-nums text-faint">{new Date(h.at).toLocaleString("en-US", { timeZone: "America/New_York",  month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
                 <span className="min-w-0">{h.text}</span>
               </li>
             ))}

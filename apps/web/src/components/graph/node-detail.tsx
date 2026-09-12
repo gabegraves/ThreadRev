@@ -62,7 +62,7 @@ function MessageFields({ d }: { d: Record<string, unknown> }) {
             {silences.map((s, i) => (
               <li key={i} className="flex items-center gap-2">
                 <StatusPill tone="neutral">{String(s.reason ?? "").replace("_", " ")}</StatusPill>
-                <span className="font-mono text-[11px] text-faint">{asStr(s.at) ? new Date(asStr(s.at) as string).toLocaleTimeString() : ""}</span>
+                <span className="font-mono text-[11px] text-faint">{asStr(s.at) ? new Date(asStr(s.at) as string).toLocaleTimeString("en-US", { timeZone: "America/New_York" }) : ""}</span>
               </li>
             ))}
           </ul>
@@ -325,7 +325,7 @@ export function NodeDetail({
       <FieldGrid>
         <Field label="kind" value={node.kind} />
         <Field label="status" value={STATUS_LABEL[node.status]} />
-        <Field label="at" value={node.at ? new Date(node.at).toLocaleString() : "—"} hint={node.at} />
+        <Field label="at" value={node.at ? new Date(node.at).toLocaleString("en-US", { timeZone: "America/New_York" }) : "—"} hint={node.at} />
       </FieldGrid>
       {node.kind === "message" && <MessageFields d={d} />}
       {node.kind === "document" && <DocumentFields d={d} />}

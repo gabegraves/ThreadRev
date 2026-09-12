@@ -6,7 +6,7 @@ import { defaultTrace, fmtTime, runTraces } from "./graph-utils";
 import { EvidenceGraphSvg } from "./graph";
 
 function TraceItem({ ev }: { ev: EvidenceEvent }) {
-  const time = <time dateTime={ev.at}>{new Date(ev.at).toLocaleTimeString()}</time>;
+  const time = <time dateTime={ev.at}>{new Date(ev.at).toLocaleTimeString("en-US", { timeZone: "America/New_York" })}</time>;
   switch (ev.kind) {
     case "message_read":
       return (

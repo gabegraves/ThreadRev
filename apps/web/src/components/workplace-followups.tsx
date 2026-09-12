@@ -160,7 +160,7 @@ export function WorkplaceFollowups({
           <p>
             Save as {proposal.identityName} in workspace{" "}
             <code>{proposal.workspaceId}</code>. Expires{" "}
-            {new Date(proposal.expiresAt).toLocaleTimeString()}.
+            {new Date(proposal.expiresAt).toLocaleTimeString("en-US", { timeZone: "America/New_York" })}.
           </p>
           <strong>{proposal.title}</strong>
           <p className="ck-preserve-lines">{proposal.description}</p>

@@ -151,7 +151,7 @@ export function TraceTimeline({ trace, onPick }: { trace: RunTrace | undefined; 
           <div className="min-w-0 flex-1">
             <p className="flex items-baseline gap-2">
               <span className="font-mono text-[10.5px] font-medium uppercase tracking-[0.12em] text-faint">{KIND_LABEL[ev.kind]}</span>
-              <time dateTime={ev.at} className="font-mono text-[10.5px] tabular-nums text-faint">{new Date(ev.at).toLocaleTimeString()}</time>
+              <time dateTime={ev.at} className="font-mono text-[10.5px] tabular-nums text-faint">{new Date(ev.at).toLocaleTimeString("en-US", { timeZone: "America/New_York" })}</time>
             </p>
             <div className="mt-1">
               <Body ev={ev} onPick={onPick} />

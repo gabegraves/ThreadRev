@@ -27,7 +27,7 @@ function useWidth<T extends HTMLElement>() {
 }
 
 function fmtDay(ts: string) {
-  return tsToDate(ts).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  return tsToDate(ts).toLocaleDateString("en-US", { timeZone: "America/New_York",  month: "short", day: "numeric" });
 }
 
 /**
@@ -85,7 +85,7 @@ export function WorkspaceTimeline({
           })}
           {ticks.map((t) => {
             const tx = GUTTER + ((t - t0) / span) * plot;
-            const d = new Date(t * 1000).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+            const d = new Date(t * 1000).toLocaleDateString("en-US", { timeZone: "America/New_York",  month: "short", day: "numeric" });
             return (
               <text key={t} x={tx} y={height - 6} textAnchor={t === t0 ? "start" : t === t1 ? "end" : "middle"} fontSize={10} fontFamily="var(--font-mono), ui-monospace, monospace" fill="var(--faint)">
                 {d}

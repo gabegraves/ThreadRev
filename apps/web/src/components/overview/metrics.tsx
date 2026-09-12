@@ -143,7 +143,7 @@ export function pct(n: number, d: number): string {
 
 export function fmtAt(iso: string): string {
   const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? iso : d.toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+  return Number.isNaN(d.getTime()) ? iso : d.toLocaleString("en-US", { timeZone: "America/New_York",  month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
 /** One-line subject for an event row: who or what it touched. */
