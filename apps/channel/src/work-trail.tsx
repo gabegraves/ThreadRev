@@ -63,6 +63,14 @@ function line(e: EvidenceEvent): string | undefined {
       return `• ${when(e.at)} posted ${e.finding.finding_id}, bound to revision ${e.finding.requirements_revision}`;
     case "finding_superseded":
       return `• ${when(e.at)} marked ${e.finding_id} stale, replaced by ${e.superseded_by}`;
+    case "edit_proposed":
+      return `• ${when(e.at)} proposed an edit to ${e.document} from run ${e.run_id} (${e.edits.length} change${e.edits.length === 1 ? "" : "s"}) · ${e.proposal_id}`;
+    case "edit_decided":
+      return `• ${when(e.at)} edit ${e.proposal_id} was ${e.decision}${e.by ? ` by ${e.by}` : ""}`;
+    case "edit_applied":
+      return e.error
+        ? `• ${when(e.at)} could not apply edit ${e.proposal_id}: ${e.error}`
+        : `• ${when(e.at)} wrote ${e.output} for edit ${e.proposal_id}, sha \`${e.sha256.slice(0, 12)}\`; the source was not modified`;
     case "silence":
       return undefined;
     default: {
