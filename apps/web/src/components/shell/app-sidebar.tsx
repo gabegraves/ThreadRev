@@ -19,7 +19,7 @@ export function AppSidebar() {
   const is = (p: string) => (p === "/" ? pathname === "/" : pathname?.startsWith(p) ?? false);
 
   const review = [
-    { label: "Overview", href: "/", icon: LayoutDashboard, active: is("/") },
+    { label: "Overview", href: "/overview", icon: LayoutDashboard, active: is("/overview") },
     {
       label: "Documents",
       href: "/documents",

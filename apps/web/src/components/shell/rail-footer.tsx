@@ -46,7 +46,7 @@ export function ViewSwitch({ className = "" }: { className?: string }) {
 }
 
 const GUIDE: Record<string, { what: string; why: string }> = {
-  "/": { what: "Counts, the newest live card, recent reviewer activity, and every recorded scenario.", why: "First look for a judge: what the reviewer did on this thread, every number derived from the evidence log." },
+  "/overview": { what: "Counts, the newest live card, recent reviewer activity, and every recorded scenario.", why: "First look for a judge: what the reviewer did on this thread, every number derived from the evidence log." },
   "/thread": { what: "The Slack thread as the reviewer read it, with cards and decisions under the message that triggered them.", why: "Shows the stale card being superseded in place, which is the demo's core beat." },
   "/documents": { what: "Every document the reviewer hashed, with the lines findings quote from it.", why: "Sources carry revision and SHA-256, so a claim can be checked against exact bytes." },
   "/workspace": { what: "The exact-match workspace index: messages by document, unit, author, channel, and what a search returned.", why: "Retrieval here is grep-like, every hit up to the trigger, never a similarity ranking." },
@@ -61,7 +61,7 @@ const GUIDE: Record<string, { what: string; why: string }> = {
 export function PageGuideButton({ className }: { className?: string }) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname() ?? "/";
-  const key = Object.keys(GUIDE).find((k) => (k === "/" ? pathname === "/" : pathname.startsWith(k))) ?? "/";
+  const key = Object.keys(GUIDE).find((k) => pathname.startsWith(k)) ?? "/overview";
   const guide = GUIDE[key]!;
   useEffect(() => {
     if (!open) return;

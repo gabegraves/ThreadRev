@@ -7,7 +7,7 @@ import { ScenarioSwitcher } from "./scenario-switcher";
 import { ThemeToggle } from "./theme-toggle";
 
 const LINKS = [
-  { label: "Overview", href: "/" },
+  { label: "Overview", href: "/overview" },
   { label: "Documents", href: "/documents" },
   { label: "Findings", href: "/findings" },
   { label: "Graph", href: "/graph" },
