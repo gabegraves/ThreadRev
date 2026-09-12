@@ -20,7 +20,8 @@ import {
 } from "agent-core";
 import { runChecker } from "./replay/run-checker";
 import { guardPublish, markStale } from "./replay/publish-guard";
-import { latestRevision } from "./revision";
+import { CHANGE_PATTERN, latestRevision } from "./revision";
+import { record, runContext } from "./evidence";
 import { renderFindingCard } from "./finding-card";
 
 export const REPO_ROOT = resolve(import.meta.dirname, "../../..");
@@ -49,6 +50,23 @@ export const readThread = defineChannelTool({
     const messages = await thread.getMessages();
     if (messages.length === 0) {
       return "No conversation history is available on this surface. Say so and ask for the document name and the values to check.";
+    }
+    const ctx = runContext(thread.conversationKey);
+    const humans = messages.filter((m) => !m.isBot && m.ts);
+    ctx.trigger_ts = humans.at(-1)?.ts ?? ctx.trigger_ts;
+    ctx.changes = humans.filter((m) => CHANGE_PATTERN.test(m.text)).map((m) => m.ts!);
+    for (const m of messages) {
+      if (!m.ts) continue;
+      record({
+        kind: "message_read",
+        thread: thread.conversationKey,
+        trigger_ts: ctx.trigger_ts,
+        ts: m.ts,
+        from: m.user?.name ?? m.user?.handle ?? (m.isBot ? "bot" : "unknown"),
+        is_bot: Boolean(m.isBot),
+        text: m.text.slice(0, 2000),
+        is_change: !m.isBot && CHANGE_PATTERN.test(m.text),
+      });
     }
     return messages.map((m) => ({
       ts: m.ts,
@@ -89,7 +107,7 @@ export const readEvidence = defineChannelTool({
       .string()
       .describe("Filename exactly as it appears in the thread, e.g. precharge-review-r2.docx"),
   }),
-  async handler({ document }) {
+  async handler({ document }, { thread }) {
     const name = basename(document);
     if (!DOC_NAME.test(name)) {
       return {
@@ -107,6 +125,18 @@ export const readEvidence = defineChannelTool({
       return { error: `Could not read ${name}: ${parsed.error ?? "no text"}. Do not guess its contents.` };
     }
     const revision = /-(r\d+)\b/.exec(name)?.[1];
+    const ctx = runContext(thread.conversationKey);
+    ctx.documents = ctx.documents.filter((d) => d.sha256 !== parsed.sha256);
+    ctx.documents.push({ sha256: parsed.sha256 });
+    record({
+      kind: "document_read",
+      thread: thread.conversationKey,
+      trigger_ts: ctx.trigger_ts,
+      document: name,
+      revision,
+      sha256: parsed.sha256,
+      line_count: parsed.paragraphs.length,
+    });
     return {
       document: name,
       revision,
@@ -152,10 +182,27 @@ export const runCheck = defineChannelTool({
     checker: z.literal("rc"),
     inputs: rcInputs,
   }),
-  async handler({ checker, inputs }) {
+  async handler({ checker, inputs }, { thread }) {
     try {
       const res = await runChecker({ checker, version: "1", inputs });
       rememberRun(res);
+      const ctx = runContext(thread.conversationKey);
+      record({
+        kind: "check_run",
+        thread: thread.conversationKey,
+        trigger_ts: ctx.trigger_ts,
+        run_id: res.run_id,
+        checker: res.checker,
+        version: res.version,
+        inputs: res.inputs,
+        outputs: res.outputs,
+        checks: res.checks.map((c) => ({ name: c.name, pass: c.pass, expected: c.expected, actual: c.actual })),
+        error: res.error,
+        evidence_refs: [
+          ...ctx.documents.map((d) => ({ kind: "document" as const, id: d.sha256 })),
+          ...ctx.changes.map((ts) => ({ kind: "message" as const, id: ts })),
+        ],
+      });
       return res;
     } catch (e) {
       return { error: `Checker did not complete: ${(e as Error).message}. Report that you could not verify.` };
@@ -271,6 +318,15 @@ export const publishResult = defineChannelTool({
     if (!decision.ok) {
       state.staleRuns.push({ run_id: args.run_id, bound: args.requirements_revision, current });
       await thread.setState(state);
+      record({
+        kind: "publish_refused",
+        thread: thread.conversationKey,
+        trigger_ts: runContext(thread.conversationKey).trigger_ts,
+        run_id: args.run_id,
+        bound_revision: args.requirements_revision,
+        current_revision: current,
+        reason: "requirements changed after the run",
+      });
       return {
         published: false,
         reason: `Requirements changed at ${current} after this run (bound to ${args.requirements_revision}). Run recorded as stale. Re-read the thread, re-run the check, and publish against ${current}.`,
@@ -313,12 +369,27 @@ export const publishResult = defineChannelTool({
       if (prior && prior.finding.status === "live") {
         prior.finding = markStale(prior.finding);
         await thread.update(prior.ref, renderFindingCard(prior.finding));
+        record({
+          kind: "finding_superseded",
+          thread: thread.conversationKey,
+          trigger_ts: runContext(thread.conversationKey).trigger_ts,
+          finding_id: prior.finding.finding_id,
+          superseded_by: f.finding_id,
+          cause_ts: f.requirements_revision,
+        });
       }
     }
 
     const ref = await thread.post(renderFindingCard(f));
     state.cards.push({ finding: f, ref });
     await thread.setState(state);
+    record({
+      kind: "finding_published",
+      thread: thread.conversationKey,
+      trigger_ts: runContext(thread.conversationKey).trigger_ts,
+      finding: f,
+      message_ref: typeof ref?.id === "string" ? ref.id : undefined,
+    });
     return { published: true, finding_id: f.finding_id, requirements_revision: f.requirements_revision };
   },
 });

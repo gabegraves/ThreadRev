@@ -4,6 +4,7 @@ import { required } from "./env";
 import { reviewerWelcome } from "./finding-card";
 import { publishResult, readEvidence, readThread, runCheck } from "./reviewer-tools";
 import { isReviewMoment } from "./review-moment";
+import { record } from "./evidence";
 
 export const channel = createChannel({
   // Must equal the Channel Code in Intelligence, character for character.
@@ -39,7 +40,10 @@ channel.onMessage(async ({ thread, message }) => {
     hasFiles: (message.contentParts?.length ?? 0) > 0,
     isBot: message.actor.kind !== "human",
   });
-  if (!moment) return;
+  if (!moment) {
+    record({ kind: "silence", thread: thread.conversationKey, reason: "gate_closed" });
+    return;
+  }
   await thread.runAgent();
 });
 

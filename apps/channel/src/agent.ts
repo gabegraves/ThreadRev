@@ -3,6 +3,7 @@ import type { BaseEvent, RunAgentInput } from "@ag-ui/core";
 import { EventType } from "@ag-ui/core";
 import { makeAgent, REVIEWER_PROMPT } from "agent-core";
 import { Observable, type Subscription } from "rxjs";
+import { record } from "./evidence";
 
 type ChannelAgentFactory = (threadId: string) => AbstractAgent;
 
@@ -14,7 +15,7 @@ export const SILENCE = /^\s*NO_FINDING\b/;
  * silence token, so a NO_FINDING turn posts nothing. Everything else passes
  * through in order.
  */
-export function silenceFilter(next: (event: BaseEvent) => void) {
+export function silenceFilter(next: (event: BaseEvent) => void, onSilence: () => void = () => {}) {
   let buffer: BaseEvent[] | undefined;
   let text = "";
   const flush = () => {
@@ -38,7 +39,10 @@ export function silenceFilter(next: (event: BaseEvent) => void) {
       }
       if (event.type === EventType.TEXT_MESSAGE_END) {
         buffer.push(event);
-        if (SILENCE.test(text)) buffer = undefined;
+        if (SILENCE.test(text)) {
+          buffer = undefined;
+          onSilence();
+        }
         else flush();
         return;
       }
@@ -86,7 +90,10 @@ export class ChannelRunAgent extends AbstractAgent {
         inner = this.agentFactory(input.threadId);
         inner.threadId = input.threadId;
         this.activeInner = inner;
-        const forward = silenceFilter((event) => subscriber.next(event));
+        const forward = silenceFilter(
+          (event) => subscriber.next(event),
+          () => record({ kind: "silence", thread: input.threadId, reason: "no_finding" }),
+        );
         subscription = inner.run(input).subscribe({
           next: forward,
           error: (error) => {
