@@ -513,6 +513,59 @@ export function severityOf<
   return critical ? "critical" : "minor";
 }
 
+/* -------------------------------------------------------------- arrival --- */
+
+/**
+ * How Rev reacts when an issue arrives.
+ *
+ * `startle` is the whole reaction: Rev crouches, hops, lands and settles, and the
+ * badge lands with it. `nudge` only knocks the badge.
+ */
+export type Arrival = "startle" | "nudge";
+
+/**
+ * Minimum gap between two startles.
+ *
+ * A reviewer publishing a batch lands its cards over several polls. Hopping for
+ * each one turns a notification into a fidget, so inside this window a later
+ * arrival only knocks the badge.
+ */
+export const STARTLE_COOLDOWN_MS = 15_000;
+
+/**
+ * Live findings Rev has not reacted to yet.
+ *
+ * `announced` is deliberately not `seen`. Seen is what the user has
+ * acknowledged; announced is what Rev has already made a fuss about. The poll
+ * returns every finding every time, and a restarted reviewer serves them all
+ * again — neither is news.
+ */
+export function arrivals<T extends { status: FindingStatus; finding_id: string }>(
+  items: readonly T[],
+  announced: ReadonlySet<string>,
+): T[] {
+  return items.filter((f) => f.status === "live" && !announced.has(f.finding_id));
+}
+
+/**
+ * Choose the reaction to an arrival.
+ *
+ * With the menu or the panel open, Rev is anchoring something the user is
+ * working in, so it holds still and the badge carries the news. `now` and
+ * `lastStartleAt` should come from a monotonic clock; a gap that comes out
+ * negative is treated as no recent startle rather than as a very long cooldown.
+ */
+export function arrivalReaction(ctx: {
+  now: number;
+  lastStartleAt: number | null;
+  engaged: boolean;
+}): Arrival {
+  if (ctx.engaged) return "nudge";
+  if (ctx.lastStartleAt === null) return "startle";
+  const gap = ctx.now - ctx.lastStartleAt;
+  return gap >= 0 && gap < STARTLE_COOLDOWN_MS ? "nudge" : "startle";
+}
+
 /* ------------------------------------------------------------ feed input --- */
 
 /**
