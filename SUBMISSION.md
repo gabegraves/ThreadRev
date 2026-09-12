@@ -98,8 +98,8 @@ The surrounding survey supports a narrow claim, not a broad one. Engineering cha
 - Replay: real. Real tools, real Python checker, real card renderer, fixture transcripts.
 - Ambiguous AI write: **never executed.** Inert without a key.
 - The checker is out of process with a scrubbed environment. It is **not sandboxed** — it still has the filesystem and the network. Do not describe it as sandboxed.
-- `read_evidence` serves documents from `fixtures/documents/`. A file uploaded live in Slack is **not** downloaded; the agent sees its name only.
-- Scenario B (route energy) is reachable in replay only. `run_check` is rc-only in production.
+- `read_evidence` serves documents from the store `DOCUMENT_STORE` names, defaulting to `fixtures/documents/`. A file uploaded live in Slack is **not** downloaded; the agent sees its name only and reads the store by that name.
+- Scenario B (route energy) is reachable live: `run_check` dispatches to both checkers and `read_evidence` reads `.xlsx`. It has not been exercised against a live Slack channel, because no channel is connected.
 
 ## Public repository
 
