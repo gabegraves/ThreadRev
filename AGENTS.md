@@ -37,7 +37,7 @@ This checkout is ThreadRev, a Slack-native engineering change reviewer built on 
 
 Start with [SETUP.md](SETUP.md). The research and proposed design live in [../RESEARCH.md](../RESEARCH.md) and [../research/hackathon-design.md](../research/hackathon-design.md), outside this checkout. Preserve them. Use the Slack template first; web is an optional local preview, not another required product surface.
 
-For Exa API changes, follow [.agents/skills/build-with-exa/SKILL.md](.agents/skills/build-with-exa/SKILL.md) as the canonical API guide.
+Exa is not used by ThreadRev. The inherited `search_web` capability is not registered on the reviewer, `EXA_API_KEY` is blank, and no doc, prompt, or video should list Exa as something we use.
 
 Reuse existing tools and dependencies before adding new ones. Keep credentials in ignored local environment files, never in prompts, committed files or logs. No automatic cloud fallback may be introduced for a future private mode. Do not access the GPU rig until its connection details are supplied.
 

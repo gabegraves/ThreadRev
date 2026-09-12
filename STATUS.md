@@ -12,6 +12,8 @@ One line per lane. Update yours after every push. Read all four before you start
 
 ## Decisions and announcements
 
+- 2:15 Exa is out. It was never registered on the reviewer; the key is blanked in `.env` and every doc that listed it as ours is updated (README status and sponsors, SETUP, SCRATCHPAD, AGENTS, demo and Slack handoffs). Inherited `agent-core` search code and tests untouched. Sponsor line everywhere is OpenAI plus CopilotKit Channels.
+
 - 2:00 README comparison section rewritten in plain terms (Slack keeps the conversation; ThreadRev keeps the decision, what it was decided against, and whether it is still true). `submission/description.md` created with the spoken comparison beat and the written submission description. Demo lane owns wording from here; claims must match the README section.
 
 - 1:50 Differentiation is now written down once, in README "What Slack already does, and what ThreadRev adds": Slack summarizes what was said; ThreadRev keeps what was decided, bound to a revision, numbers recomputed, cards go stale. The video gets one comparison beat right after Card 1 goes stale (exact words in `research/hackathon-design.md` step 5). `AGENTS.md` carries the same framing for agents. Demo lane: the description must match that section.

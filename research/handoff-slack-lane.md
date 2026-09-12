@@ -7,7 +7,7 @@ You are a computer-use agent. Your job is to get ThreadRev posting a real findin
 ## Ground truth you should not rediscover
 
 - Repo: `~/Desktop/9_12_26_Hackathon/ThreadRev`, branch `main`, pushed. `npm run verify` is green (56 + 44 + 34 + 10 tests). Everything works offline through the replay harness. Nothing has ever posted to a live Slack workspace.
-- `.env` exists at the repo root, git-ignored, owner-only. `MODEL_PROVIDER=openai`, `MODEL=gpt-5.6-sol`, `LOG_LEVEL=debug`, `PORT=3000`, `EXA_API_KEY` set. Blank: `OPENAI_API_KEY`, `CHANNEL_CODE`, `INTELLIGENCE_API_KEY`.
+- `.env` exists at the repo root, git-ignored, owner-only. `MODEL_PROVIDER=openai`, `MODEL=gpt-5.6-sol`, `LOG_LEVEL=debug`, `PORT=3000`. Blank: `OPENAI_API_KEY`, `CHANNEL_CODE`, `INTELLIGENCE_API_KEY`.
 - `npm run channel:status` at 1:09 PM returned `CLI_CHANNELS_PROJECT_NOT_SELECTED`. No hosted Intelligence project is selected in this directory. CopilotKit CLI is not logged in.
 - The server (`apps/channel/src/server.ts`) exits with code 1 unless the channel status is exactly `online`. `ready()` resolving is not proof of life.
 - The bot runs the reviewer on every @-mention. On other messages it runs only if the text passes the regex gate in `apps/channel/src/review-moment.ts` (words like review, check, doc, correction, "is now", uF values do not count on their own, but "bus is now 680 uF" passes on "is now").

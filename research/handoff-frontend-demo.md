@@ -15,7 +15,7 @@ Built on the CopilotKit agents-everywhere-starter-kit. Slack via CopilotKit Chan
 - F3. A web review console is being written right now by another agent in `apps/web/src/components/review-console/`. Eleven files, all uncommitted, no CSS yet, and the web workspace typecheck currently fails on `review-console.tsx`. As of 12:12 PM that agent also rewrote `apps/web/src/app/page.tsx` to mount `ReviewConsole`, replacing the inherited incident page, also uncommitted. Do not edit, commit, or delete those files until that agent commits. Coordinate through Gabe.
 - F4. The evidence API at `apps/web/src/app/api/evidence/route.ts` is committed and returns the Scenario A sample graph when the live log is empty.
 - F5. No submission material exists yet. `SUBMISSION.md` is the unfilled starter checklist. No description, shot list, social post, or inherited-versus-built list has been written.
-- F6. Exa search is configured and verified live, but is not registered on the reviewer and is not part of the demo.
+- F6. Exa is not used. Not registered on the reviewer, key blank, not a sponsor technology we list.
 
 ## 3. What was built during the event
 

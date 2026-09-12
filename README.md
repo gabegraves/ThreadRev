@@ -138,7 +138,7 @@ What is **not** yet true:
 
 - **Slack is not connected.** The model key, Channel code, and Intelligence key are blank locally. The bot has not posted to a real workspace. Everything above is proven offline through the replay harness. The demo video will state clearly whether it shows live delivery or the harness.
 - The web console has no styling yet and is in active development.
-- Exa search is configured and verified live but is not registered on the reviewer. External research is not part of the core workflow.
+- Exa is not used. The inherited web-search capability stays in `agent-core` for its tests only; it is not registered on the reviewer and `EXA_API_KEY` is blank.
 - Persistent storage (the Convex decision in [`SCRATCHPAD.md`](SCRATCHPAD.md)) is a recorded direction, not implemented. Evidence lives in a local JSONL file.
 - The inherited dependency audit has unresolved advisories. This is not a production or security-cleared deployment.
 
@@ -228,7 +228,6 @@ Five lanes work on this repo in parallel: backend, web console, demo and submiss
 
 - **CopilotKit Channels** hosts the Slack connection, delivers thread history, and renders the finding card as native Block Kit from one component tree.
 - **OpenAI** (or OpenRouter) runs the reviewer agent that decides what to read, which checker to run, and what to ask.
-- **Exa** is wired for explicitly requested external research and is not used in the core workflow.
 
 ## Research
 
