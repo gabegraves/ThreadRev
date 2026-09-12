@@ -4,6 +4,10 @@ import { required } from "./env";
 import { reviewerWelcome } from "./finding-card";
 import { publishResult, readEvidence, readThread, runCheck, type ReviewState } from "./reviewer-tools";
 import { controlAck, parseControl } from "./control";
+import { renderWorkTrail } from "./work-trail";
+// agent-core also exports a readEvidence — the evidence LOG reader. The channel
+// tool of the same name reads documents. Renamed here so the two never blur.
+import { readEvidence as readEvidenceLog } from "agent-core";
 import { isReviewMoment } from "./review-moment";
 import { record } from "./evidence";
 
@@ -47,6 +51,10 @@ channel.onMessage(async ({ thread, message }) => {
   // A person telling the reviewer to stop outranks everything below, and has
   // to take effect on the turn it is said rather than after a model round trip.
   const control = parseControl(message.text, human);
+  if (control === "explain") {
+    await thread.post(renderWorkTrail(readEvidenceLog(thread.conversationKey)));
+    return;
+  }
   if (control) {
     const state = ((await thread.state()) as ReviewState | undefined) ?? { cards: [], staleRuns: [] };
     state.muted = control === "mute";
