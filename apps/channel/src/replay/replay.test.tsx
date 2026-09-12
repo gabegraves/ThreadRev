@@ -388,3 +388,36 @@ it("an instruction planted in a document reaches the card anyway", { timeout: 20
   const stored = result.threadState?.cards.at(-1)?.finding as { evidence_notices?: string[] } | undefined;
   assert.ok(stored?.evidence_notices?.length, "the notice must be on the stored finding, not only rendered");
 });
+
+/**
+ * Scenario B, which had a fixture and a script and no test.
+ *
+ * It also used to pass hardcoded constants to the checker, so nothing proved
+ * the reviewer could get a parameter out of a spreadsheet at all. The script
+ * now reads both sheets and builds the run from what it read.
+ */
+it("scenario B: the parameters come off the spreadsheets, and the conclusion flips", { timeout: 20_000 }, async () => {
+  const result = await replay("scenario-b");
+
+  assert.equal(result.postedCards.length, 1);
+  const card = result.postedCards[0]!;
+
+  // Two runs, one per sheet, both from extracted values.
+  assert.equal(result.state.checkerRuns.length, 2, "one route run per sheet");
+  const [v20, v21] = result.state.checkerRuns;
+  assert.equal((v20!.inputs as { mass_kg: number }).mass_kg, 290, "v2-0 mass read from the July 3 sheet");
+  assert.equal((v21!.inputs as { mass_kg: number }).mass_kg, 318, "v2-1 mass read from the July 24 sheet");
+  assert.equal((v21!.inputs as { Crr: number }).Crr, 0.0048);
+
+  // The conclusion flips between the sheets, which is the whole finding.
+  const feasible = (r: (typeof result.state.checkerRuns)[number], key: string) =>
+    (r.outputs.cases as Record<string, { feasible: boolean }>)[key]!.feasible;
+  assert.equal(feasible(v20!, "mass_290kg"), true);
+  assert.equal(feasible(v21!, "mass_318kg"), false);
+
+  // And the card cites the sheets it read, with hashes, not just the messages.
+  assert.match(card.text, /ks4-sim-inputs-v2-0\.xlsx/);
+  assert.match(card.text, /ks4-sim-inputs-v2-1\.xlsx/);
+  assert.match(card.text, /params row 2: mass_kg \| 318/);
+  assert.match(card.question ?? "", /Juno Marsh|v2-1/);
+});
