@@ -12,6 +12,7 @@ One line per lane. Update yours after every push. Read all four before you start
 
 ## Decisions and announcements
 
+- 12:59 Historical-research demonstration plan and example-customer profile ready in `docs/plans/2026-09-12-1250-feat-historical-research-demo-plan.md`. Aligned with Kestrel Motors reframe; plan-only, no contract or runtime changes. Independent model recovery and live Slack delivery remain separate unproven gates; implementation awaits selection.
 - 12:25 Contracts in `contracts/` and `packages/agent-core/src/contracts/` are frozen unless the backend lane announces a change here.
 - 12:45 Eval lane split: human owns labels, pass rules, audit, verdict (`evals/labels.md`, `pass-rules.md`, `audit.md`); agent owns cases, grader, matrix (`research/agent-briefs/w5-eval-mechanics.md`). Backend G1 run-record emitter still owed by 1:00 PM; record shape is in the agent brief W5c.
 - 1:05 Run record seam frozen: the eleven section 4 field names in `research/handoff-eval-lane.md` are final; `apps/channel/src/replay/record.test.tsx` pins them. Backend lane committed `evals/records/scripted/*.json` per G1; the eval lane owns everything else under `evals/`.
