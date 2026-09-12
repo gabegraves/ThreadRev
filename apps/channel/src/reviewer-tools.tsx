@@ -226,6 +226,21 @@ export const searchWorkspace = defineChannelTool({
     if (!given) return { error: "Give at least one of document, unit, quantity, keyword, from, channel." };
     const key = threadKey(thread);
     const ctx = runContext(key);
+
+    // The cutoff is the whole guarantee of this tool: nothing said after the
+    // trigger may reach the review. It comes from ctx.trigger_ts, which
+    // read_thread sets — so if the model searches first, before_ts is
+    // undefined, queryIndex applies no cutoff at all, and the entire workspace
+    // including messages from after the trigger comes back. The tool
+    // description asks the model to call read_thread first; a description is
+    // not an enforcement mechanism. Refuse instead.
+    if (!ctx.trigger_ts) {
+      return {
+        error:
+          "Call read_thread before searching. The workspace search is cut off at the trigger message, and I do not know which message that is until the thread has been read.",
+      };
+    }
+
     let index;
     try {
       index = workspaceIndex(REPO_ROOT);
@@ -258,6 +273,20 @@ export const searchWorkspace = defineChannelTool({
       });
       if (h.is_change && !ctx.changes.includes(h.ts)) ctx.changes.push(h.ts);
     }
+
+    // Search reaches into channels nobody in this thread necessarily controls,
+    // so a message anywhere in the workspace can carry text addressed to the
+    // reviewer. Documents were already scanned for that in read_evidence; hits
+    // are the same threat arriving by a different door, and the note below is
+    // guidance to the model rather than a guarantee. Detect it here so the card
+    // reports it whatever the model does.
+    for (const h of result.hits) {
+      const notice = noticeSummary(findEvidenceInstructions([h.text]));
+      if (!notice) continue;
+      const attributed = `${notice.replace(/^The evidence contains/, `A workspace message from ${h.from} in ${h.channel} contains`)}`;
+      if (!ctx.notices.includes(attributed)) ctx.notices.push(attributed);
+    }
+
     return {
       ...result,
       channels_indexed: [...index.channels.values()].map((c) => `#${c}`),
