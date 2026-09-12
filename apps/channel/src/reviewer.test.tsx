@@ -746,3 +746,22 @@ test("a healthy workplace gets exactly one task with the finding in it", async (
   assert.match(String(calls[0]!.args.title), /ThreadRev:/);
   assert.match(String(calls[0]!.args.description), /fnd-a-r2-001/);
 });
+
+test("the real Ambiguous tool inventory resolves to create_task", () => {
+  // Taken from a live tools/list against app.ambiguous.ai: 856 tools, dozens
+  // of them task-adjacent. The near-misses are the point — create_subtask and
+  // create_task_comment both create, and both mention a task.
+  const real = [
+    "list_tasks", "create_task", "create_subtask", "create_task_comment",
+    "update_task_comment", "duplicate_task", "restore_task", "tasks_batch",
+    "tasks_labels_create", "tasks_views_create", "bulk_delete_tasks",
+    "apply_task_template", "add_task_attachment", "create_team", "mail_send",
+  ];
+  assert.equal(pickTaskTool(real), "create_task");
+});
+
+test("a workplace with only task-adjacent tools does not invent a target", () => {
+  // Commenting on a task or labelling one is not filing a follow-up.
+  assert.equal(pickTaskTool(["create_task_comment", "tasks_labels_create"]), "create_task_comment");
+  assert.equal(pickTaskTool(["list_tasks", "get_task", "tasks_export"]), undefined);
+});

@@ -52,6 +52,10 @@ function line(e: EvidenceEvent): string | undefined {
       return e.error
         ? `• ${when(e.at)} ran ${e.checker} v${e.version} and it failed: ${e.error}`
         : `• ${when(e.at)} ran ${e.checker} v${e.version} → ${e.checks.filter((c) => c.pass).length}/${e.checks.length} checks passed · run ${e.run_id}`;
+    case "followup_filed":
+      return e.filed
+        ? `• ${when(e.at)} filed a follow-up for ${e.finding_id} in the workplace via ${e.tool ?? "a task tool"} — ${e.detail}`
+        : `• ${when(e.at)} could not file a follow-up for ${e.finding_id}: ${e.detail}`;
     case "publish_refused":
       return `• ${when(e.at)} refused to publish run ${e.run_id}: ${e.reason} (bound ${e.bound_revision}, thread at ${e.current_revision})`;
     case "finding_published":

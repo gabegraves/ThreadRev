@@ -116,6 +116,24 @@ export const publishRefused = z.object({
   reason: z.string(),
 });
 
+/**
+ * A published finding was carried into the workplace as tracked work.
+ *
+ * Recorded whether or not it succeeded: a follow-up that did not file is the
+ * more interesting of the two, because the card is already posted and someone
+ * may be expecting the task to exist.
+ */
+export const followupFiled = z.object({
+  ...base,
+  kind: z.literal("followup_filed"),
+  finding_id: z.string().min(1),
+  filed: z.boolean(),
+  /** The workplace tool that created it, when one did. */
+  tool: z.string().optional(),
+  /** What the workplace said, or why nothing was filed. */
+  detail: z.string(),
+});
+
 /** The reviewer decided there was nothing to say (NO_FINDING). */
 export const silence = z.object({
   ...base,
@@ -130,6 +148,7 @@ export const evidenceEvent = z.discriminatedUnion("kind", [
   findingPublished,
   findingSuperseded,
   publishRefused,
+  followupFiled,
   silence,
   workspaceSearch,
 ]);
