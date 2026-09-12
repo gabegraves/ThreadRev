@@ -3,16 +3,48 @@
 
 stdlib only. Usage: python3 extractors/docx_text.py path/to/file.docx
 Output: {"path": ..., "sha256": ..., "paragraphs": [str, ...]}
+
+A document is evidence, and evidence is not trusted here: the reviewer already
+treats text inside one as data rather than instructions. The same applies to
+its bytes. A .docx is a zip, and a zip says how large its members claim to be
+before you decompress them, so the claim is checked rather than believed.
 """
 import hashlib, json, re, sys, zipfile
 from xml.etree import ElementTree as ET
 
 W = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
 
-def main(path: str) -> int:
+#: Largest document.xml we will decompress. Real engineering documents are far
+#: under this; a file that claims more is a decompression bomb or a mistake, and
+#: either way refusing beats exhausting memory mid-review.
+MAX_DOCUMENT_XML = 64 * 1024 * 1024
+
+#: Hash in chunks rather than reading the whole file into memory to do it.
+HASH_CHUNK = 1024 * 1024
+
+
+def sha256_of(path: str) -> str:
+    digest = hashlib.sha256()
     with open(path, "rb") as fh:
-        digest = hashlib.sha256(fh.read()).hexdigest()
+        for chunk in iter(lambda: fh.read(HASH_CHUNK), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def main(path: str) -> int:
+    digest = sha256_of(path)
     with zipfile.ZipFile(path) as z:
+        info = z.getinfo("word/document.xml")
+        if info.file_size > MAX_DOCUMENT_XML:
+            json.dump(
+                {
+                    "path": path,
+                    "error": "document.xml claims %d bytes uncompressed, over the %d byte limit; refusing to decompress it"
+                    % (info.file_size, MAX_DOCUMENT_XML),
+                },
+                sys.stdout,
+            )
+            return 1
         root = ET.fromstring(z.read("word/document.xml"))
     paragraphs = []
     for p in root.iter(W + "p"):
