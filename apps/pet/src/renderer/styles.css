@@ -1,0 +1,391 @@
+/*
+ * The window is a transparent 420x560 rectangle in the screen corner. Only the
+ * pet and the panel paint anything; the rest stays see-through so Slack shows
+ * through it. Mouse pass-through is handled in renderer.ts, not here.
+ */
+
+:root {
+  --shell-top: #5b9dff;
+  --shell-bottom: #2f6fe0;
+  --visor: #0d1b33;
+  --eye: #eaf2ff;
+  --bulb: #7fe3ff;
+  --badge: #7fe3ff;
+
+  --panel-bg: #16181d;
+  --panel-line: #2c3038;
+  --panel-text: #e8eaed;
+  --panel-dim: #9aa0a8;
+  --accent: #5b9dff;
+  --alert: #ffb454;
+  --ok: #5fd6a4;
+}
+
+/* The pet reads against Slack's dark themes by default; warm it up on light. */
+@media (prefers-color-scheme: light) {
+  :root {
+    --panel-bg: #ffffff;
+    --panel-line: #e3e5e8;
+    --panel-text: #1d1c1d;
+    --panel-dim: #616061;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: transparent;
+  overflow: hidden;
+  font: 13px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: var(--panel-text);
+  /* The window is mostly empty; never show a text cursor over it. */
+  cursor: default;
+  user-select: none;
+}
+
+#root {
+  position: relative;
+  height: 100%;
+}
+
+/* ---------------------------------------------------------------- pet ---- */
+
+.pet {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 132px;
+  height: 146px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  /* Clipped by the screen edge, the way the reference pets are clipped by the
+     app edge. Without this it reads as "placed" rather than "peeking in". */
+  transform: translate(10px, 16px);
+  animation: bob 3.4s ease-in-out infinite;
+  transition: transform 180ms cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+
+.pet:hover {
+  transform: translate(10px, 8px);
+}
+
+.pet:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+  border-radius: 20px;
+}
+
+.pet__svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  filter: drop-shadow(0 6px 14px rgb(0 0 0 / 0.38));
+}
+
+.pet__shell {
+  stroke: rgb(255 255 255 / 0.22);
+  stroke-width: 2;
+}
+
+.pet__visor {
+  fill: var(--visor);
+}
+
+.pet__stalk {
+  stroke: var(--shell-bottom);
+  stroke-width: 4;
+  stroke-linecap: round;
+}
+
+.pet__bulb {
+  fill: var(--bulb);
+}
+
+.pet__foot {
+  fill: var(--shell-bottom);
+}
+
+.pet__eye {
+  fill: var(--eye);
+}
+
+.pet__eye--shut {
+  fill: none;
+  stroke: var(--eye);
+  stroke-width: 4;
+  stroke-linecap: round;
+}
+
+.pet__badge {
+  fill: var(--badge);
+  font: 700 15px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.5px;
+}
+
+/* --- states --------------------------------------------------------------
+   Exactly one eye pair is visible per state. The silhouette never changes, so
+   all four read as the same creature. */
+
+.pet[data-state="idle"] .pet__eye--open,
+.pet[data-state="ok"] .pet__eye--open {
+  display: none;
+}
+
+.pet[data-state="think"] .pet__eye--shut,
+.pet[data-state="found"] .pet__eye--shut {
+  display: none;
+}
+
+/* think: scanning pupils + pulsing antenna */
+.pet[data-state="think"] .pet__eyes {
+  animation: scan 1.1s ease-in-out infinite;
+}
+
+.pet[data-state="think"] .pet__bulb {
+  animation: pulse 1.1s ease-in-out infinite;
+}
+
+/* found: alert colours, wide eyes, a short hop */
+.pet[data-state="found"] {
+  animation: hop 0.9s ease-in-out infinite;
+}
+
+.pet[data-state="found"] .pet__bulb,
+.pet[data-state="found"] .pet__badge {
+  fill: var(--alert);
+}
+
+.pet[data-state="found"] .pet__eye--open {
+  r: 9.5;
+}
+
+/* ok: a wink — right eye shut, left open */
+.pet[data-state="ok"] .pet__eye--shut:last-of-type {
+  display: none;
+}
+
+.pet[data-state="ok"] .pet__eye--open:first-of-type {
+  display: inline;
+}
+
+.pet[data-state="ok"] .pet__bulb,
+.pet[data-state="ok"] .pet__badge {
+  fill: var(--ok);
+}
+
+/* unread count */
+.pet__count {
+  position: absolute;
+  top: 14px;
+  right: 16px;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 11px;
+  background: var(--alert);
+  color: #1d1c1d;
+  font-weight: 700;
+  font-size: 12px;
+  line-height: 22px;
+  text-align: center;
+  box-shadow: 0 2px 6px rgb(0 0 0 / 0.35);
+}
+
+/* -------------------------------------------------------------- panel ---- */
+
+.panel {
+  position: absolute;
+  right: 18px;
+  bottom: 128px;
+  width: 356px;
+  max-height: 400px;
+  display: flex;
+  flex-direction: column;
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-line);
+  border-radius: 14px;
+  box-shadow: 0 18px 48px rgb(0 0 0 / 0.45);
+  overflow: hidden;
+  transform-origin: 100% 100%;
+  transform: translateY(10px) scale(0.94);
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    transform 200ms cubic-bezier(0.2, 0.9, 0.3, 1.15),
+    opacity 140ms ease;
+}
+
+.panel[data-open="true"] {
+  transform: translateY(0) scale(1);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.panel__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 12px;
+  border-bottom: 1px solid var(--panel-line);
+}
+
+.panel__title {
+  font-weight: 700;
+}
+
+.panel__status {
+  flex: 1;
+  color: var(--panel-dim);
+  font-size: 12px;
+}
+
+.panel__close,
+.panel__quit {
+  border: 0;
+  background: none;
+  color: var(--panel-dim);
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+
+.panel__close:hover,
+.panel__quit:hover {
+  background: rgb(127 127 127 / 0.16);
+  color: var(--panel-text);
+}
+
+.panel__body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px 0;
+}
+
+.panel__foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--panel-line);
+}
+
+.panel__hint {
+  flex: 1;
+  color: var(--panel-dim);
+  font-size: 12px;
+}
+
+.panel__quit {
+  font-size: 12px;
+}
+
+/* finding rows */
+
+.finding {
+  padding: 10px 12px;
+  border-left: 3px solid var(--alert);
+  margin: 4px 8px;
+  border-radius: 0 8px 8px 0;
+  background: rgb(127 127 127 / 0.07);
+}
+
+.finding__what {
+  font-weight: 600;
+  margin: 0 0 3px;
+}
+
+.finding__why {
+  margin: 0 0 6px;
+  color: var(--panel-dim);
+}
+
+.finding__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--panel-dim);
+}
+
+.finding__tag {
+  padding: 1px 6px;
+  border: 1px solid var(--panel-line);
+  border-radius: 999px;
+}
+
+.finding[data-status="stale"] {
+  border-left-color: var(--panel-dim);
+  opacity: 0.6;
+}
+
+.empty {
+  padding: 26px 16px;
+  text-align: center;
+  color: var(--panel-dim);
+}
+
+/* ---------------------------------------------------------- animation ---- */
+
+@keyframes bob {
+  0%,
+  100% {
+    transform: translate(10px, 16px);
+  }
+  50% {
+    transform: translate(10px, 10px);
+  }
+}
+
+@keyframes hop {
+  0%,
+  100% {
+    transform: translate(10px, 16px);
+  }
+  40% {
+    transform: translate(10px, 4px);
+  }
+  60% {
+    transform: translate(10px, 9px);
+  }
+}
+
+@keyframes scan {
+  0%,
+  100% {
+    transform: translateX(-3px);
+  }
+  50% {
+    transform: translateX(3px);
+  }
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pet,
+  .pet[data-state="found"],
+  .pet__eyes,
+  .pet__bulb {
+    animation: none !important;
+  }
+  .panel {
+    transition: opacity 100ms ease;
+  }
+}

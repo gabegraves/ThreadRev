@@ -11,7 +11,8 @@
   "workspaces": [
     "packages/*",
     "apps/channel",
-    "apps/web"
+    "apps/web",
+    "apps/pet"
   ],
   "scripts": {
     "dev": "npm run dev:web",

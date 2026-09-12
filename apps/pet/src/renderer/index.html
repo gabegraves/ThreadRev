@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>ThreadRev Pet</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div id="root">
+      <section
+        id="panel"
+        class="panel"
+        role="dialog"
+        aria-label="ThreadRev review findings"
+        aria-hidden="true"
+      >
+        <header class="panel__head">
+          <span class="panel__title">ThreadRev</span>
+          <span id="panel-status" class="panel__status">idle</span>
+          <button id="panel-close" class="panel__close" type="button" aria-label="Close">
+            &times;
+          </button>
+        </header>
+        <div id="panel-body" class="panel__body"></div>
+        <footer class="panel__foot">
+          <span id="panel-hint" class="panel__hint">Watching this thread</span>
+          <button id="panel-quit" class="panel__quit" type="button">Quit</button>
+        </footer>
+      </section>
+
+      <button
+        id="pet"
+        class="pet"
+        type="button"
+        data-state="idle"
+        aria-expanded="false"
+        aria-controls="panel"
+        aria-label="ThreadRev companion. Open findings."
+      >
+        <svg class="pet__svg" viewBox="0 0 120 132" aria-hidden="true">
+          <defs>
+            <linearGradient id="shell" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="var(--shell-top)" />
+              <stop offset="100%" stop-color="var(--shell-bottom)" />
+            </linearGradient>
+          </defs>
+
+          <!-- antenna -->
+          <line class="pet__stalk" x1="60" y1="18" x2="60" y2="6" />
+          <circle class="pet__bulb" cx="60" cy="5" r="5" />
+
+          <!-- body -->
+          <rect
+            class="pet__shell"
+            x="10"
+            y="16"
+            width="100"
+            height="98"
+            rx="34"
+            fill="url(#shell)"
+          />
+
+          <!-- visor -->
+          <rect class="pet__visor" x="24" y="38" width="72" height="42" rx="21" />
+
+          <!-- eyes: two shapes stacked, CSS swaps which is visible per state -->
+          <g class="pet__eyes">
+            <circle class="pet__eye pet__eye--open" cx="46" cy="59" r="8" />
+            <circle class="pet__eye pet__eye--open" cx="74" cy="59" r="8" />
+            <path class="pet__eye pet__eye--shut" d="M38 60 q8 -9 16 0" />
+            <path class="pet__eye pet__eye--shut" d="M66 60 q8 -9 16 0" />
+          </g>
+
+          <!-- prompt badge -->
+          <text class="pet__badge" x="60" y="99" text-anchor="middle">&gt;_</text>
+
+          <!-- feet -->
+          <rect class="pet__foot" x="30" y="110" width="20" height="10" rx="5" />
+          <rect class="pet__foot" x="70" y="110" width="20" height="10" rx="5" />
+        </svg>
+        <span id="pet-badge" class="pet__count" hidden></span>
+      </button>
+    </div>
+    <script src="renderer.js"></script>
+  </body>
+</html>
