@@ -132,11 +132,20 @@ export class ChannelRunAgent extends AbstractAgent {
   }
 }
 
+/**
+ * The reviewer, with the workplace attached when one is configured.
+ *
+ * workplaceMcpServers() returns [] without AMBIGUOUS_API_KEY, so this is inert
+ * until a key exists rather than handing the model tools that would 401. What
+ * the reviewer may do with a workplace is constrained in REVIEWER_PROMPT: file
+ * the follow-up a published card already justifies, never decide the
+ * engineering and never write instead of publishing.
+ */
 export function makeChannelAgent(threadId: string) {
   return new ChannelRunAgent(
     // A live Scenario A run is 9 to 13 tool calls; one refused publish and a
     // re-run push it past the kit's default of 10, which ended a run with no card.
-    (id) => makeAgent(id, { prompt: REVIEWER_PROMPT, workplace: false, maxSteps: 24 }),
+    (id) => makeAgent(id, { prompt: REVIEWER_PROMPT, maxSteps: 24 }),
     threadId,
   );
 }
