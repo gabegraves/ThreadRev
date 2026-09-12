@@ -157,17 +157,49 @@ const KEEP_RUNS = 5;
  * failing the check that produced it would cost the review.
  */
 async function persistRun(
-  thread: { state<T>(): Promise<T | undefined>; setState(v: unknown): Promise<unknown> },
+  thread: StateThread,
   res: CheckerResponse,
 ): Promise<void> {
   try {
-    const state = (await thread.state<ReviewState>()) ?? { cards: [], staleRuns: [] };
-    const kept = Object.entries(state.runs ?? {}).slice(-(KEEP_RUNS - 1));
-    state.runs = Object.fromEntries([...kept, [res.run_id, res]]);
-    await thread.setState(state);
+    await updateReviewState(thread, (state) => {
+      const kept = Object.entries(state.runs ?? {}).slice(-(KEEP_RUNS - 1));
+      state.runs = Object.fromEntries([...kept, [res.run_id, res]]);
+    });
   } catch (e) {
     console.warn("[runs] not persisted:", (e as Error).message);
   }
+}
+
+/** The two thread methods state writes need, whichever Thread type supplies them. */
+export interface StateThread {
+  state<T>(): Promise<T | undefined>;
+  setState(v: unknown): Promise<unknown>;
+}
+
+/**
+ * The one way to change review state.
+ *
+ * thread.setState replaces the whole value — no merge, no version check — so
+ * every writer that reads the state, changes its own field, and writes it back
+ * overwrites whatever another writer changed in between. The case that matters
+ * is the mute: a checker run that read the state before someone said "stand
+ * down" and wrote it back afterwards would erase the mute, and the next message
+ * would run the model regardless.
+ *
+ * This does not make the update atomic; the SDK offers no way to. It keeps the
+ * read and the write adjacent, with nothing awaited between them, and it gives
+ * each caller only its own field to touch — which is as narrow as the window
+ * gets without compare-and-swap. If the platform adds one, this is the single
+ * place to use it.
+ */
+export async function updateReviewState(
+  thread: StateThread,
+  mutate: (state: ReviewState) => void,
+): Promise<ReviewState> {
+  const current = (await thread.state<ReviewState>()) ?? { cards: [], staleRuns: [] };
+  mutate(current);
+  await thread.setState(current);
+  return current;
 }
 
 /* ---------------------------------------------------------- read_thread */
@@ -667,8 +699,12 @@ export const publishResult = defineChannelTool({
       current,
     );
     if (!decision.ok) {
-      state.staleRuns.push({ run_id: args.run_id, bound: args.requirements_revision, current });
-      await thread.setState(state);
+      // Not a write of `state`: that copy was read at the top of this handler,
+      // before the thread fetch, and is the stalest state in the file. Writing
+      // it back whole would erase a mute set while this run was in flight.
+      await updateReviewState(thread, (s) => {
+        s.staleRuns = [...(s.staleRuns ?? []), { run_id: args.run_id, bound: args.requirements_revision, current }];
+      });
       record({
         kind: "publish_refused",
         thread: threadKey(thread),
@@ -743,15 +779,13 @@ export const publishResult = defineChannelTool({
     const refId = (ref as { id?: unknown } | undefined)?.id;
     const canRestrike = typeof refId === "string";
 
-    // Re-read before writing: Channels can re-enter a thread's turn, and this
-    // handler read `state` before an await-heavy stretch. Appending to the
-    // copy we loaded would drop anything written in between — including
-    // another card's MessageRef.
-    const latest = (await thread.state<ReviewState>()) ?? state;
-    latest.cards = [...(latest.cards ?? []), { finding: f, ref }];
-    latest.staleRuns = latest.staleRuns ?? state.staleRuns;
-    latest.runs = latest.runs ?? state.runs;
-    await thread.setState(latest);
+    // Append this card to state as it is now, not as it was when this handler
+    // started: the handler read `state` before an await-heavy stretch, and
+    // writing that copy back would drop anything recorded in between —
+    // another card's MessageRef, a run, a mute.
+    await updateReviewState(thread, (s) => {
+      s.cards = [...(s.cards ?? []), { finding: f, ref }];
+    });
 
     record({
       kind: "finding_published",
@@ -768,9 +802,17 @@ export const publishResult = defineChannelTool({
     let supersedeNote: string | undefined;
     if (args.supersedes && priorCard && priorCard.finding.status === "live") {
       try {
-        priorCard.finding = markStale(priorCard.finding);
-        await thread.update(priorCard.ref, renderFindingCard(priorCard.finding));
-        await thread.setState(latest);
+        const staleFinding = markStale(priorCard.finding);
+        await thread.update(priorCard.ref, renderFindingCard(staleFinding));
+        // Mark it stale in state as it is now. This previously mutated
+        // priorCard — an object from the handler's first read — and then wrote
+        // a separate, fresher read back, so the stale mark never reached state:
+        // Slack showed the card struck while thread state still called it
+        // live, and the duplicate gate kept counting it.
+        await updateReviewState(thread, (s) => {
+          const card = s.cards.find((c) => c.finding.finding_id === args.supersedes);
+          if (card) card.finding = markStale(card.finding);
+        });
         record({
           kind: "finding_superseded",
           thread: threadKey(thread),

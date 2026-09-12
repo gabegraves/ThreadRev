@@ -9,6 +9,8 @@ import {
   runCheck,
   searchWorkspace,
   type ReviewState,
+  type StateThread,
+  updateReviewState,
 } from "./reviewer-tools";
 import { controlAck } from "./control";
 import { decideMessage } from "./gate";
@@ -44,8 +46,9 @@ export const channel = createChannel({
 channel.onMention(async ({ thread }) => {
   const state = (await thread.state()) as ReviewState | undefined;
   if (state?.muted) {
-    state.muted = false;
-    await thread.setState(state);
+    await updateReviewState(thread as unknown as StateThread, (s) => {
+      s.muted = false;
+    });
   }
   await thread.runAgent();
 });
@@ -76,9 +79,12 @@ channel.onMessage(async ({ thread, message }) => {
         );
         return;
       }
-      const next = state ?? { cards: [], staleRuns: [] };
-      next.muted = action.control === "mute";
-      await thread.setState(next);
+      // Through updateReviewState, not a write of the `state` read at the top of
+      // this handler: that copy is as old as this message, and writing it back
+      // whole would overwrite any card or run recorded since.
+      await updateReviewState(thread as unknown as StateThread, (s) => {
+        s.muted = action.control === "mute";
+      });
       await thread.post(controlAck(action.control));
       return;
     }

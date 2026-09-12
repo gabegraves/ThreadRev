@@ -956,3 +956,24 @@ test("every control gets an acknowledgement that says what actually happened", (
   // Used to fall through to "Back on in this thread" — true of nothing.
   assert.doesNotMatch(controlAck("explain"), /Back on/);
 });
+
+test("superseding a card persists its stale status, not just the Slack edit", async () => {
+  rememberRun(TEST_RUN);
+  // A real read/write store, so a write of the wrong object is observable.
+  let store: unknown = { cards: [priorLive()], staleRuns: [] };
+  const thread = {
+    getMessages: async () => [{ ts: "100.000100", text: "please check section 3", isBot: false }],
+    state: async () => structuredClone(store),
+    setState: async (v: unknown) => { store = structuredClone(v); },
+    post: async () => ({ id: "ref-new" }),
+    update: async () => {},
+  };
+
+  const result = (await publishResult.handler(publishArgs, stubCtx(thread))) as { published: boolean };
+  assert.equal(result.published, true);
+
+  const cards = (store as { cards: Array<{ finding: { finding_id: string; status: string } }> }).cards;
+  const prior = cards.find((c) => c.finding.finding_id === "fnd-prior");
+  assert.equal(prior?.finding.status, "stale", "the replaced card must be stale in thread state, not only in Slack");
+  assert.equal(cards.filter((c) => c.finding.status === "live").length, 1, "exactly one live card after superseding");
+});
