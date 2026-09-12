@@ -23,7 +23,7 @@
     "test": "npm run test --workspaces --if-present",
     "verify": "npm run typecheck && npm test && npm run test:checkers",
     "test:checkers": "python3 -m unittest checkers/test_checkers.py",
-    "replay:record": "TSX_TSCONFIG_PATH=apps/channel/tsconfig.json COPILOTKIT_TELEMETRY_DISABLED=true node --import tsx apps/channel/src/replay/record-cli.ts"
+    "replay:record": "TSX_TSCONFIG_PATH=apps/channel/tsconfig.json COPILOTKIT_TELEMETRY_DISABLED=true node --env-file-if-exists=.env --import tsx apps/channel/src/replay/record-cli.ts"
   },
   "overrides": {
     "@ag-ui/client": "0.0.59"

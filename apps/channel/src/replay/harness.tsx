@@ -73,9 +73,14 @@ const checkerResponseIsh = z.object({ run_id: z.string(), checker: z.string(), o
 const publishIsh = z.object({ published: z.boolean() });
 const evidenceIsh = z.object({ document: z.string(), sha256: z.string(), lines: z.array(z.object({ n: z.number(), text: z.string() })) });
 
-/** Real AG-UI events so the SDK tool loop and Slack renderer both run. */
-class ScriptedReviewer extends AbstractAgent {
-  private iteration = 0;
+/**
+ * Real AG-UI events so the SDK tool loop and Slack renderer both run.
+ *
+ * Stateless per run, like a model: the step to take is the number of tool
+ * results already in the input messages. That lets ChannelRunAgent hand each
+ * run a fresh instance (the live wrapper's behaviour) without losing place.
+ */
+export class ScriptedReviewer extends AbstractAgent {
   constructor(private readonly steps: ScriptStep[]) {
     super();
   }
@@ -84,7 +89,6 @@ class ScriptedReviewer extends AbstractAgent {
     clone.threadId = this.threadId;
     clone.setMessages([...this.messages]);
     clone.setState(this.state);
-    clone.iteration = this.iteration;
     return clone;
   }
   run(input: RunAgentInput): Observable<BaseEvent> {
@@ -100,7 +104,8 @@ class ScriptedReviewer extends AbstractAgent {
     const pick = <T,>(schema: z.ZodType<T>) =>
       results.flatMap((r) => (schema.safeParse(r).success ? [r as T] : []));
     const checkers = pick(checkerResponseIsh) as unknown as CheckerResponse[];
-    const step = this.steps[this.iteration++];
+    const iteration = results.length;
+    const step = this.steps[iteration];
     const call = step?.({
       results,
       checker: checkers.at(-1),
@@ -112,7 +117,7 @@ class ScriptedReviewer extends AbstractAgent {
       { type: EventType.RUN_STARTED, threadId: input.threadId, runId: input.runId },
     ];
     if (call) {
-      const toolCallId = `tool_${this.iteration}`;
+      const toolCallId = `tool_${iteration + 1}`;
       events.push(
         { type: EventType.TOOL_CALL_START, toolCallId, toolCallName: call.name },
         { type: EventType.TOOL_CALL_ARGS, toolCallId, delta: JSON.stringify(call.args) },
@@ -126,7 +131,15 @@ class ScriptedReviewer extends AbstractAgent {
 
 export interface ReplayOptions {
   messages: FixtureMessage[];
-  steps: ScriptStep[];
+  /** Scripted reviewer steps. Ignored when `agent` is given. */
+  steps?: ScriptStep[];
+  /**
+   * Model mode: a factory for the real agent (makeChannelAgent from
+   * ../agent, so the silence filter and per-run BuiltInAgent are identical to
+   * the live channel). The channel then also carries the same context entries
+   * channel.tsx passes.
+   */
+  agent?: (threadId: string) => AbstractAgent;
   /** Cutoff ts; defaults to the trigger message. */
   cutoff?: string;
   /**
@@ -214,6 +227,20 @@ export interface PostedCard {
   question?: string;
 }
 
+/** The context entries channel.tsx gives the live reviewer. */
+export const LIVE_CHANNEL_CONTEXT = [
+  {
+    description: "Surface",
+    value:
+      "This is a thread in an engineering team's Slack channel. Others are reading. You were not necessarily addressed; you are here because you read every message in channels you are invited to.",
+  },
+  {
+    description: "Silence",
+    value:
+      "If this message is not a review moment, or you find nothing worth a card, reply with exactly NO_FINDING and nothing else. That reply is suppressed and nobody sees it.",
+  },
+];
+
 export interface ReplayResult {
   gateway: ManagedGateway;
   payloads: Record<string, unknown>[];
@@ -255,11 +282,16 @@ export async function runReplay(options: ReplayOptions): Promise<ReplayResult> {
   assert.ok(trigger, "fixture must contain a trigger message at or before the cutoff");
   const state: ReplayState = { visible: [...split.visible], checkerRuns: [] };
   const gateway = new ManagedGateway();
+  const agentFactory = options.agent;
+  if (!agentFactory) assert.ok(options.steps, "runReplay needs either steps or an agent factory");
   const channel = createChannel({
     name: "support",
     identifyUser: "platform",
     showToolStatus: true,
-    agent: () => new ScriptedReviewer(options.steps),
+    agent: agentFactory ?? (() => new ScriptedReviewer(options.steps ?? [])),
+    // Mirrors channel.tsx. Kept here rather than imported because channel.tsx
+    // requires CHANNEL_CODE at import time.
+    context: agentFactory ? LIVE_CHANNEL_CONTEXT : [],
     tools: [
       readThread,
       searchWorkspace,
