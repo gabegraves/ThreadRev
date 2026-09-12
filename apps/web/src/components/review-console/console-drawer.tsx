@@ -6,6 +6,7 @@ import { IssuesTab } from "./issues-tab";
 import { DiffsTab } from "./diffs-tab";
 import { EvidenceTab } from "./evidence-tab";
 import { ChatTab } from "./chat-tab";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 const TABS = ["Issues", "Diffs", "Evidence", "Chat"] as const;
 type Tab = (typeof TABS)[number];
@@ -24,9 +25,15 @@ export function ConsoleDrawer({ graph, events }: { graph: EvidenceGraph; events:
 
   return (
     <>
-      <button type="button" className="ck-tr-pill" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-controls="ck-tr-drawer">
-        ThreadRev · {live} {live === 1 ? "issue" : "issues"}
-      </button>
+      {/* The drawer is a fixed overlay down the right edge, so anything in the
+          page header is unreachable while it is open. The theme toggle rides
+          with the pill instead — the one cluster that stays above the drawer. */}
+      <div className="ck-tr-float">
+        <ThemeToggle />
+        <button type="button" className="ck-tr-pill" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-controls="ck-tr-drawer">
+          ThreadRev · {live} {live === 1 ? "issue" : "issues"}
+        </button>
+      </div>
       <aside id="ck-tr-drawer" className={`ck-tr-drawer${open ? " is-open" : ""}`} aria-label="ThreadRev console" aria-hidden={!open}>
         <header className="ck-tr-drawer-head">
           <nav className="ck-tr-tabs" role="tablist">
