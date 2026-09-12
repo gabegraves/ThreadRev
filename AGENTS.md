@@ -1,5 +1,17 @@
 # Notes for coding agents
 
+## ThreadRev workspace
+
+This checkout is the infrastructure baseline for ThreadRev, a Slack-native engineering change investigator. Current scope is environment setup; engineering extraction, calculation, verification and revision invalidation are not implemented yet. Do not describe inherited incident tools as engineering checks.
+
+Start with [SETUP.md](SETUP.md). The research and proposed design live in [../RESEARCH.md](../RESEARCH.md) and [../research/hackathon-design.md](../research/hackathon-design.md), outside this checkout. Preserve them. Use the Slack template first; web is an optional local preview, not another required product surface.
+
+For Exa API changes, follow [.agents/skills/build-with-exa/SKILL.md](.agents/skills/build-with-exa/SKILL.md) as the canonical API guide.
+
+Reuse existing tools and dependencies before adding new ones. Keep credentials in ignored local environment files, never in prompts, committed files or logs. No automatic cloud fallback may be introduced for a future private mode. Do not access the GPU rig until its connection details are supplied.
+
+## Upstream conventions
+
 Read [hackathon-overview.md](hackathon-overview.md), [hackathon-rules.md](hackathon-rules.md), and [using-sponsor-tools.md](using-sponsor-tools.md), then the chosen app README in `apps/channel`, `apps/web`, or `apps/mobile`. Build the team's own workflow; the incident app is infrastructure reference code.
 
 CopilotKit powers the Slack and web templates. The mobile starting point in `apps/mobile` has its own install and environment; follow its README for setup and checks.

@@ -19,7 +19,6 @@ MODEL=gpt-5.6-sol
 CHANNEL_CODE=your-channel-code
 INTELLIGENCE_API_KEY=your-project-key
 EXA_API_KEY=your-key
-EXA_SEARCH_TYPE=fast
 ```
 
 Choose an OpenAI model available to your account. Create the managed Channel using `npm run channel:setup`; the [setup guide](../../dev-docs/setup.md) and [screenshot walkthrough](../../dev-docs/channels-sdk-walkthrough/README.md) cover the Slack installation.

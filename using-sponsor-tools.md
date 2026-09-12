@@ -127,7 +127,6 @@ JS
 
 ```dotenv
 EXA_API_KEY=your-key
-EXA_SEARCH_TYPE=fast
 ```
 
 **First call**, using the same SDK as the kit:
@@ -136,10 +135,8 @@ EXA_SEARCH_TYPE=fast
 node --env-file=.env --input-type=module <<'JS'
 import { Exa } from 'exa-js';
 const exa = new Exa(process.env.EXA_API_KEY);
-const result = await exa.searchAndContents('documented causes of retry storms', {
-  type: 'fast',
-  numResults: 3,
-  highlights: { numSentences: 2, highlightsPerUrl: 1 },
+const result = await exa.search('documented causes of retry storms', {
+  contents: { highlights: true },
 });
 console.log(result.results.map(({ title, url, highlights }) => ({ title, url, highlights })));
 JS

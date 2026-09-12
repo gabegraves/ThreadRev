@@ -1,14 +1,23 @@
 <div align="center">
 
-# Agents, Everywhere Hackathon Starter Kit
+# ThreadRev
 
 ![Agents, Everywhere hackathon — OpenAI, CopilotKit, OpenRouter, Exa, Auth0, and Ambiguous AI](assets/banner.png)
 
-**Build an agent that belongs where people already work, talk, and live.**
+**A Slack-native engineering change investigator, built for Agents Everywhere.**
 
 [Overview](#overview) · [Get started](#get-started) · [Templates](#templates) · [Coding agent](#coding-agent) · [Resources](#resources)
 
 </div>
+
+ThreadRev is currently an infrastructure baseline: the Slack channel, model,
+and research integrations are being wired up before the engineering extraction,
+verification, and revision-invalidation workflow is implemented.
+
+It is built from CopilotKit's public
+[`agents-everywhere-starter-kit`](https://github.com/CopilotKit/agents-everywhere-starter-kit);
+the inherited templates remain below for reference and are identified separately
+from hackathon work in [SUBMISSION.md](SUBMISSION.md).
 
 ## Overview
 

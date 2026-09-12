@@ -11,6 +11,8 @@ Choose your city on the [global event page](https://aitinkerers.org/hackathons/g
 **What we inherited**
 <!-- Include this starter kit and any reused examples. -->
 
+CopilotKit agents-everywhere-starter-kit at `6443333e4b81fd6e21a4f531bdeee3a71eccd7b5`: Slack/web/mobile examples, shared agent, incident tools/cards, tests, documentation and bundled skill. Environment setup is tracked in [SETUP.md](SETUP.md); no original engineering workflow has been implemented yet.
+
 **What we built during the hackathon**
 <!-- Describe the new core interaction and point to its implementation. Running the supplied incident demo alone does not establish a new project. -->
 

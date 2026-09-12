@@ -4,14 +4,14 @@
 import { z } from "zod";
 
 export const searchWebParameters = z.object({
-  query: z.string().describe("What to search for, phrased as a natural-language question."),
+  query: z.string().trim().min(1).describe("What to search for, phrased as a natural-language question."),
   results: z
     .number()
     .int()
     .min(1)
     .max(10)
-    .default(5)
-    .describe("How many results to return. Keep it small; a thread is not a search page."),
+    .optional()
+    .describe("Set only when the user requests a result count (1–10); otherwise omit."),
 });
 
 export type SearchWebArgs = z.infer<typeof searchWebParameters>;
