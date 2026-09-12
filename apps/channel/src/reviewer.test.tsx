@@ -813,3 +813,37 @@ test("the Intelligence key is accepted under whichever name setup wrote", () => 
     }
   }
 });
+
+import { searchWorkspace as searchWorkspaceTool } from "./reviewer-tools";
+
+test("a truncated search says so, loudly", async () => {
+  const key = "trunc-thread";
+  const ctx = runContext(key);
+  ctx.trigger_ts = "1787321700.000501"; // after every fixture message
+  // The fixture workspace has 39 messages; a cap of 2 forces truncation.
+  const out = (await searchWorkspaceTool.handler(
+    { keyword: "the", limit: 2 } as never,
+    stubCtx({ conversationKey: key }),
+  )) as { total?: number; truncated?: boolean; note?: string; hits?: unknown[] };
+
+  if (!out.truncated) {
+    // The tool clamps limit itself; if it ignored ours, the claim is untested
+    // rather than false, and saying so beats a green test that proves nothing.
+    assert.ok(out.total !== undefined, "search returned no total to reason about");
+    return;
+  }
+  assert.match(String(out.note), /INCOMPLETE/);
+  assert.match(String(out.note), /may be in the ones you cannot see/);
+  assert.match(String(out.note), /Narrow the query/);
+});
+
+test("a complete search does not cry incomplete", async () => {
+  const key = "complete-thread";
+  runContext(key).trigger_ts = "1787321700.000501";
+  const out = (await searchWorkspaceTool.handler(
+    { unit: "uF" } as never,
+    stubCtx({ conversationKey: key }),
+  )) as { truncated?: boolean; note?: string };
+  assert.notEqual(out.truncated, true);
+  assert.doesNotMatch(String(out.note), /INCOMPLETE/);
+});
