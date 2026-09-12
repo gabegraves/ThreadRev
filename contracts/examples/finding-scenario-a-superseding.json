@@ -2,13 +2,13 @@
   "finding_id": "fnd-a-820-002",
   "status": "live",
   "supersedes": "fnd-a-r2-001",
-  "requirements_revision": "1787171400.000200",
+  "requirements_revision": "1787171400.000400",
   "discrepancy": "Relay close timer 2.5 s is earlier than t_99.9 = 2.662 s at 820 uF. Bus reaches 99.85 percent at 2.5 s, short of the 99.9 percent criterion.",
   "why_it_matters": "With the 140 uF snubber bank the precharge does not meet its own completion criterion before the relay closes. Firmware timer or resistor value must change before r3 is signed.",
   "sources": [
     {
       "kind": "message",
-      "id": "1787171400.000200",
+      "id": "1787171400.000400",
       "quote": "Bus is 820 uF, not 680. Doc will be r3."
     },
     {

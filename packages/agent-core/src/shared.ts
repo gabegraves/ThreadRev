@@ -18,3 +18,4 @@ export {
 } from "./schemas";
 export * from "./contracts/finding";
 export * from "./contracts/evidence";
+export { buildEvidenceGraph, downstreamOf, revisionNodeId } from "./evidence/graph";
