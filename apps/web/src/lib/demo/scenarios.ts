@@ -546,6 +546,390 @@ export const SCENARIOS: DemoScenario[] = [
     ]
   },
   {
+    "id": "scenario-a-cross",
+    "title": "Precharge RC, cross-channel",
+    "channel": "#ks4-electrical",
+    "channel_id": "C00SYN01",
+    "fixture": "scenario-a-cross.json",
+    "kind": "scenario",
+    "summary": "The r2 thread never says 820. search_workspace finds Dara's 820 uF purchasing message by unit two weeks earlier; the card cites it by channel and asks which bus is right.",
+    "events": [
+      {
+        "event_id": "ev-1787062320000100-0001",
+        "at": "2026-08-19T19:05:06Z",
+        "thread": "1787062320.000100",
+        "trigger_ts": "1787166300.000600",
+        "kind": "message_read",
+        "ts": "1787062320.000100",
+        "from": "Dara Voss",
+        "is_bot": false,
+        "text": "Precharge board r2 review doc is up. Dropped one film cap, bus is now 680 uF.",
+        "is_change": true,
+        "via": "thread"
+      },
+      {
+        "event_id": "ev-1787062320000100-0002",
+        "at": "2026-08-19T19:05:08Z",
+        "thread": "1787062320.000100",
+        "trigger_ts": "1787166300.000600",
+        "kind": "message_read",
+        "ts": "1787064000.000500",
+        "from": "Tam Holloway",
+        "is_bot": false,
+        "text": "Relay close timer in firmware is 2.5 s, matches the doc.",
+        "is_change": false,
+        "via": "thread"
+      },
+      {
+        "event_id": "ev-1787062320000100-0003",
+        "at": "2026-08-19T19:05:10Z",
+        "thread": "1787062320.000100",
+        "trigger_ts": "1787166300.000600",
+        "kind": "message_read",
+        "ts": "1787166300.000600",
+        "from": "Juno Marsh",
+        "is_bot": false,
+        "text": "@reviewer can you check section 3 of the r2 doc before I sign the review?",
+        "is_change": false,
+        "via": "thread"
+      },
+      {
+        "event_id": "ev-1787062320000100-0004",
+        "at": "2026-08-19T19:05:12Z",
+        "thread": "1787062320.000100",
+        "trigger_ts": "1787166300.000600",
+        "kind": "workspace_search",
+        "query": {
+          "unit": "uF",
+          "quantity": "bus capacitance snubber"
+        },
+        "cutoff": "1787166300.000600",
+        "total": 4,
+        "returned": 4,
+        "hit_ts": [
+          "1775488500.000501",
+          "1778598000.000501",
+          "1785946800.000501",
+          "1787062320.000100"
+        ]
+      },
+      {
+        "event_id": "ev-1787062320000100-0005",
+        "at": "2026-08-19T19:05:14Z",
+        "thread": "1787062320.000100",
+        "trigger_ts": "1787166300.000600",
+        "kind": "message_read",
+        "ts": "1775488500.000501",
+        "from": "Dara Voss",
+        "is_bot": false,
+        "text": "Bus capacitance for KS-4: three 250 uF film caps, 750 uF total. Precharge to 99.9 percent needs t = R * C * 6.907755 = 2.435 s at 470 ohm.",
+        "is_change": false,
+        "channel": "#ks4-electrical",
+        "via": "workspace_search"
+      },
+      {
+        "event_id": "ev-1787062320000100-0006",
+        "at": "2026-08-19T19:05:16Z",
+        "thread": "1787062320.000100",
+        "trigger_ts": "1787166300.000600",
+        "kind": "message_read",
+        "ts": "1778598000.000501",
+        "from": "Dara Voss",
+        "is_bot": false,
+        "text": "Precharge review doc r1 posted. Bus 750 uF, R 470 ohm, t_99.9 2.435 s.",
+        "is_change": false,
+        "channel": "#ks4-electrical",
+        "via": "workspace_search"
+      },
+      {
+        "event_id": "ev-1787062320000100-0007",
+        "at": "2026-08-19T19:05:18Z",
+        "thread": "1787062320.000100",
+        "trigger_ts": "1787166300.000600",
+        "kind": "message_read",
+        "ts": "1785946800.000501",
+        "from": "Dara Voss",
+        "is_bot": false,
+        "text": "Rowan, please add a 140 uF snubber bank on the motor controller side to the August order. With it the HV bus is 820 uF, not 680. I will fold it into the precharge doc.",
+        "is_change": true,
+        "channel": "#ks4-purchasing",
+        "via": "workspace_search"
+      },
+      {
+        "event_id": "ev-1787062320000100-0008",
+        "at": "2026-08-19T19:05:20Z",
+        "thread": "1787062320.000100",
+        "trigger_ts": "1787166300.000600",
+        "kind": "message_read",
+        "ts": "1787062320.000100",
+        "from": "Dara Voss",
+        "is_bot": false,
+        "text": "Precharge board r2 review doc is up. Dropped one film cap, bus is now 680 uF.",
+        "is_change": true,
+        "channel": "#ks4-electrical",
+        "via": "workspace_search"
+      },
+      {
+        "event_id": "ev-1787062320000100-0009",
+        "at": "2026-08-19T19:05:22Z",
+        "thread": "1787062320.000100",
+        "trigger_ts": "1787166300.000600",
+        "kind": "document_read",
+        "document": "precharge-review-r2.docx",
+        "revision": "r2",
+        "sha256": "bef5a5dc15a5e31fbaaceb77e8150767f421e55c86e5c14db33f3b54eefbd282",
+        "line_count": 15,
+        "named_in_ts": "1787062320.000100"
+      },
+      {
+        "event_id": "ev-1787062320000100-0010",
+        "at": "2026-08-19T19:05:24Z",
+        "thread": "1787062320.000100",
+        "trigger_ts": "1787166300.000600",
+        "kind": "check_run",
+        "run_id": "rc-20260912T163950Z-010b",
+        "checker": "rc",
+        "version": "1",
+        "inputs": {
+          "R_ohm": 470,
+          "threshold": 0.999,
+          "timer_s": 2.5,
+          "capacitances": [
+            {
+              "label": "680uF_text",
+              "C_F": 0.00068
+            },
+            {
+              "label": "750uF_diagram",
+              "C_F": 0.00075
+            },
+            {
+              "label": "820uF_purchasing",
+              "C_F": 0.00082
+            },
+            {
+              "label": "2mF_example",
+              "C_F": 0.002
+            }
+          ],
+          "printed": [
+            {
+              "label": "printed_2.435",
+              "value_s": 2.435,
+              "against": [
+                "680uF_text",
+                "750uF_diagram",
+                "820uF_purchasing"
+              ]
+            },
+            {
+              "label": "printed_6.91",
+              "value_s": 6.91,
+              "against": [
+                "2mF_example"
+              ]
+            }
+          ],
+          "tolerance_s": 0.0005
+        },
+        "outputs": {
+          "per_capacitance": {
+            "680uF_text": {
+              "RC_s": 0.3196,
+              "t_threshold_s": 2.2077,
+              "fraction_at_timer": 0.9996
+            },
+            "750uF_diagram": {
+              "RC_s": 0.3525,
+              "t_threshold_s": 2.435,
+              "fraction_at_timer": 0.99917
+            },
+            "820uF_purchasing": {
+              "RC_s": 0.3854,
+              "t_threshold_s": 2.6622,
+              "fraction_at_timer": 0.99848
+            },
+            "2mF_example": {
+              "RC_s": 0.94,
+              "t_threshold_s": 6.4933,
+              "fraction_at_timer": 0.93002
+            }
+          }
+        },
+        "checks": [
+          {
+            "name": "printed_2.435_matches_680uF_text",
+            "pass": false,
+            "expected": 2.435,
+            "actual": 2.2077
+          },
+          {
+            "name": "printed_2.435_matches_750uF_diagram",
+            "pass": true,
+            "expected": 2.435,
+            "actual": 2.435
+          },
+          {
+            "name": "printed_2.435_matches_820uF_purchasing",
+            "pass": false,
+            "expected": 2.435,
+            "actual": 2.6622
+          },
+          {
+            "name": "printed_6.91_matches_2mF_example",
+            "pass": false,
+            "expected": 6.91,
+            "actual": 6.4933
+          },
+          {
+            "name": "680uF_text_reaches_threshold_by_timer",
+            "pass": true,
+            "expected": 0.999,
+            "actual": 0.9996
+          },
+          {
+            "name": "750uF_diagram_reaches_threshold_by_timer",
+            "pass": true,
+            "expected": 0.999,
+            "actual": 0.99917
+          },
+          {
+            "name": "820uF_purchasing_reaches_threshold_by_timer",
+            "pass": false,
+            "expected": 0.999,
+            "actual": 0.99848
+          },
+          {
+            "name": "2mF_example_reaches_threshold_by_timer",
+            "pass": false,
+            "expected": 0.999,
+            "actual": 0.93002
+          }
+        ],
+        "error": null,
+        "evidence_refs": [
+          {
+            "kind": "document",
+            "id": "bef5a5dc15a5e31fbaaceb77e8150767f421e55c86e5c14db33f3b54eefbd282"
+          },
+          {
+            "kind": "document",
+            "id": "bef5a5dc15a5e31fbaaceb77e8150767f421e55c86e5c14db33f3b54eefbd282"
+          },
+          {
+            "kind": "message",
+            "id": "1787062320.000100"
+          },
+          {
+            "kind": "message",
+            "id": "1785946800.000501"
+          }
+        ]
+      },
+      {
+        "event_id": "ev-1787062320000100-0011",
+        "at": "2026-08-19T19:05:26Z",
+        "thread": "1787062320.000100",
+        "trigger_ts": "1787166300.000600",
+        "kind": "finding_published",
+        "finding": {
+          "finding_id": "fnd-mtym1y04-68fr",
+          "status": "live",
+          "requirements_revision": "1787166300.000600",
+          "discrepancy": "Section 3 states 680 uF, the section 2 diagram states 750 uF, and the printed 2.435 s reproduces only with 750 uF. Neither is the project's current bus: Dara's 2026-08-05 message in #ks4-purchasing added a 140 uF snubber bank, bus 820 uF, and r2 does not mention it. At 820 uF t_99.9 = 2.6622 s, later than the 2.5 s relay timer. Section 4 prints 6.91 s; recomputed 6.4933 s.",
+          "why_it_matters": "If the snubber bank is on the bus, the relay closes at 2.5 s with the bus at 99.85 percent, short of the 99.9 percent criterion. The review cannot be signed against r2's stated basis.",
+          "sources": [
+            {
+              "kind": "document",
+              "id": "precharge-review-r2.docx",
+              "revision": "r2",
+              "sha256": "bef5a5dc15a5e31fbaaceb77e8150767f421e55c86e5c14db33f3b54eefbd282",
+              "locator": "line 8",
+              "quote": "Bus capacitance C = 750 uF (3 x 250 uF film)."
+            },
+            {
+              "kind": "document",
+              "id": "precharge-review-r2.docx",
+              "revision": "r2",
+              "sha256": "bef5a5dc15a5e31fbaaceb77e8150767f421e55c86e5c14db33f3b54eefbd282",
+              "locator": "line 11",
+              "quote": "t_99.9 = -470 * 750e-6 * ln(0.001) = 2.435 s. Precharge relay closes at 2.5 s, margin OK."
+            },
+            {
+              "kind": "message",
+              "id": "1787062320.000100",
+              "locator": "#ks4-electrical",
+              "quote": "Dropped one film cap, bus is now 680 uF."
+            },
+            {
+              "kind": "message",
+              "id": "1785946800.000501",
+              "locator": "#ks4-purchasing",
+              "quote": "Rowan, please add a 140 uF snubber bank on the motor controller side to the August order. With it the HV bus is 820 uF, not 680. I will fold it into the precharge doc."
+            }
+          ],
+          "reproduced": [
+            {
+              "label": "t_99.9 at 680uF text",
+              "printed": 2.435,
+              "computed": 2.2077,
+              "unit": "s",
+              "matches": false,
+              "tolerance": 0.0005
+            },
+            {
+              "label": "t_99.9 at 750uF diagram",
+              "printed": 2.435,
+              "computed": 2.435,
+              "unit": "s",
+              "matches": true,
+              "tolerance": 0.0005
+            },
+            {
+              "label": "t_99.9 at 820uF purchasing",
+              "printed": 2.435,
+              "computed": 2.6622,
+              "unit": "s",
+              "matches": false,
+              "tolerance": 0.0005
+            },
+            {
+              "label": "t_99.9 at 2mF example",
+              "printed": 6.91,
+              "computed": 6.4933,
+              "unit": "s",
+              "matches": false,
+              "tolerance": 0.0005
+            },
+            {
+              "label": "fraction charged when relay closes, 820uF purchasing",
+              "computed": 0.99848,
+              "unit": "ratio"
+            },
+            {
+              "label": "fraction charged when relay closes, 2mF example",
+              "computed": 0.93002,
+              "unit": "ratio"
+            }
+          ],
+          "inferred": [
+            "That the snubber bank is on the precharged bus is read from Dara's purchasing message, not from a schematic."
+          ],
+          "resolution": "Dara confirms whether the 820 uF bus with the snubber bank is what r2 should describe, and updates the diagram, section 3, and section 4. If 820 uF stands, the timer question goes to Tam.",
+          "question": {
+            "to": "Dara Voss",
+            "ask": "Is the bus 820 uF with the snubber bank from PO-2261, as your August 5 message in #ks4-purchasing says, or 680 uF as r2 states?"
+          },
+          "checker_run": {
+            "checker": "rc",
+            "version": "1",
+            "run_id": "rc-20260912T163950Z-010b"
+          }
+        }
+      }
+    ]
+  },
+  {
     "id": "scenario-b",
     "title": "Stale simulation inputs",
     "channel": "#ks4-strategy-sim",
