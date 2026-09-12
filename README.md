@@ -94,31 +94,7 @@ Scenario B (stale simulation inputs, `#ks4-strategy-sim`) and three replay cases
 
 ## How it works
 
-```mermaid
-flowchart TB
-    A["Slack message"] --> B["CopilotKit Channels<br/>Managed Slack adapter"]
-    B --> C{"Review gate<br/>review-moment.ts"}
-    C -->|"not a review moment"| D["— silent —"]
-    C -->|"review trigger or<br/>requirement change"| E["Reviewer agent<br/>agent.ts"]
-
-    E --> T1["read_thread"]
-    E --> T2["search_workspace<br/>exact match · no embeddings<br/>cutoff at trigger ts<br/>truncated flag if cap hit"]
-    E --> T3["read_evidence<br/>document text + SHA-256"]
-    E --> T4["run_check<br/>checker subprocess"]
-    E --> T5["publish_result<br/>only path to a card<br/>freshness guard"]
-    E --> T6["propose_edit<br/>Approve / Reject gate"]
-
-    T4 --> PY["check_rc.py / check_route.py<br/>stdlib only · JSON I/O<br/>no network · no file writes"]
-    T5 --> CARD["Finding card · Block Kit<br/>posted in thread<br/>edited to STALE on revision"]
-    T6 --> APPL["apply_docx_edit.py<br/>writes new copy only<br/>original SHA unchanged"]
-
-    PY --> LOG["Evidence log · JSONL<br/>every event appended"]
-    CARD --> LOG
-    APPL --> LOG
-    LOG --> GRAPH["Evidence graph<br/>downstream walk"]
-    GRAPH --> WEB["Web console<br/>threadrev-web.vercel.app"]
-    GRAPH --> PET["Desktop overlay<br/>apps/pet · Rev above Slack"]
-```
+```mermaid<br/>flowchart TB<br/>    A["Slack message"] --> B["CopilotKit Channels<br/>Managed Slack adapter"]<br/>    B --> C{"Review gate<br/>review-moment.ts"}<br/>    C -->|"not a review moment"| D["— silent —"]<br/>    C -->|"review trigger or<br/>requirement change"| E["Reviewer agent<br/>agent.ts"]<br/><br/>    E --> T1["read_thread"]<br/>    E --> T2["search_workspace<br/>exact match · no embeddings<br/>cutoff at trigger ts<br/>truncated flag if cap hit"]<br/>    E --> T3["read_evidence<br/>document text + SHA-256"]<br/>    E --> T4["run_check<br/>checker subprocess"]<br/>    E --> T5["publish_result<br/>only path to a card<br/>freshness guard"]<br/>    E --> T6["propose_edit<br/>Approve / Reject gate"]<br/><br/>    T4 --> PY["check_rc.py / check_route.py<br/>stdlib only · JSON I/O<br/>no network · no file writes"]<br/>    T5 --> CARD["Finding card · Block Kit<br/>posted in thread<br/>edited to STALE on revision"]<br/>    T6 --> APPL["apply_docx_edit.py<br/>writes new copy only<br/>original SHA unchanged"]<br/><br/>    PY --> LOG["Evidence log · JSONL<br/>every event appended"]<br/>    CARD --> LOG<br/>    APPL --> LOG<br/>    LOG --> GRAPH["Evidence graph<br/>downstream walk"]<br/>    GRAPH --> WEB["Web console<br/>threadrev-web.vercel.app"]<br/>    GRAPH --> PET["Desktop overlay<br/>apps/pet · Rev above Slack"]<br/>```
 
 - **Reviewer tools** in [`apps/channel/src/reviewer-tools.tsx`](apps/channel/src/reviewer-tools.tsx). `read_thread` reads the Slack history; `search_workspace` queries the workspace index outside the thread and reports a `truncated` flag if it hits the result cap; `read_evidence` extracts document text and hashes; `run_check` invokes a checker and records the run; `publish_result` is the only path to a card and refuses a result whose requirement revision is no longer current; `propose_edit` posts an Approve/Reject card and, on approval, runs [`checkers/apply_docx_edit.py`](checkers/apply_docx_edit.py) to write a new copy of the document. Every number in a proposed replacement must be a checker output, and the text to replace must occur exactly once.
 - **Workspace index** in [`workspace.ts`](apps/channel/src/workspace.ts). Built from a Slack export (five channels, March to August; `WORKSPACE_EXPORT` points at a real export). Every message is indexed by document, unit, quantity words, author. A query returns every match at or before the trigger, oldest first. No embeddings, no ranking. There is a result cap; hitting it is reported in the result rather than passed over silently.
@@ -354,13 +330,6 @@ Baseline commit is `9ed46e0`. `git diff --name-only 9ed46e0..HEAD` is the author
 | Evidence API and web review console | `apps/web/src/app/api/evidence/`, `apps/web/src/components/review-console/` |
 | Desktop companion (Rev overlay) | `apps/pet/` |
 | Research, design, fixture spec, handoffs | `RESEARCH.md`, `research/` |
-
-**Also built during the event, pending merge from `sricharan/work`**
-
-- `apps/channel/src/control.ts` — in-thread "stand down / resume / show your work" commands. "Stand down" mutes the thread on the turn it is said, before any model call; "show your work" posts what was read, searched, run, and refused to publish, rendered from the evidence log.
-- `apps/channel/src/injection.ts` — instruction-scanning in `read_thread`, `read_evidence`, and `search_workspace`. Scans for lines addressed to the reviewer inside documents and cross-channel messages; puts them on the card regardless of what the model does, so a model that complied would not suppress the notice.
-- `extractors/xlsx_text.py` — `.xlsx` parameter sheet extraction, so `check_route.py` can run on the full simulation input file.
-- `apps/channel/src/followup.ts` — Ambiguous AI task filing on the channel side. When `AMBIGUOUS_API_KEY` is set, `publish_result` files a follow-up task per finding via the MCP connection. Inert without the key.
 
 **Inherited from the starter**
 
