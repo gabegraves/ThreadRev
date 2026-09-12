@@ -190,3 +190,26 @@ test("a second attempt in the same document is counted, not hidden", () => {
   assert.equal(found.length, 2);
   assert.match(noticeSummary(found)!, /1 more like it/);
 });
+
+import { controlAck, parseControl } from "./control";
+
+test("a person can tell the reviewer to stand down, in their own words", () => {
+  assert.equal(parseControl("reviewer, stand down — we already caught that"), "mute");
+  assert.equal(parseControl("@reviewer not relevant, drop it"), "mute");
+  assert.equal(parseControl("threadrev stop"), "mute");
+  assert.match(controlAck("mute"), /resume/);
+});
+
+test("resume outranks the stop vocabulary it contains", () => {
+  assert.equal(parseControl("reviewer, you can come back on"), "resume");
+  assert.equal(parseControl("@reviewer resume"), "resume");
+});
+
+test("the reviewer does not silence itself on overheard conversation", () => {
+  // Engineers say all of this to each other; none of it is addressed to us.
+  assert.equal(parseControl("stop, we already fixed that"), undefined);
+  assert.equal(parseControl("not relevant to this board"), undefined);
+  assert.equal(parseControl("we know about the 680 uF thing"), undefined);
+  // And a bot repeating the words cannot mute the reviewer either.
+  assert.equal(parseControl("reviewer stand down", false), undefined);
+});
