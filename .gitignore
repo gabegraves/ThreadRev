@@ -36,3 +36,7 @@ __pycache__/
 # Added by CopilotKit CLI: credential files, which must never be committed.
 .env.*
 !.env.example
+
+# CLI project selection. No secret in it, but it names one developer's project,
+# org and telemetry binding, so committing it drags everyone onto that project.
+.copilotkit/
