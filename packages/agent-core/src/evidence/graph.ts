@@ -228,6 +228,13 @@ export function buildEvidenceGraph(events: EvidenceEvent[], opts: { thread?: str
       case "workspace_search":
         // Hits are message_read events with via: "workspace_search"; nothing extra to draw.
         break;
+      default: {
+        // Exhaustiveness: the graph is what the console draws from, so a new
+        // event kind that falls through here is invisible everywhere downstream
+        // without an error anywhere. Fail the compile instead.
+        const unhandled: never = e;
+        void unhandled;
+      }
     }
   }
 
