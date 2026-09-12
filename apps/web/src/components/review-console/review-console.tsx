@@ -4,12 +4,12 @@ import { useMemo } from "react";
 import { useAgentContext, useConfigureSuggestions } from "@copilotkit/react-core/v2";
 import type { Finding } from "agent-core/shared";
 import { useEvidence } from "./use-evidence";
-import { threadMessages } from "./graph-utils";
+import { findingById, threadMessages } from "./graph-utils";
 import { ThreadView } from "./thread-view";
 import { ConsoleDrawer } from "./console-drawer";
 
 export function ReviewConsole() {
-  const { graph, events, sample, skipped, source, error } = useEvidence();
+  const { graph, events, sample, skipped, loaded, error } = useEvidence();
   const messages = useMemo(() => threadMessages(events), [events]);
 
   // A card sits after the message that triggered its run; fallback is the last message.
@@ -20,10 +20,11 @@ export function ReviewConsole() {
       if (ev.kind !== "finding_published") continue;
       const key = ev.trigger_ts && messages.some((m) => m.ts === ev.trigger_ts) ? ev.trigger_ts : last;
       if (!key) continue;
-      map.set(key, [...(map.get(key) ?? []), ev.finding]);
+      // The graph carries the current status (stale after supersession); the event has the status at publish time.
+      map.set(key, [...(map.get(key) ?? []), findingById(graph, ev.finding.finding_id) ?? ev.finding]);
     }
     return map;
-  }, [events, messages]);
+  }, [events, messages, graph]);
 
   useAgentContext({
     description:
@@ -61,13 +62,13 @@ export function ReviewConsole() {
         </div>
         <div className="ck-tr-badges">
           {sample && <span className="ck-tag">Sample data</span>}
-          <span className="ck-status" data-status={source === "api" && !error ? "live" : "error"}>
-            {source === "api" ? (error ? "api stale" : "live") : "inline sample"}
+          <span className="ck-status" data-status={loaded && !error ? "live" : "error"}>
+            {!loaded ? "loading" : error ? `api unavailable (${error})` : "live"}
           </span>
         </div>
       </header>
       <section className="ck-panel ck-tr-thread-panel" aria-label="Thread">
-        <ThreadView messages={messages} graph={graph} cardsByTs={cardsByTs} />
+        {loaded ? <ThreadView messages={messages} graph={graph} cardsByTs={cardsByTs} /> : <p className="ck-empty">Loading evidence…</p>}
       </section>
       <ConsoleDrawer graph={graph} events={events} />
     </main>

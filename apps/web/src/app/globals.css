@@ -1016,3 +1016,17 @@ p {
     bottom: 12px;
   }
 }
+.ck-tr-graph-pane .ck-tr-graph {
+  overflow-x: auto;
+}
+.ck-tr-graph-pane .ck-tr-graph svg {
+  max-width: none;
+}
+.ck-tr-evidence > *,
+.ck-tr-drawer-body > * {
+  min-width: 0;
+}
+.ck-tr-timeline li div {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}

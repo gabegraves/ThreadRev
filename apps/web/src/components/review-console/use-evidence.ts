@@ -1,15 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { EvidenceEvent, EvidenceGraph } from "agent-core/shared";
-import { SAMPLE_EVENTS, buildSampleGraph } from "./sample-graph";
+import { buildEvidenceGraph, type EvidenceEvent, type EvidenceGraph } from "agent-core/shared";
+import { SAMPLE_EVENTS } from "./sample-graph";
 
 export type EvidenceState = {
   graph: EvidenceGraph;
   events: EvidenceEvent[];
   sample: boolean;
   skipped: number;
-  source: "api" | "fallback";
+  loaded: boolean;
   error: string | null;
 };
 
@@ -17,13 +17,11 @@ type ApiPayload = { graph: EvidenceGraph; sample?: boolean; skipped?: number | u
 
 const POLL_MS = 5000;
 
-function fallback(error: string | null): EvidenceState {
-  return { graph: buildSampleGraph(), events: SAMPLE_EVENTS, sample: true, skipped: 0, source: "fallback", error };
-}
+const EMPTY: EvidenceGraph = { thread: "", nodes: [], edges: [], findings: [], generated_at: "" };
 
-/** Polls /api/evidence every 5 s; uses the inline sample until the route exists. */
+/** Polls GET /api/evidence every 5 s; falls back to the inline sample until the route answers. */
 export function useEvidence(): EvidenceState {
-  const [state, setState] = useState<EvidenceState>(() => fallback(null));
+  const [state, setState] = useState<EvidenceState>({ graph: EMPTY, events: [], sample: false, skipped: 0, loaded: false, error: null });
 
   useEffect(() => {
     let cancelled = false;
@@ -39,12 +37,18 @@ export function useEvidence(): EvidenceState {
           events: body.events ?? [],
           sample: body.sample ?? false,
           skipped: Array.isArray(body.skipped) ? body.skipped.length : (body.skipped ?? 0),
-          source: "api",
+          loaded: true,
           error: null,
         });
       } catch (err) {
         if (cancelled) return;
-        setState((prev) => (prev.source === "api" ? { ...prev, error: String(err) } : fallback(String(err))));
+        const message = err instanceof Error ? err.message : String(err);
+        // Nothing loaded yet: show the inline sample rather than an empty console.
+        setState((prev) =>
+          prev.loaded
+            ? { ...prev, error: message }
+            : { graph: buildEvidenceGraph(SAMPLE_EVENTS), events: SAMPLE_EVENTS, sample: true, skipped: 0, loaded: true, error: message },
+        );
       }
     };
     void load();

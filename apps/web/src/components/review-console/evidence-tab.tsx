@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { EvidenceEvent, EvidenceGraph } from "agent-core/shared";
-import { fmtTime, runTraces } from "./graph-utils";
+import { defaultTrace, fmtTime, runTraces } from "./graph-utils";
 import { EvidenceGraphSvg } from "./graph";
 
 function TraceItem({ ev }: { ev: EvidenceEvent }) {
@@ -73,7 +73,7 @@ function TraceItem({ ev }: { ev: EvidenceEvent }) {
 export function EvidenceTab({ graph, events }: { graph: EvidenceGraph; events: EvidenceEvent[] }) {
   const traces = runTraces(events);
   const [selected, setSelected] = useState<string | null>(null);
-  const current = traces.find((t) => t.trigger_ts === selected) ?? traces[traces.length - 1];
+  const current = traces.find((t) => t.trigger_ts === selected) ?? defaultTrace(traces);
   return (
     <div className="ck-tr-evidence">
       <div className="ck-tr-trace">
