@@ -8,11 +8,46 @@ import { EvidenceGraphSvg } from "./graph";
 function TraceItem({ ev }: { ev: EvidenceEvent }) {
   const time = <time dateTime={ev.at}>{new Date(ev.at).toLocaleTimeString("en-US", { timeZone: "America/New_York" })}</time>;
   switch (ev.kind) {
-    case "message_read":
+    case "message_read": {
+      // A message pulled out of another channel by search is the interesting
+      // case, and without the channel it read exactly like one in this thread.
+      const elsewhere = ev.via === "workspace_search";
       return (
-        <li data-kind={ev.trigger_ts === ev.ts ? "trigger" : "message"}>
+        <li data-kind={ev.trigger_ts === ev.ts ? "trigger" : elsewhere ? "found" : "message"}>
           {time}
-          <div><strong>{ev.trigger_ts === ev.ts ? "trigger" : "message read"}</strong> · {ev.from}{ev.is_change && <span className="ck-tr-change">change</span>}<p>{ev.text}</p></div>
+          <div>
+            <strong>{ev.trigger_ts === ev.ts ? "trigger" : elsewhere ? "found by search" : "message read"}</strong> · {ev.from}
+            {elsewhere && ev.channel && <> in <code>{ev.channel}</code></>}
+            {ev.is_change && <span className="ck-tr-change">change</span>}
+            <p>{ev.text}</p>
+          </div>
+        </li>
+      );
+    }
+    case "workspace_search": {
+      const terms = Object.entries(ev.query ?? {})
+        .filter(([, v]) => v !== undefined && v !== "")
+        .map(([k, v]) => `${k}=${String(v)}`)
+        .join(", ");
+      return (
+        <li data-kind="search">
+          {time}
+          <div>
+            <strong>searched the workspace</strong> · <code>{terms || "everything"}</code>
+            <p>{ev.returned} of {ev.total} match{ev.total === 1 ? "" : "es"}, up to {ev.cutoff ?? "the trigger"}</p>
+          </div>
+        </li>
+      );
+    }
+    case "followup_filed":
+      return (
+        <li data-kind="followup">
+          {time}
+          <div>
+            <strong>{ev.filed ? "follow-up filed" : "follow-up not filed"}</strong> · <code>{ev.finding_id}</code>
+            {ev.tool && <> via <code>{ev.tool}</code></>}
+            <p>{ev.detail}</p>
+          </div>
         </li>
       );
     case "document_read":
@@ -88,8 +123,14 @@ function TraceItem({ ev }: { ev: EvidenceEvent }) {
           <div><strong>edit applied</strong> · <code>{ev.proposal_id}</code><p>{ev.error ? ev.error : `${ev.output} · sha ${ev.sha256.slice(0, 8)} (source ${ev.source_sha256.slice(0, 8)} untouched)`}</p></div>
         </li>
       );
-    default:
-      return null;
+    default: {
+      // Exhaustiveness: a new event kind must fail to compile here rather than
+      // render as nothing. workspace_search was invisible in this timeline from
+      // the day it was added, and followup_filed arrived the same way, because
+      // a switch without this check treats an unknown kind as silence.
+      const unhandled: never = ev;
+      return unhandled;
+    }
   }
 }
 

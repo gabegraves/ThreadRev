@@ -233,6 +233,13 @@ export function buildEvidenceGraph(events: EvidenceEvent[], opts: { thread?: str
       case "edit_applied":
         // Shown on the evidence timeline; not part of the finding graph.
         break;
+      default: {
+        // Exhaustiveness: the graph is what the console draws from, so a new
+        // event kind that falls through here is invisible everywhere downstream
+        // without an error anywhere. Fail the compile instead.
+        const unhandled: never = e;
+        void unhandled;
+      }
     }
   }
 

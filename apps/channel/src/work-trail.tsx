@@ -65,6 +65,13 @@ function line(e: EvidenceEvent): string | undefined {
       return `• ${when(e.at)} marked ${e.finding_id} stale, replaced by ${e.superseded_by}`;
     case "silence":
       return undefined;
+    default: {
+      // Exhaustiveness: a new event kind must fail to compile here, not vanish
+      // from the trail. workspace_search was missing from this switch until it
+      // was noticed by hand, which is the failure this line exists to prevent.
+      const unhandled: never = e;
+      return unhandled;
+    }
   }
 }
 
