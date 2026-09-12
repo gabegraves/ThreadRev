@@ -195,6 +195,24 @@ function stem(t: string) {
   return t.replace(/(es|s)$/, "");
 }
 
+/**
+ * Whether a message is by the person the query named.
+ *
+ * Exact full-name matching looks strict and correct and is neither: a reviewer
+ * naturally searches `from: "Dara"` for Dara Voss, gets nothing back, and has
+ * no way to tell "she said nothing" from "you spelled her differently". Empty
+ * results that mean the wrong thing are the specific failure this index exists
+ * to avoid, so a whole name part counts.
+ *
+ * Whole parts only. "Dar" is a typo, not a name, and matching it would start
+ * returning other people's messages.
+ */
+function authorMatches(m: IndexedMessage, from: string): boolean {
+  const name = m.user_name.toLowerCase();
+  if (name === from || m.user.toLowerCase() === from) return true;
+  return name.split(/\s+/).includes(from);
+}
+
 export function queryIndex(index: WorkspaceIndex, q: WorkspaceQuery): WorkspaceResult {
   const limit = Math.max(1, Math.min(q.limit ?? 40, 100));
   const unit = q.unit ? normalizeUnit(q.unit) : undefined;
@@ -215,7 +233,7 @@ export function queryIndex(index: WorkspaceIndex, q: WorkspaceQuery): WorkspaceR
       if (!qtoks.some((t) => have.has(t))) continue;
     }
     if (keyword && !m.text.toLowerCase().includes(keyword)) continue;
-    if (from && m.user_name.toLowerCase() !== from && m.user.toLowerCase() !== from) continue;
+    if (from && !authorMatches(m, from)) continue;
     if (channel && m.channel_name.toLowerCase() !== channel) continue;
     if (q.changes_only && !m.is_change) continue;
     matches.push(m);
