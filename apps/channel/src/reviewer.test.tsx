@@ -949,3 +949,10 @@ test("a busy thread's work trail still fits in a Slack message", () => {
   assert.ok(longest <= 3000, `longest rendered text was ${longest} chars`);
   assert.ok(saysWhatItDropped, "a truncated trail must say how much it left out");
 });
+
+test("every control gets an acknowledgement that says what actually happened", () => {
+  assert.match(controlAck("mute"), /Standing down/);
+  assert.match(controlAck("resume"), /Back on/);
+  // Used to fall through to "Back on in this thread" — true of nothing.
+  assert.doesNotMatch(controlAck("explain"), /Back on/);
+});
