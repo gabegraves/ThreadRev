@@ -506,32 +506,69 @@ export const publishResult = defineChannelTool({
     }
     const f = built.data;
 
-    if (args.supersedes) {
-      const prior = priorCard;
-      if (prior && prior.finding.status === "live") {
-        prior.finding = markStale(prior.finding);
-        await thread.update(prior.ref, renderFindingCard(prior.finding));
-        record({
-          kind: "finding_superseded",
-          thread: threadKey(thread),
-          trigger_ts: runContext(threadKey(thread)).trigger_ts,
-          finding_id: prior.finding.finding_id,
-          superseded_by: f.finding_id,
-          cause_ts: f.requirements_revision,
-        });
-      }
-    }
-
+    // Post the replacement BEFORE striking the card it replaces.
+    //
+    // The old order marked the prior card stale first. A post that then failed
+    // — a rate limit, a dropped socket — left the thread showing "Superseded
+    // finding, do not act on it" with nothing superseding it: the conclusion
+    // withdrawn and the correction missing. That is the single worst state this
+    // reviewer can leave an engineer in, and it was one network error away.
+    // Posting first means a failure here changes nothing.
     const ref = await thread.post(renderFindingCard(f));
-    state.cards.push({ finding: f, ref });
-    await thread.setState(state);
+
+    // A card with no usable ref can never be marked stale, which silently
+    // removes the property the product rests on. Better to say so now than to
+    // discover it at the moment the card needed striking.
+    const refId = (ref as { id?: unknown } | undefined)?.id;
+    const canRestrike = typeof refId === "string";
+
+    // Re-read before writing: Channels can re-enter a thread's turn, and this
+    // handler read `state` before an await-heavy stretch. Appending to the
+    // copy we loaded would drop anything written in between — including
+    // another card's MessageRef.
+    const latest = (await thread.state<ReviewState>()) ?? state;
+    latest.cards = [...(latest.cards ?? []), { finding: f, ref }];
+    latest.staleRuns = latest.staleRuns ?? state.staleRuns;
+    latest.runs = latest.runs ?? state.runs;
+    await thread.setState(latest);
+
     record({
       kind: "finding_published",
       thread: threadKey(thread),
       trigger_ts: runContext(threadKey(thread)).trigger_ts,
       finding: f,
-      message_ref: typeof ref?.id === "string" ? ref.id : undefined,
+      message_ref: canRestrike ? (refId as string) : undefined,
     });
-    return { published: true, finding_id: f.finding_id, requirements_revision: f.requirements_revision };
+
+    // Now that the replacement is on the thread, withdraw what it replaced. A
+    // failure here is survivable and must not fail the publish: the new card
+    // already stands, so the worst case is two live-looking cards, which a
+    // person can read, rather than a withdrawal with no replacement.
+    let supersedeNote: string | undefined;
+    if (args.supersedes && priorCard && priorCard.finding.status === "live") {
+      try {
+        priorCard.finding = markStale(priorCard.finding);
+        await thread.update(priorCard.ref, renderFindingCard(priorCard.finding));
+        await thread.setState(latest);
+        record({
+          kind: "finding_superseded",
+          thread: threadKey(thread),
+          trigger_ts: runContext(threadKey(thread)).trigger_ts,
+          finding_id: priorCard.finding.finding_id,
+          superseded_by: f.finding_id,
+          cause_ts: f.requirements_revision,
+        });
+      } catch (e) {
+        supersedeNote = `Posted, but ${args.supersedes} could not be marked stale: ${(e as Error).message}. Say in the thread that the earlier card is superseded.`;
+      }
+    }
+
+    return {
+      published: true,
+      finding_id: f.finding_id,
+      requirements_revision: f.requirements_revision,
+      ...(canRestrike ? {} : { warning: "This surface returned no message reference, so I will not be able to mark this card stale later. Say so if the inputs change again." }),
+      ...(supersedeNote ? { warning: supersedeNote } : {}),
+    };
   },
 });
