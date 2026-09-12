@@ -18,7 +18,7 @@ Slack keeps the conversation. ThreadRev keeps the decision, what it was decided 
 
 **Why the context matters.** Slack AI tells you what was said. ThreadRev tells you what was decided and whether it still holds. A summary of this thread is accurate and wrong. ThreadRev recomputes instead of repeating, binds every card to the document revision and message it was checked against, and when the input changes marks the old card stale and posts a new one. A standalone chatbot would have checked the document against itself and passed it.
 
-**What verified means.** The named checks passed against the stated inputs. Not approval, not sign-off, not a claim about hardware. The model never writes a number on a card.
+**What verified means.** The named checks passed against the stated inputs. Not approval, not sign-off, not a claim about hardware. The model never writes a number on a card. When it proposes a document edit, a person approves first, the edit goes into a new copy, and the original keeps its hash.
 
 **Sponsors.** OpenAI model through CopilotKit Channels for Slack delivery.
 

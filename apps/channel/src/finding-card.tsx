@@ -108,6 +108,54 @@ export function renderFindingCard(f: Finding) {
   );
 }
 
+/** What propose_edit shows a human before anything is written. */
+export interface EditProposalView {
+  proposal_id: string;
+  document: string;
+  revision?: string;
+  source_sha256: string;
+  run_id: string;
+  output: string;
+  edits: Array<{ locator: string; find: string; replace: string; reason?: string }>;
+  status: "pending" | "approved" | "rejected" | "applied" | "failed";
+  result_sha256?: string;
+  error?: string;
+  by?: string;
+}
+
+function editLines(p: EditProposalView) {
+  return p.edits.map((e) => `• ${e.locator}: \`${e.find}\` → \`${e.replace}\`${e.reason ? ` (${e.reason})` : ""}`);
+}
+
+function proposalStatus(p: EditProposalView) {
+  switch (p.status) {
+    case "pending":
+      return "Nothing has been written. Approve to write the new file; the source stays untouched.";
+    case "approved":
+      return `Approved${p.by ? ` by ${p.by}` : ""}. Writing...`;
+    case "applied":
+      return `Applied${p.by ? `, approved by ${p.by}` : ""}. New file \`${p.output}\` sha \`${(p.result_sha256 ?? "").slice(0, 12)}\`. Source \`${p.source_sha256.slice(0, 12)}\` untouched.`;
+    case "rejected":
+      return `Rejected${p.by ? ` by ${p.by}` : ""}. Nothing was written.`;
+    case "failed":
+      return `Approved but not applied: ${p.error ?? "unknown error"}. Nothing was written.`;
+  }
+}
+
+/** Body of the proposal card; the caller wraps it with or without the buttons. */
+export function editProposalBody(p: EditProposalView) {
+  return [
+    <Header>{p.status === "pending" ? "Proposed edit: needs approval" : `Proposed edit: ${p.status}`}</Header>,
+    <Section>
+      <Markdown>{`*${p.document}*${p.revision ? ` (${p.revision})` : ""} · sha \`${p.source_sha256.slice(0, 12)}\`\n${editLines(p).join("\n")}`}</Markdown>
+    </Section>,
+    <Context>{`Replacement values are copied from checker run ${p.run_id}. Rev only proposes replacing a printed result; it never changes an input or a design value.`}</Context>,
+    <Section>
+      <Markdown>{proposalStatus(p)}</Markdown>
+    </Section>,
+  ];
+}
+
 /** Posted when the bot is invited to a channel. Says what it will and will not do. */
 export function reviewerWelcome(platform: string) {
   return (
@@ -120,8 +168,8 @@ export function reviewerWelcome(platform: string) {
         </Markdown>
       </Section>
       <Fields>
-        <Field label="I will">Recompute printed results, cite the exact line, mark my own card stale when inputs change</Field>
-        <Field label="I won't">Recommend component values, sign off a design, or post when there is nothing to say</Field>
+        <Field label="I will">Recompute printed results, cite the exact line, mark my own card stale when inputs change, and propose a document edit you can approve or reject</Field>
+        <Field label="I won't">Recommend component values, sign off a design, write a file without your approval, or post when there is nothing to say</Field>
       </Fields>
     </Message>
   );

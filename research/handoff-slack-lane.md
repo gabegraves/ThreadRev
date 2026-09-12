@@ -116,6 +116,7 @@ In Slack, as the human or a test user, in `#ks4-electrical`:
 6. Reply in the thread:
    `Correction: we are adding a 140 uF snubber bank on the motor controller side. Bus is 820 uF, not 680. Doc will be r3.`
 7. Expected: Card 1 edited in place to a stale marker, Card 2 posted: at 820 uF t_99.9 = 2.662 s, later than the 2.5 s timer, bus reaches 99.85 percent at 2.5 s. Reference: `contracts/examples/finding-scenario-a-superseding.json`. Screenshot both.
+8. After Card 1 (step 5) Rev may also post "Proposed edit: needs approval" for section 4: `t = 6.91 s` → `t = 6.493 s`, with Approve and Reject buttons. Screenshot it. Click **Approve and write the file** as the human. Expected: the card redraws to "Proposed edit: applied" with the new file name `precharge-review-r2-proposed.docx` and two hashes, and that file appears in `fixtures/documents/` (git-ignored). Screenshot the redrawn card. If the model does not propose, that is a prompt gap; note it, do not force it.
 
 Gate for done: screenshots of welcome, Card 1, stale Card 1 plus Card 2, and the server log from the mention through `publish_result`. The live evidence log is written to `evidence/evidence-log.jsonl` (git-ignored); copy it to the scratchpad and name the path in the report.
 

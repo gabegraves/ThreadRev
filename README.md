@@ -35,6 +35,8 @@ ThreadRev lives in the channel. When someone asks it to check a document, or whe
 
 When a later message changes a requirement, the earlier card is marked **stale in place**, never deleted, and a new card bound to the new revision is posted. If a revision lands while a check is running, the result is refused before it posts, kept as a stale record, and rerun.
 
+When a printed result does not reproduce and its inputs are not in dispute, Rev **proposes the edit and asks**. The proposal card shows the file, the line, the exact text to replace, the checker's value, and two buttons. Nothing is written until a person clicks Approve. Then the edit goes into a new copy of the file with a new SHA-256, the original is untouched, and the card is redrawn with both hashes. Reject records the refusal. Rev only ever proposes replacing a printed result; an input value or a design choice is the question it asks, never an edit it makes.
+
 Two rules shape everything:
 
 - **The model never computes a number that appears on a card.** A local, stdlib-only Python checker does. The card renderer is called only by the `publish_result` tool, which copies numbers from the checker's response.
@@ -61,8 +63,8 @@ Scenario B (stale simulation inputs, `#ks4-strategy-sim`) and three replay cases
 Slack thread ──▶ CopilotKit Channels ──▶ review gate (is this a review moment?)
                                               │
                                               ▼
-                                   reviewer agent, five tools
-        read_thread · search_workspace · read_evidence · run_check · publish_result
+                                   reviewer agent, six tools
+   read_thread · search_workspace · read_evidence · run_check · publish_result · propose_edit
                            │                  │                 │
                            ▼                  │                 │
               workspace index (every channel, │                 │
@@ -77,7 +79,7 @@ Slack thread ──▶ CopilotKit Channels ──▶ review gate (is this a revi
                                   evidence log (JSONL) ──▶ evidence graph ──▶ web console
 ```
 
-- **Reviewer tools** in [`apps/channel/src/reviewer-tools.tsx`](apps/channel/src/reviewer-tools.tsx). `read_thread` reads the Slack history; `search_workspace` queries the workspace index outside the thread; `read_evidence` extracts document text and hashes; `run_check` invokes a checker and records the run; `publish_result` is the only path to a card and refuses a result whose requirement revision is no longer current.
+- **Reviewer tools** in [`apps/channel/src/reviewer-tools.tsx`](apps/channel/src/reviewer-tools.tsx). `read_thread` reads the Slack history; `search_workspace` queries the workspace index outside the thread; `read_evidence` extracts document text and hashes; `run_check` invokes a checker and records the run; `publish_result` is the only path to a card and refuses a result whose requirement revision is no longer current; `propose_edit` posts an Approve/Reject card and, on approval, runs [`checkers/apply_docx_edit.py`](checkers/apply_docx_edit.py) to write a new copy of the document. Every number in a proposed replacement must be a checker output, and the text to replace must occur exactly once.
 - **Workspace index** in [`workspace.ts`](apps/channel/src/workspace.ts). Built once from a Slack export ([`fixtures/workspace/kestrel-workspace.json`](fixtures/workspace/kestrel-workspace.json), five channels, March to August; `WORKSPACE_EXPORT` points at a real export). Every message is indexed by the documents it names, the values it states with their units, the quantity words around them, whether it reads as a change, and its author. A query returns every match at or before the trigger message, oldest first. No embeddings, no ranking, no cap that can drop a correction.
 - **Review gate and silence filter** in [`review-moment.ts`](apps/channel/src/review-moment.ts) and [`agent.ts`](apps/channel/src/agent.ts). Most messages get nothing.
 - **Revision tracking** in [`revision.ts`](apps/channel/src/revision.ts): a requirement-change message becomes the revision every later card binds to.
@@ -108,6 +110,7 @@ In one line: **Slack keeps the conversation. ThreadRev keeps the decision, what 
 | Numbers | Repeats what the text says | Recomputed by a stdlib Python checker. The model never writes a number on a card. |
 | Version | Answers about "the doc" | Names the docx revision and SHA-256, and binds the card to the message ts of the latest requirement change. |
 | Later corrections | The earlier summary stays as written next to the new one | The earlier card is edited to **stale** in place and a new card bound to the new revision is posted. A result whose revision moved mid-run is refused before it posts. |
+| Fixing the document | Notion integration edits a page when told to | Proposes the exact replacement with the checker's value and two buttons. Writes a new copy only after a human approves; the original keeps its hash. |
 | Silence | Answers when asked | Stays silent on normal chatter, posts a clean card when everything reproduces, asks instead of deciding when sources conflict. |
 
 What we are building toward, and how much of it exists on `main` today:
@@ -133,15 +136,15 @@ The workspace index is retrieval. It is retrieval by exact match over a structur
 
 ## Status
 
-Verified on `main` at 12:35 PM EDT, September 12, 2026, with `npm run verify`:
+Verified on `main` at 3:35 PM EDT, September 12, 2026, with `npm run verify`:
 
 | Check | Result |
 |---|---|
 | TypeScript typecheck, all workspaces | pass |
-| `agent-core` tests | 52 pass |
-| `channel` tests, including the replay harness | 37 pass |
+| `agent-core` tests | 56 pass |
+| `channel` tests, including the replay harness and the edit-approval flow | 47 pass |
 | `web` tests | 34 pass |
-| Python checker tests | 10 pass |
+| Python checker and editor tests | 12 pass |
 
 What is **not** yet true:
 
@@ -200,7 +203,7 @@ Baseline commit is `9ed46e0`. `git diff --name-only 9ed46e0..HEAD` is the author
 | Reviewer system prompt | `packages/agent-core/src/reviewer-prompt.ts` |
 | Finding, evidence, and checker contracts with examples and tests | `packages/agent-core/src/contracts/`, `contracts/` |
 | Evidence log and graph | `packages/agent-core/src/evidence/` |
-| Checkers | `checkers/` |
+| Checkers and the approved-edit writer | `checkers/` |
 | Document extractor | `extractors/docx_text.py` |
 | Fixtures: documents, Slack scripts, checksums, generator | `fixtures/` |
 | Replay harness and publish guard | `apps/channel/src/replay/` |

@@ -25,3 +25,6 @@ apps/mobile/.expo/
 
 # CopilotKit CLI state: channels.json holds the Slack bot token and signing secret
 .copilotkit/
+
+# Rev-applied document edits (live demo output); the fixture sources stay tracked
+fixtures/documents/*-proposed.docx

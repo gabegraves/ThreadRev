@@ -30,7 +30,7 @@ it("scenario-a record carries exactly the section 4 fields", { timeout: 20_000 }
 
   assert.deepEqual(
     record.tool_calls.map((c) => c.name),
-    ["read_thread", "read_evidence", "run_check", "publish_result"],
+    ["read_thread", "read_evidence", "run_check", "publish_result", "propose_edit"],
   );
   for (const call of record.tool_calls) assert.deepEqual(Object.keys(call), ["name", "args", "result"]);
 

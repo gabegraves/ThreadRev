@@ -2,7 +2,7 @@ import { createChannel } from "@copilotkit/channels";
 import { makeChannelAgent } from "./agent";
 import { required } from "./env";
 import { reviewerWelcome } from "./finding-card";
-import { publishResult, readEvidence, readThread, runCheck, searchWorkspace } from "./reviewer-tools";
+import { proposeEdit, publishResult, readEvidence, readThread, runCheck, searchWorkspace } from "./reviewer-tools";
 import { isReviewMoment } from "./review-moment";
 import { record } from "./evidence";
 
@@ -11,7 +11,7 @@ export const channel = createChannel({
   name: required("CHANNEL_CODE"),
   identifyUser: "platform",
   agent: makeChannelAgent,
-  tools: [readThread, searchWorkspace, readEvidence, runCheck, publishResult],
+  tools: [readThread, searchWorkspace, readEvidence, runCheck, publishResult, proposeEdit],
   components: [],
   context: [
     {

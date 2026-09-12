@@ -123,6 +123,48 @@ export const silence = z.object({
   reason: z.enum(["gate_closed", "no_finding"]),
 });
 
+/** One text replacement Rev proposes in a document: a printed result → the checker's value. */
+export const proposedEdit = z.object({
+  locator: z.string().min(1),
+  find: z.string().min(1),
+  replace: z.string().min(1),
+  reason: z.string().optional(),
+});
+
+/** Rev proposed a document edit and asked a human to approve it. Nothing is written yet. */
+export const editProposed = z.object({
+  ...base,
+  kind: z.literal("edit_proposed"),
+  proposal_id: z.string().min(1),
+  finding_id: z.string().optional(),
+  run_id: z.string().min(1),
+  document: z.string().min(1),
+  /** sha256 of the source the edits were proposed against. */
+  source_sha256: z.string().regex(/^[0-9a-f]{64}$/),
+  edits: z.array(proposedEdit).min(1),
+});
+
+/** A human approved or rejected a proposal. Approval alone writes nothing; see edit_applied. */
+export const editDecided = z.object({
+  ...base,
+  kind: z.literal("edit_decided"),
+  proposal_id: z.string().min(1),
+  decision: z.enum(["approved", "rejected"]),
+  by: z.string().optional(),
+});
+
+/** The approved edits were written to a NEW file. The source is untouched. */
+export const editApplied = z.object({
+  ...base,
+  kind: z.literal("edit_applied"),
+  proposal_id: z.string().min(1),
+  document: z.string().min(1),
+  source_sha256: z.string().regex(/^[0-9a-f]{64}$/),
+  output: z.string().min(1),
+  sha256: z.string().regex(/^[0-9a-f]{64}$/),
+  error: z.string().optional(),
+});
+
 export const evidenceEvent = z.discriminatedUnion("kind", [
   messageRead,
   documentRead,
@@ -132,7 +174,11 @@ export const evidenceEvent = z.discriminatedUnion("kind", [
   publishRefused,
   silence,
   workspaceSearch,
+  editProposed,
+  editDecided,
+  editApplied,
 ]);
+export type ProposedEdit = z.infer<typeof proposedEdit>;
 export type EvidenceEvent = z.infer<typeof evidenceEvent>;
 
 /* ------------------------------------------------------------- graph */

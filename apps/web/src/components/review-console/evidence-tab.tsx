@@ -67,6 +67,29 @@ function TraceItem({ ev }: { ev: EvidenceEvent }) {
           <div><strong>silence</strong><p>{ev.reason}</p></div>
         </li>
       );
+    case "edit_proposed":
+      return (
+        <li data-kind="proposal">
+          {time}
+          <div><strong>edit proposed</strong> · <code>{ev.proposal_id}</code><p>{ev.document}: {ev.edits.map((e) => `${e.locator}: "${e.find}" → "${e.replace}"`).join("; ")}</p></div>
+        </li>
+      );
+    case "edit_decided":
+      return (
+        <li data-kind={ev.decision === "approved" ? "approve" : "reject"}>
+          {time}
+          <div><strong>edit {ev.decision}</strong> · <code>{ev.proposal_id}</code>{ev.by && <p>by {ev.by}</p>}</div>
+        </li>
+      );
+    case "edit_applied":
+      return (
+        <li data-kind="applied">
+          {time}
+          <div><strong>edit applied</strong> · <code>{ev.proposal_id}</code><p>{ev.error ? ev.error : `${ev.output} · sha ${ev.sha256.slice(0, 8)} (source ${ev.source_sha256.slice(0, 8)} untouched)`}</p></div>
+        </li>
+      );
+    default:
+      return null;
   }
 }
 

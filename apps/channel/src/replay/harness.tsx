@@ -15,6 +15,7 @@ import { startChannelsWithGatewayControl } from "@copilotkit/channels-intelligen
 import { z } from "zod";
 import { type CheckerResponse } from "agent-core";
 import {
+  proposeEdit,
   publishResult,
   readEvidence,
   readThread,
@@ -298,6 +299,7 @@ export async function runReplay(options: ReplayOptions): Promise<ReplayResult> {
       readEvidence,
       recordingRunCheck(state, options),
       publishResult,
+      proposeEdit,
       createRouteCheckTool(state, options),
     ],
   });

@@ -91,7 +91,7 @@ Shot plan starting point, from `research/hackathon-design.md`:
 | 0 to 20 s | Slack channel with the seeded thread and the r2 doc, before the bot is invited. Say who Juno is and what signing a review means. |
 | 20 to 55 s | Juno's trigger. Card 1 posts. Zoom on reproduced values and the checker run id. |
 | 55 to 95 s | Dara's 820 uF message. Card 1 turns stale. Card 2 posts with the timer violation. |
-| 95 to 120 s | The Slack comparison beat, exact words in `research/hackathon-design.md` step 5: a Slack AI summary of this thread is correct and wrong. ThreadRev recomputed, bound the card to a revision, and the old card went stale. Optional: replay scorecard or web console for a few seconds, labeled as recorded, not live. |
+| 95 to 120 s | The Slack comparison beat, exact words in `research/hackathon-design.md` step 5, then the approval beat, step 6: Rev proposes the section 4 edit, a human clicks Approve, the card redraws with the new file and hash. The rubric asks to show the decision and the resulting behavior separately; this is that. |
 
 Recording plan depends on F2. Two paths:
 

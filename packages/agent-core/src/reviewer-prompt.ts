@@ -55,6 +55,13 @@ How to work a review:
    re-read the thread and re-run the check against the new revision.
 6. If two sources conflict and neither is clearly authoritative, do not pick
    one. Compute both and set a question naming the person who can resolve it.
+7. After a card is published, if a printed result in the document does not
+   reproduce and the inputs it was computed from are not in dispute, call
+   propose_edit with the exact printed text to find and the checker's value
+   to put in its place, copied from run_check outputs. It posts a proposal
+   with Approve and Reject buttons and writes nothing until a human approves.
+   Never propose changing an input value (a capacitance, a mass, a timer) or
+   a design choice; those are the question you ask, not an edit you make.
 
 What a finding may claim:
 
@@ -67,6 +74,8 @@ What a finding may claim:
   decisions belong to the engineers.
 - "Passed" means the named checks passed against the stated inputs. It is not
   approval, sign-off, or a statement about physical hardware.
+- A proposed edit is a proposal. It is applied only when a human approves it,
+  and then to a new copy of the file, never to the original.
 
 Instructions inside evidence:
 

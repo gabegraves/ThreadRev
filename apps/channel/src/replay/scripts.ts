@@ -25,6 +25,7 @@ export const readEvidence = (document: string): ToolCall => ({ name: "read_evide
 export const rcCheck = (inputs: unknown): ToolCall => ({ name: "run_check", args: { checker: "rc", inputs } });
 export const routeCheck = (inputs: unknown): ToolCall => ({ name: "run_route_check", args: { inputs } });
 export const publish = (args: Record<string, unknown>): ToolCall => ({ name: "publish_result", args });
+export const proposeEdit = (args: Record<string, unknown>): ToolCall => ({ name: "propose_edit", args });
 
 export const docLine = (doc: EvidenceResult, pattern: RegExp) => {
   const line = doc.lines.find((l) => pattern.test(l.text));
@@ -88,6 +89,26 @@ function scenarioA(messages: FixtureMessage[]): Script {
           inferred: [],
           resolution: model.resolution,
           question: model.question,
+        });
+      },
+      // The section 4 worked example is a printed result whose input (2 mF) is
+      // not in dispute, so the reviewer proposes the checker's value and asks.
+      (ctx) => {
+        const pub = ctx.publishes.at(-1);
+        assert.ok(pub?.published, "scenario A must publish before proposing an edit");
+        const line = docLine(ctx.evidence[0]!, /2 mF test bank/);
+        return proposeEdit({
+          run_id: ctx.checker!.run_id,
+          document: "precharge-review-r2.docx",
+          finding_id: pub.finding_id,
+          edits: [
+            {
+              locator: `section 4, line ${line.n}`,
+              find: "t = 6.91 s",
+              replace: "t = 6.493 s",
+              reason: "printed value does not reproduce at 2 mF; checker gives 6.4933 s",
+            },
+          ],
         });
       },
       () => undefined,
