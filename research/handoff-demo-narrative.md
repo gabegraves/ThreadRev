@@ -4,6 +4,10 @@ Project: ThreadRev, a Slack-native engineering change reviewer. Agents, Everywhe
 
 You own what the judges see and whether an engineer would believe it. Agents are generating fixtures, checkers, and code. Nobody else is asking whether the precharge scenario is something a real electrical lead would recognize, whether the two-minute video lands, or whether the description scores. That is yours.
 
+## Company frame (changed 1:30 PM)
+
+The fixture company is Kestrel Motors, a fictional maker of light electric city vehicles, not a student solar team. KS-4 is the platform in development. Dara Voss owns the precharge board, Tam Holloway owns firmware, Juno Marsh joined in August and is signing the r2 review. Say this in the first fifteen seconds. The consequence that makes the finding matter: a relay that closes before the bus is charged puts inrush through the main contactor on every key-on, and the number in the signed review is the number that ships. The two-minute shot list in `research/hackathon-design.md` is the current cut; `submission/video-shotlist.md` starts from it.
+
 ## Read first
 
 1. `research/synthetic-fixture-spec.md`, section 4 Scenario A and section 5 replay cases. This is the story as currently written.

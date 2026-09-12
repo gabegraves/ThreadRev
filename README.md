@@ -33,7 +33,7 @@ Two rules shape everything:
 
 ## The demo: Scenario A
 
-A fictional light electric vehicle maker, channel `#ks4-electrical`, precharge RC timing. Fixture script in [`fixtures/slack/scenario-a.json`](fixtures/slack/scenario-a.json), full spec in [`research/synthetic-fixture-spec.md`](research/synthetic-fixture-spec.md).
+Kestrel Motors is a fictional maker of light electric city vehicles. The KS-4 is its next platform, in development. Dara Voss is the electrical lead and owns the precharge board. Tam Holloway owns firmware, including the relay timer. Juno Marsh joined in August and has to sign the r2 design review. If the relay closes before the bus is charged, every key-on puts the inrush through the main contactor, so the number in the signed review is the number that ships. Channel `#ks4-electrical`, precharge RC timing. Fixture script in [`fixtures/slack/scenario-a.json`](fixtures/slack/scenario-a.json), full spec in [`research/synthetic-fixture-spec.md`](research/synthetic-fixture-spec.md).
 
 1. Dara posts `precharge-review-r2.docx`: "Dropped one film cap, bus is now 680 uF."
 2. Tam: "Relay close timer in firmware is 2.5 s, matches the doc."
