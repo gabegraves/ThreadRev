@@ -27,6 +27,9 @@ __pycache__/
 .env.*
 !.env.example
 
-# CLI project selection. No secret in it, but it names one developer's project,
-# org and telemetry binding, so committing it drags everyone onto that project.
-.copilotkit/
+# CLI project selection and generated artifacts. project.json carries no secret
+# but records one developer's project, org and telemetry binding, and the
+# artifacts are regenerated on demand. channels.json is deliberately NOT ignored:
+# it is the Channel declaration, and a teammate cloning this needs it.
+.copilotkit/project.json
+.copilotkit/artifacts/
