@@ -90,8 +90,26 @@ export function supersedesReason(
 
 /** Checker runs this process has seen, by run_id. publish_result reads here. */
 const runs = new Map<string, CheckerResponse>();
+
+/**
+ * How many runs this process keeps in memory.
+ *
+ * The reviewer is a long-lived listener, not a request handler: without a
+ * bound this Map holds every checker response for the life of the process, and
+ * each one carries its full inputs and outputs. The thread's own copy is what
+ * makes an evicted run recoverable, so the cap costs nothing but memory
+ * ceiling.
+ */
+const MAX_RUNS = 200;
+
 export function rememberRun(r: CheckerResponse) {
   runs.set(r.run_id, r);
+  // Map iterates in insertion order, so the first key is the oldest.
+  while (runs.size > MAX_RUNS) {
+    const oldest = runs.keys().next().value;
+    if (oldest === undefined) break;
+    runs.delete(oldest);
+  }
 }
 export function recallRun(id: string) {
   return runs.get(id);

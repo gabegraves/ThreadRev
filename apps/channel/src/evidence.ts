@@ -26,11 +26,29 @@ interface RunContext {
 }
 const contexts = new Map<string, RunContext>();
 
+/**
+ * How many threads keep a run context in memory.
+ *
+ * One entry per conversation the bot has ever seen, in a process that is meant
+ * to stay up. Evicting the least recently touched is safe: a context is
+ * per-run scratch (trigger ts, documents read, notices), and it is rebuilt by
+ * the next read_thread on that thread.
+ */
+const MAX_CONTEXTS = 500;
+
 export function runContext(threadId: string): RunContext {
   let c = contexts.get(threadId);
   if (!c) {
     c = { documents: [], changes: [], notices: [] };
-    contexts.set(threadId, c);
+  } else {
+    // Re-insert so insertion order tracks recency.
+    contexts.delete(threadId);
+  }
+  contexts.set(threadId, c);
+  while (contexts.size > MAX_CONTEXTS) {
+    const oldest = contexts.keys().next().value;
+    if (oldest === undefined) break;
+    contexts.delete(oldest);
   }
   return c;
 }
