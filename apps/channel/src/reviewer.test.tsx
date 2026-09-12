@@ -876,3 +876,14 @@ test("a partial word is not a name", () => {
   assert.equal(queryIndex(PEOPLE, { from: "Dar" }).total, 0);
   assert.equal(queryIndex(PEOPLE, { from: "oss" }).total, 0);
 });
+
+test("a channel search accepts what someone would actually type", () => {
+  assert.deepEqual(queryIndex(PEOPLE, { channel: "#ks4-purchasing" }).hits.map((h) => h.channel), ["#ks4-purchasing"]);
+  assert.deepEqual(queryIndex(PEOPLE, { channel: "ks4-purchasing" }).hits.map((h) => h.channel), ["#ks4-purchasing"]);
+  // The part people say out loud.
+  assert.deepEqual(queryIndex(PEOPLE, { channel: "purchasing" }).hits.map((h) => h.channel), ["#ks4-purchasing"]);
+  // A broad part spans the project's channels, which is the honest answer.
+  assert.equal(queryIndex(PEOPLE, { channel: "ks4" }).total, 3);
+  // And a fragment is still not a channel.
+  assert.equal(queryIndex(PEOPLE, { channel: "purchas" }).total, 0);
+});
