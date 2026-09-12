@@ -35,7 +35,7 @@ export function Field({
 }) {
   return (
     <div className="flex min-w-0 flex-col gap-1">
-      <span className="text-[11px] uppercase tracking-wider text-faint">
+      <span className="text-[11px] font-medium uppercase tracking-[0.08em] text-faint">
         {label}
       </span>
       <span
@@ -68,7 +68,7 @@ export function DetailSection({
 }) {
   return (
     <section className="flex flex-col gap-3 border-t border-hairline pt-4">
-      <h4 className="text-[11px] font-semibold uppercase tracking-wider text-faint">
+      <h4 className="text-[11px] font-medium uppercase tracking-[0.08em] text-faint">
         {title}
       </h4>
       {children}

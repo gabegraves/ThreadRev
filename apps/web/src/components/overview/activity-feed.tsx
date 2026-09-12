@@ -17,7 +17,7 @@ export function ActivityFeed({ events, limit = 8 }: { events: EvidenceEvent[]; l
         const body = (
           <>
             <span aria-hidden className={cn("size-1.5 shrink-0 rounded-full", TONE_DOT_CLASS[kindTone(ev.kind)])} />
-            <span className="shrink-0 font-mono text-[11px] uppercase tracking-[0.08em] text-faint">{KIND_LABEL[ev.kind]}</span>
+            <span className="shrink-0 text-[11px] uppercase tracking-[0.08em] text-faint">{KIND_LABEL[ev.kind]}</span>
             <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-foreground">{eventSubject(ev)}</span>
             <time dateTime={ev.at} className="shrink-0 font-mono text-[12px] tabular-nums text-faint">
               {fmtAt(ev.at)}

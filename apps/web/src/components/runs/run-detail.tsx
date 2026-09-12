@@ -70,17 +70,12 @@ export function RunDetail({ row, graph, className }: { row: RunRow | null; graph
         </DetailSection>
       )}
 
-      <DetailSection title="Inputs and outputs">
-        <div className="flex flex-col gap-5">
-          <div className="flex flex-col gap-3">
-            <h5 className="text-[11px] font-medium uppercase tracking-[0.08em] text-faint">Inputs</h5>
-            <RecordFields data={run.inputs} />
-          </div>
-          <div className="flex flex-col gap-3">
-            <h5 className="text-[11px] font-medium uppercase tracking-[0.08em] text-faint">Outputs</h5>
-            <RecordFields data={run.outputs} />
-          </div>
-        </div>
+      <DetailSection title="Inputs">
+        <RecordFields data={run.inputs} />
+      </DetailSection>
+
+      <DetailSection title="Outputs">
+        <RecordFields data={run.outputs} />
       </DetailSection>
 
       {node && (

@@ -24,13 +24,13 @@ export function StatsStrip({ cards }: { cards: LinkedStat[] }) {
           <Link
             key={card.label}
             href={card.href}
-            className={cn("block min-h-[80px] bg-surface px-4 py-4 transition-colors hover:bg-overlay focus-visible:outline-2 focus-visible:outline-accent sm:px-5 sm:py-5")}
+            className={cn("block bg-surface px-4 py-3 transition-colors hover:bg-overlay focus-visible:outline-2 focus-visible:outline-accent sm:px-5")}
           >
-            <div className="mb-2.5 flex items-center justify-between gap-2">
-              <span className="font-mono text-[11px] font-medium uppercase leading-none tracking-[0.08em] text-faint">{card.label}</span>
+            <div className="mb-1.5 flex items-center justify-between gap-2">
+              <span className="text-[11px] font-medium uppercase leading-none tracking-[0.08em] text-faint">{card.label}</span>
               {card.hint && <span className="text-[12px] tabular-nums text-subtle">{card.hint}</span>}
             </div>
-            <p key={card.value} className="stat-val text-2xl font-semibold leading-none tabular-nums text-foreground">
+            <p key={card.value} className="stat-val text-[20px] font-semibold leading-none tabular-nums text-foreground">
               {card.value}
             </p>
           </Link>

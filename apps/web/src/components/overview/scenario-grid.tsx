@@ -37,7 +37,7 @@ export function ScenarioGrid({ compact = false }: { compact?: boolean }) {
             )}
           >
             <div className="flex items-center justify-between gap-2">
-              <p className="font-mono text-[10.5px] font-medium uppercase tracking-[0.12em] text-faint">{s.channel}</p>
+              <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-faint">{s.channel}</p>
               <Badge>{s.kind}</Badge>
             </div>
             <h3 className={cn("font-semibold leading-snug text-foreground", compact ? "line-clamp-2 text-[12.5px]" : "text-[13.5px]")}>{s.title}</h3>

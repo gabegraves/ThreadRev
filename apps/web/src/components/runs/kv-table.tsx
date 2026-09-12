@@ -78,7 +78,7 @@ function ArrayTable({ title, rows }: { title: string; rows: Rec[] }) {
       <div className="font-mono text-[11px] text-faint" title={title}>
         {title}
       </div>
-      <div className="overflow-x-auto rounded-[var(--radius-md)] border border-hairline">
+      <div className="overflow-x-auto border-t border-hairline">
         <table className={TABLE_CLS}>
           <thead>
             <tr>
@@ -115,7 +115,7 @@ function ObjectTable({ title, data }: { title: string; data: Record<string, Rec>
       <div className="font-mono text-[11px] text-faint" title={title}>
         {title}
       </div>
-      <div className="overflow-x-auto rounded-[var(--radius-md)] border border-hairline">
+      <div className="overflow-x-auto border-t border-hairline">
         <table className={TABLE_CLS}>
           <thead>
             <tr>
@@ -210,14 +210,10 @@ export function RecordFields({ data, emptyMessage = "Nothing recorded." }: { dat
 /** Checks as the hero table: name / expected / actual / Δ / result. Failing checks first. */
 export function ChecksTable({ checks }: { checks: Check[] }) {
   if (checks.length === 0) return <p className="text-[12px] text-faint">No checks.</p>;
-  const { passed, total } = checkSummary(checks);
   const ordered = [...checks].sort((a, b) => Number(a.pass) - Number(b.pass));
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-center gap-2">
-        <CheckBar passed={passed} total={total} />
-      </div>
-      <div className="overflow-x-auto rounded-[var(--radius-md)] border border-hairline">
+    <div className="flex flex-col gap-1.5">
+      <div className="overflow-x-auto border-t border-hairline">
         <table className={TABLE_CLS}>
           <thead>
             <tr>

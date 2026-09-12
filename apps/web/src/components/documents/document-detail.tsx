@@ -48,7 +48,7 @@ function Citation({ c }: { c: DocCitation }) {
         <Link href={hrefs.finding(c.finding_id)} className={cn("font-mono text-[12px]", LINK_CLASS)}>
           {c.finding_id}
         </Link>
-        <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-faint">{c.locator ?? "—"}</span>
+        <span className="text-[11px] uppercase tracking-[0.08em] text-faint">{c.locator ?? "—"}</span>
       </div>
       {c.quote ? (
         <blockquote className="flex gap-2.5 border-l-2 border-hairline-strong pl-3 text-[12px] leading-relaxed text-subtle">

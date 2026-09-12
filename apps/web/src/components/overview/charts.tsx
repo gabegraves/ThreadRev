@@ -74,7 +74,7 @@ export function StackedRunBars({ cols }: { cols: StackedCol[] }) {
           </li>
         ))}
       </ul>
-      <p className="flex gap-4 font-mono text-[11px] uppercase tracking-[0.08em] text-faint">
+      <p className="flex gap-4 text-[11px] uppercase tracking-[0.08em] text-faint">
         <span className="inline-flex items-center gap-1.5">
           <span aria-hidden className={cn("size-1.5 rounded-full", TONE_DOT_CLASS[STATUS_TONE.live])} /> pass
         </span>
@@ -129,5 +129,5 @@ export function TimelineStrip({ points }: { points: TimelinePoint[] }) {
 
 /** Mono caption under a tile naming the source event field. */
 export function SourceCaption({ children }: { children: ReactNode }) {
-  return <p className="mt-3 border-t border-hairline pt-2 font-mono text-[10.5px] uppercase tracking-[0.08em] text-faint">from {children}</p>;
+  return <p className="mt-3 border-t border-hairline pt-2 text-[11px] uppercase tracking-[0.08em] text-faint">from {children}</p>;
 }

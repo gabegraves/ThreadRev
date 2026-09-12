@@ -21,7 +21,7 @@ import { Message } from "./thread-timeline";
 import type { ThreadModel } from "./thread-model";
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
-  return <h4 className="font-mono text-[11px] font-semibold uppercase tracking-[0.08em] text-faint">{children}</h4>;
+  return <h4 className="text-[11px] font-semibold uppercase tracking-[0.08em] text-faint">{children}</h4>;
 }
 
 const LINK = "inline-flex items-center gap-1 font-mono text-[11px] text-accent-text underline-offset-2 hover:underline";

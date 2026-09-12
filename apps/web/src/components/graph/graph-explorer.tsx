@@ -10,6 +10,7 @@
 import { Maximize2, Minimize2 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { StatusPill } from "@/civic-ui/components/StatusPill";
 import { EvidenceGraphNetwork, KindLegend } from "@/components/graph/graph-network";
 import { NodeDetail } from "@/components/graph/node-detail";
 import { PageHeader } from "@/components/shell/page-header";
@@ -108,12 +109,8 @@ export function GraphExplorer() {
           actions={
             <>
               {noted.size > 0 && (
-                <span
-                  className="inline-flex items-center gap-1.5 rounded-[var(--radius-md)] border border-hairline bg-overlay px-2.5 py-1 text-[11px] font-medium text-[var(--status-warning-fg)]"
-                  title="Notes are stored in this browser only. They are not saved to the database."
-                >
-                  <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-warning)]" />
-                  Edits not saved
+                <span title="Notes are stored in this browser only. They are not saved to the database.">
+                  <StatusPill tone="warning">Edits not saved</StatusPill>
                 </span>
               )}
               <button

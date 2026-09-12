@@ -40,7 +40,7 @@ export function headline(f: Finding) {
 }
 
 function MicroLabel({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <h4 className={cn("font-mono text-[11px] font-semibold uppercase tracking-[0.08em] text-faint", className)}>{children}</h4>;
+  return <h4 className={cn("text-[11px] font-semibold uppercase tracking-[0.08em] text-faint", className)}>{children}</h4>;
 }
 
 function ReproducedRow({ r }: { r: ReproducedValue }) {
@@ -134,7 +134,7 @@ export function FindingCard({ finding: f, compact = false, onOpen, graphNodeIds,
             {f.sources.map((s, i) => (
               // biome-ignore lint/suspicious/noArrayIndexKey: the same source can be cited twice with different locators
               <li key={`${s.kind}-${s.id}-${i}`} className="flex items-baseline gap-2 text-[12px]">
-                <span className="shrink-0 font-mono text-[11px] uppercase tracking-[0.08em] text-faint">{s.kind === "message" ? "msg" : "doc"}</span>
+                <span className="shrink-0 text-[11px] uppercase tracking-[0.08em] text-faint">{s.kind === "message" ? "msg" : "doc"}</span>
                 {s.kind === "message" ? (
                   <Link href={hrefs.thread(s.id)} className={cn("whitespace-nowrap font-mono", LINK_CLASS)}>
                     {s.id}

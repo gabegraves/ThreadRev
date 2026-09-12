@@ -42,9 +42,9 @@ const BASE: Column<WorkspaceRow>[] = [
   {
     key: "text",
     header: "Text",
-    width: "40ch",
+    width: "48ch",
     cell: (r) => (
-      <span title={r.text} className="line-clamp-2 block max-w-[40ch] whitespace-normal py-1 text-[12px] leading-snug">
+      <span title={r.text} className="line-clamp-2 block max-w-[48ch] whitespace-normal py-1 text-[13px] leading-snug">
         {r.text}
       </span>
     ),

@@ -17,7 +17,7 @@ function WorkspaceHits({ hits }: { hits: WorkspaceHitItem[] }) {
     <div className="ml-11 flex flex-col gap-2 rounded-[var(--radius-md)] border border-hairline bg-overlay px-3 py-2.5">
       <div className="flex flex-wrap items-center gap-2">
         <Database className="size-3.5 text-faint" strokeWidth={1.75} aria-hidden />
-        <span className="font-mono text-[10.5px] font-medium uppercase tracking-[0.12em] text-faint">
+        <span className="text-[11px] font-medium uppercase tracking-[0.08em] text-faint">
           Found in workspace · {hits.length} {hits.length === 1 ? "hit" : "hits"}
         </span>
         <Link href="/workspace" className="ml-auto font-mono text-[11px] text-accent-text underline-offset-2 hover:underline">
@@ -49,7 +49,7 @@ const SILENCE_LABEL: Record<"gate_closed" | "no_finding", string> = {
 function DecisionRow({ item }: { item: Exclude<InlineItem, { kind: "card" }> }) {
   if (item.kind === "silence") {
     return (
-      <div className="flex items-center gap-2 py-1 pl-11 font-mono text-[11px] uppercase tracking-[0.08em] text-faint">
+      <div className="flex items-center gap-2 py-1 pl-11 text-[11px] uppercase tracking-[0.08em] text-faint">
         <span aria-hidden className="size-1.5 rounded-full bg-faint" />
         silence · {SILENCE_LABEL[item.reason]}
       </div>
@@ -89,16 +89,16 @@ function InvalidatedPopover({ graph, ts }: { graph: EvidenceGraph; ts: string })
       role="tooltip"
       className="absolute left-11 top-full z-20 mt-1 w-[min(92vw,360px)] rounded-[var(--radius-md)] border border-hairline bg-elevated p-3 shadow-[var(--shadow-pop)]"
     >
-      <p className="font-mono text-[10.5px] font-medium uppercase tracking-[0.12em] text-faint">What this change invalidated</p>
+      <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-faint">What this change invalidated</p>
       {nodes.length === 0 ? (
         <p className="mt-2 text-[12px] text-faint">Nothing downstream recorded.</p>
       ) : (
         <ul className="mt-2 flex flex-col gap-1">
           {nodes.map((n) => (
             <li key={n.id} className="flex items-baseline gap-2 text-[12px]">
-              <span className="w-[8ch] shrink-0 font-mono text-[10.5px] uppercase tracking-[0.08em] text-faint">{n.kind}</span>
+              <span className="w-[8ch] shrink-0 text-[11px] uppercase tracking-[0.08em] text-faint">{n.kind}</span>
               <span className="min-w-0 truncate text-foreground">{n.label}</span>
-              {n.status !== "neutral" && <span className="ml-auto font-mono text-[10.5px] uppercase text-faint">{n.status}</span>}
+              {n.status !== "neutral" && <span className="ml-auto text-[11px] uppercase text-faint">{n.status}</span>}
             </li>
           ))}
         </ul>
@@ -144,8 +144,8 @@ export function Message({
             <time dateTime={m.at} className="font-mono text-[11px] tabular-nums text-faint">
               {fmtTime(m.ts)}
             </time>
-            {isRoot && <span className="font-mono text-[10.5px] uppercase tracking-[0.08em] text-faint">root</span>}
-            {m.is_bot && <span className="font-mono text-[10.5px] uppercase tracking-[0.08em] text-faint">bot</span>}
+            {isRoot && <span className="text-[11px] uppercase tracking-[0.08em] text-faint">root</span>}
+            {m.is_bot && <span className="text-[11px] uppercase tracking-[0.08em] text-faint">bot</span>}
             {m.is_change && <StatusPill tone="info">requirement change</StatusPill>}
             {model.triggers.has(m.ts) && <StatusPill tone="neutral">trigger</StatusPill>}
             {channelId && (
@@ -173,8 +173,8 @@ export function Message({
                   >
                     <FileText className="size-3.5 text-faint" strokeWidth={1.75} />
                     <span className="text-foreground">{d.document}</span>
-                    <span className="font-mono text-[10.5px] uppercase text-faint">{d.revision ?? "—"}</span>
-                    <code className="font-mono text-[10.5px] text-faint">{d.sha256.slice(0, 12)}</code>
+                    <span className="text-[11px] uppercase text-faint">{d.revision ?? "—"}</span>
+                    <code className="font-mono text-[11px] text-faint">{d.sha256.slice(0, 12)}</code>
                   </Link>
                 </li>
               ))}

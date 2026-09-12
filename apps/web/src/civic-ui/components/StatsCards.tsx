@@ -46,7 +46,7 @@ function StatsCardsInner({ cards }: StatsCardsProps) {
           >
             <div className="mb-2.5 flex items-center justify-between gap-2">
               {/* Mono micro-label convention for stat captions. */}
-              <span className="font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-faint leading-none">
+              <span className="text-[11px] font-medium uppercase tracking-[0.08em] text-faint leading-none">
                 {card.label}
               </span>
               {card.trend && (

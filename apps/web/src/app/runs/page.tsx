@@ -72,7 +72,7 @@ function Runs() {
         <section ref={listRef} className="custom-scrollbar flex min-w-0 flex-1 flex-col gap-4 overflow-y-auto p-3 sm:p-4 lg:px-6">
           <RunsTable rows={rows} selected={selected?.run.run_id ?? null} onSelect={select} loading={!loaded} />
         </section>
-        <aside className="custom-scrollbar hidden w-[380px] shrink-0 overflow-y-auto border-l border-hairline bg-surface lg:block">
+        <aside className="custom-scrollbar hidden w-[560px] shrink-0 overflow-y-auto border-l border-hairline bg-surface lg:block">
           {!loaded ? (
             <div className="flex flex-col gap-3 p-5" role="status" aria-label="Loading run">
               <Skeleton className="h-4 w-48 rounded-[var(--radius-sm)]" />

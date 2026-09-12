@@ -84,7 +84,7 @@ export function SidebarNav({
   return (
     <nav aria-label={heading} className="flex flex-col gap-0.5">
       {!collapsed && (
-        <p className="px-2.5 pb-1.5 font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-faint">
+        <p className="px-2.5 pb-1.5 text-[10px] font-medium uppercase tracking-[0.08em] text-faint">
           {heading}
         </p>
       )}
