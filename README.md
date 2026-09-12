@@ -1,14 +1,23 @@
 <div align="center">
 
-# ThreadRev
-
-![Agents, Everywhere hackathon — OpenAI, CopilotKit, OpenRouter, Exa, Auth0, and Ambiguous AI](assets/banner.png)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/threadrev-logo-dark.svg">
+  <img src="assets/threadrev-logo.svg" alt="ThreadRev" width="420">
+</picture>
 
 **A Slack-native engineering change reviewer. It reads the thread, searches the rest of the workspace by document and unit, recomputes the numbers, and marks its own findings stale when the inputs change.**
 
-[What it does](#what-it-does) · [Demo](#the-demo-scenario-a) · [How it works](#how-it-works) · [Why search, not RAG](#why-search-by-identifier-not-rag) · [Status](#status) · [Run it](#run-it) · [Repo map](#repo-map) · [Team](#team-and-working-rules)
+Slack keeps the conversation. ThreadRev keeps the decision, what it was decided against, and whether it is still true.
+
+<img src="assets/hero-scenario-a.png" alt="Card 1 marked STALE after Dara's 820 uF correction, Card 2 posted against her message" width="820">
+
+<sub>Web review console, Scenario A sample. The Slack card is the product; this view reads the same evidence log.</sub>
+
+[What it does](#what-it-does) · [Demo](#the-demo-scenario-a) · [How it works](#how-it-works) · [Approval workflow](#approval-workflow-rev-proposes-a-person-approves-rev-writes-a-copy) · [Versus Slack AI](#what-slack-already-does-and-what-threadrev-adds) · [Why search, not RAG](#why-search-by-identifier-not-rag) · [Status](#status) · [Run it](#run-it) · [Repo map](#repo-map) · [Team](#team-and-working-rules)
 
 </div>
+
+![Agents, Everywhere hackathon](assets/banner.png)
 
 Built during the [Agents, Everywhere](https://aitinkerers.org/hackathons/global/agents-everywhere) hackathon on September 12, 2026, on top of CopilotKit's [agents-everywhere-starter-kit](https://github.com/CopilotKit/agents-everywhere-starter-kit). Inherited code is listed separately in [What we built and what we inherited](#what-we-built-and-what-we-inherited).
 
@@ -26,6 +35,8 @@ ThreadRev lives in the channel. When someone asks it to check a document, or whe
 
 When a later message changes a requirement, the earlier card is marked **stale in place**, never deleted, and a new card bound to the new revision is posted. If a revision lands while a check is running, the result is refused before it posts, kept as a stale record, and rerun.
 
+When a printed result does not reproduce and its inputs are not in dispute, Rev **proposes the edit and asks**. The proposal card shows the file, the line, the exact text to replace, the checker's value, and two buttons. Nothing is written until a person clicks Approve. Then the edit goes into a new copy of the file with a new SHA-256, the original is untouched, and the card is redrawn with both hashes. Reject records the refusal. Rev only ever proposes replacing a printed result; an input value or a design choice is the question it asks, never an edit it makes.
+
 Two rules shape everything:
 
 - **The model never computes a number that appears on a card.** A local, stdlib-only Python checker does. The card renderer is called only by the `publish_result` tool, which copies numbers from the checker's response.
@@ -33,11 +44,11 @@ Two rules shape everything:
 
 ## The demo: Scenario A
 
-A fictional solar-car team, channel `#ks4-electrical`, precharge RC timing. Fixture script in [`fixtures/slack/scenario-a.json`](fixtures/slack/scenario-a.json), full spec in [`research/synthetic-fixture-spec.md`](research/synthetic-fixture-spec.md).
+Kestrel Motors is a fictional maker of light electric city vehicles. The KS-4 is its next platform, in development. Dara Voss is the electrical lead and owns the precharge board. Tam Holloway owns firmware, including the relay timer. Juno Marsh joined in August and has to sign the r2 design review. If the relay closes before the bus is charged, every key-on puts the inrush through the main contactor, so the number in the signed review is the number that ships. Channel `#ks4-electrical`, precharge RC timing. Fixture script in [`fixtures/slack/scenario-a.json`](fixtures/slack/scenario-a.json), full spec in [`research/synthetic-fixture-spec.md`](research/synthetic-fixture-spec.md).
 
 1. Dara posts `precharge-review-r2.docx`: "Dropped one film cap, bus is now 680 uF."
 2. Tam: "Relay close timer in firmware is 2.5 s, matches the doc."
-3. Juno: "@reviewer can you check section 3 of the r2 doc before I sign the review?"
+3. Juno: "@Rev can you check section 3 of the r2 doc before I sign the review?"
 4. **Card 1.** The section 3 text says 680 uF, the section 2 diagram says 750 uF, and the printed 2.435 s only reproduces with 750 uF. At 680 uF it is 2.208 s. The section 4 worked example prints 6.91 s; recomputed, 6.493 s. Question to Dara: which capacitance is right. Card content: [`contracts/examples/finding-scenario-a.json`](contracts/examples/finding-scenario-a.json).
 5. Dara: "Bus is 820 uF, not 680. Doc will be r3."
 6. **Card 1 goes stale. Card 2.** At 820 uF, t_99.9 = 2.662 s, later than the 2.5 s relay timer. The bus reaches 99.85 percent at 2.5 s. The timer or the resistor must change. Bound to Dara's message, because r3 does not exist yet. [`finding-scenario-a-superseding.json`](contracts/examples/finding-scenario-a-superseding.json).
@@ -52,8 +63,8 @@ Scenario B (stale simulation inputs, `#ks4-strategy-sim`) and three replay cases
 Slack thread ──▶ CopilotKit Channels ──▶ review gate (is this a review moment?)
                                               │
                                               ▼
-                                   reviewer agent, five tools
-        read_thread · search_workspace · read_evidence · run_check · publish_result
+                                   reviewer agent, six tools
+   read_thread · search_workspace · read_evidence · run_check · publish_result · propose_edit
                            │                  │                 │
                            ▼                  │                 │
               workspace index (every channel, │                 │
@@ -68,7 +79,7 @@ Slack thread ──▶ CopilotKit Channels ──▶ review gate (is this a revi
                                   evidence log (JSONL) ──▶ evidence graph ──▶ web console
 ```
 
-- **Reviewer tools** in [`apps/channel/src/reviewer-tools.tsx`](apps/channel/src/reviewer-tools.tsx). `read_thread` reads the Slack history; `search_workspace` queries the workspace index outside the thread; `read_evidence` extracts document text and hashes; `run_check` invokes a checker and records the run; `publish_result` is the only path to a card and refuses a result whose requirement revision is no longer current.
+- **Reviewer tools** in [`apps/channel/src/reviewer-tools.tsx`](apps/channel/src/reviewer-tools.tsx). `read_thread` reads the Slack history; `search_workspace` queries the workspace index outside the thread; `read_evidence` extracts document text and hashes; `run_check` invokes a checker and records the run; `publish_result` is the only path to a card and refuses a result whose requirement revision is no longer current; `propose_edit` posts an Approve/Reject card and, on approval, runs [`checkers/apply_docx_edit.py`](checkers/apply_docx_edit.py) to write a new copy of the document. Every number in a proposed replacement must be a checker output, and the text to replace must occur exactly once.
 - **Workspace index** in [`workspace.ts`](apps/channel/src/workspace.ts). Built once from a Slack export ([`fixtures/workspace/kestrel-workspace.json`](fixtures/workspace/kestrel-workspace.json), five channels, March to August; `WORKSPACE_EXPORT` points at a real export). Every message is indexed by the documents it names, the values it states with their units, the quantity words around them, whether it reads as a change, and its author. A query returns every match at or before the trigger message, oldest first. No embeddings, no ranking, no cap that can drop a correction.
 - **Review gate and silence filter** in [`review-moment.ts`](apps/channel/src/review-moment.ts) and [`agent.ts`](apps/channel/src/agent.ts). Most messages get nothing.
 - **Revision tracking** in [`revision.ts`](apps/channel/src/revision.ts): a requirement-change message becomes the revision every later card binds to.
@@ -77,6 +88,82 @@ Slack thread ──▶ CopilotKit Channels ──▶ review gate (is this a revi
 - **Evidence log and graph** in [`packages/agent-core/src/evidence/`](packages/agent-core/src/evidence/). Every message read, document hashed, checker run, card published, and silence decision is appended as an event. The graph builder turns the log into message, document, run, finding, and revision nodes with a downstream walk, so "what did this change invalidate" is a query.
 - **Replay harness** in [`apps/channel/src/replay/`](apps/channel/src/replay/). Replays a fixture Slack script through the real channel handlers and real checkers offline, with a scripted agent standing in for the model, and asserts the card that gets posted. This is the contract test for the checker-to-card seam and the scorecard for the three replay cases.
 - **Web review console** in [`apps/web/src/components/review-console/`](apps/web/src/components/review-console/), served by [`/api/evidence`](apps/web/src/app/api/evidence/route.ts). A browser view of the thread, the cards, and the evidence graph, polling the live log and falling back to the Scenario A sample. Secondary surface; Slack is the product.
+
+## Approval workflow: Rev proposes, a person approves, Rev writes a copy
+
+Rev never edits a file on its own. When a printed result does not reproduce and the inputs it came from are not in dispute, it proposes the exact replacement and waits.
+
+**1. Rev proposes.** After the finding card, the model calls `propose_edit` with the text to find and the checker's value. The tool refuses any replacement number the checker did not produce, any find text without a number, and any text that does not occur exactly once in the document. If it passes, this card posts in the thread:
+
+```
+Proposed edit: needs approval
+
+precharge-review-r2.docx (r2) · sha b63f3e53bb26
+• section 4, line 13: `t = 6.91 s` → `t = 6.493 s`
+  (printed value does not reproduce at 2 mF; checker gives 6.4933 s)
+
+Replacement values are copied from checker run rc-20260912T180314Z-7f3f.
+Rev only proposes replacing a printed result; it never changes an input
+or a design value.
+
+Nothing has been written. Approve to write the new file; the source
+stays untouched.
+
+[ Approve and write the file ]   [ Reject ]
+```
+
+The model's turn ends there. Rev is waiting on a person.
+
+**2. A person decides.** Reject redraws the card to "rejected by <name>, nothing was written" and records the refusal. Approve redraws it to "approved, writing", then runs [`checkers/apply_docx_edit.py`](checkers/apply_docx_edit.py): stdlib only, reads the docx, applies the replacement inside the document XML, writes a new file next to the original, returns both hashes. The original is never opened for writing.
+
+**3. The card shows the result.**
+
+```
+Proposed edit: applied
+Applied, approved by Juno Marsh. New file `precharge-review-r2-proposed.docx`
+sha 839e48a591bc. Source b63f3e53bb26 untouched.
+```
+
+Three events land in the evidence log, `edit_proposed`, `edit_decided`, `edit_applied`, each carrying the proposal id, the run id, and the hashes. The web console timeline shows them in order.
+
+What cannot happen: a write without a click (the write lives inside the button handler), a number the checker did not produce, a change to an input value or a design choice (those become the question on the finding card), a modified original, or a second decision on the same proposal. In Scenario A the section 3 timing is not proposed because its capacitance is the open question to Dara; only the fixed 2 mF worked example qualifies.
+
+Replay tests cover the proposal card, approval writing the new file with the source hash unchanged, the refused value, and the editor's exactly-once rule: [`apps/channel/src/replay/replay.test.tsx`](apps/channel/src/replay/replay.test.tsx), [`checkers/test_checkers.py`](checkers/test_checkers.py).
+
+## What Slack already does, and what ThreadRev adds
+
+Slack AI tells you what was said. ThreadRev tells you what was decided, and whether it still holds.
+
+Take the demo thread. Dara posts a review document and says the bus is 680 uF. Tam says the firmware timer is 2.5 s and matches the doc. Ask Slack AI to summarize and it says exactly that. The summary is accurate. It is also wrong, because the document contradicts itself, its printed result only works with a capacitance the thread already replaced, and the correction that breaks the timer has not been written into any document yet.
+
+ThreadRev does three things a summary never does:
+
+1. **It recomputes.** The model reads the numbers, but a local Python checker does the arithmetic and the card copies the checker's output. A summary repeats what the text says. A card says what the text should have said.
+2. **It binds the answer to a version.** Every card names the document revision, its SHA-256, and the timestamp of the last message that changed an input. A summary is about "the doc." A card is about this doc, as of that message.
+3. **It goes stale.** When Dara changes the bus to 820 uF, the first card is edited to say stale and a new card is posted against her message. In Slack, the old summary and the new one sit side by side and nobody knows which is current.
+
+Slack already covers the generic pitch: [Enterprise search](https://slack.com/features/enterprise-search) searches and summarizes conversations, files, and connected sources, [Slackbot](https://slack.com/help/articles/202026038-How-to-work-with-Slackbot) runs skills and scheduled tasks, and the [Notion integration](https://api.slack.com/marketplace/A049JV0H0KC-notion) edits pages. A Slackbot skill can call a calculator. That is not the difference. The difference is the discipline around the result: hash what was read, tie the answer to a revision, refuse to post if the revision moved mid-check, and mark the old answer stale instead of leaving two truths in the thread.
+
+In one line: **Slack keeps the conversation. ThreadRev keeps the decision, what it was decided against, and whether it is still true.**
+
+| | Slack AI summary or search | ThreadRev card |
+|---|---|---|
+| Numbers | Repeats what the text says | Recomputed by a stdlib Python checker. The model never writes a number on a card. |
+| Version | Answers about "the doc" | Names the docx revision and SHA-256, and binds the card to the message ts of the latest requirement change. |
+| Later corrections | The earlier summary stays as written next to the new one | The earlier card is edited to **stale** in place and a new card bound to the new revision is posted. A result whose revision moved mid-run is refused before it posts. |
+| Fixing the document | Notion integration edits a page when told to | Proposes the exact replacement with the checker's value and two buttons. Writes a new copy only after a human approves; the original keeps its hash. |
+| Silence | Answers when asked | Stays silent on normal chatter, posts a clean card when everything reproduces, asks instead of deciding when sources conflict. |
+
+What we are building toward, and how much of it exists on `main` today:
+
+| Difference to prove | In practice | Today |
+|---|---|---|
+| Which decisions still apply | Separate proposals, accepted decisions, and superseded conclusions; tie each to its component and revision | Built narrowly: every card binds to a revision; a later change marks it stale; conflicting sources produce a question, not a pick |
+| A reviewable evidence trail | Exact source versions, assumptions, conflicting evidence, and the record of changes | Built: the evidence log records every message read, document hash, checker run, card, and silence decision; the graph answers "what did this change invalidate" |
+| Check the underlying work | Reproduce the calculation; keep runnable checks another engineer or agent can inspect | Built: `checkers/`, `run_check`, `publish_result`, run ids on every card |
+| Continue existing work correctly | Update the right task, carry unresolved questions forward, never turn a tentative discussion into a decision or open a duplicate | Not built. The historical supplier-acceptance case in the research notes is the target: an old acceptance of one configuration is not approval of the new geometry, and the open confirmation has to travel to the right project |
+
+What we do not claim: a market gap ([`research/engineering-change-competitors.md`](research/engineering-change-competitors.md)), that Slack cannot be configured to approximate this, or that a summary is the wrong tool for open-ended questions. The next proof is the same historical cases run through a configured Slackbot and through ThreadRev. If they tie, the workflow gets built on Slack's tooling and the specialized part is the checker and revision contract.
 
 ## Why search by identifier, not RAG
 
@@ -90,21 +177,21 @@ The workspace index is retrieval. It is retrieval by exact match over a structur
 
 ## Status
 
-Verified on `main` at 12:35 PM EDT, September 12, 2026, with `npm run verify`:
+Verified on `main` at 1:56 PM EDT, September 12, 2026, with `npm run verify`:
 
 | Check | Result |
 |---|---|
 | TypeScript typecheck, all workspaces | pass |
-| `agent-core` tests | 52 pass |
-| `channel` tests, including the replay harness | 37 pass |
+| `agent-core` tests | 56 pass |
+| `channel` tests, including the replay harness and the edit-approval flow | 47 pass |
 | `web` tests | 34 pass |
-| Python checker tests | 10 pass |
+| Python checker and editor tests | 12 pass |
 
 What is **not** yet true:
 
 - **Slack is not connected.** The model key, Channel code, and Intelligence key are blank locally. The bot has not posted to a real workspace. Everything above is proven offline through the replay harness. The demo video will state clearly whether it shows live delivery or the harness.
 - The web console has no styling yet and is in active development.
-- Exa search is configured and verified live but is not registered on the reviewer. External research is not part of the core workflow.
+- Exa is not used. The inherited web-search capability stays in `agent-core` for its tests only; it is not registered on the reviewer and `EXA_API_KEY` is blank.
 - Persistent storage (the Convex decision in [`SCRATCHPAD.md`](SCRATCHPAD.md)) is a recorded direction, not implemented. Evidence lives in a local JSONL file.
 - The inherited dependency audit has unresolved advisories. This is not a production or security-cleared deployment.
 
@@ -157,7 +244,7 @@ Baseline commit is `9ed46e0`. `git diff --name-only 9ed46e0..HEAD` is the author
 | Reviewer system prompt | `packages/agent-core/src/reviewer-prompt.ts` |
 | Finding, evidence, and checker contracts with examples and tests | `packages/agent-core/src/contracts/`, `contracts/` |
 | Evidence log and graph | `packages/agent-core/src/evidence/` |
-| Checkers | `checkers/` |
+| Checkers and the approved-edit writer | `checkers/` |
 | Document extractor | `extractors/docx_text.py` |
 | Fixtures: documents, Slack scripts, checksums, generator | `fixtures/` |
 | Replay harness and publish guard | `apps/channel/src/replay/` |
@@ -194,7 +281,6 @@ Five lanes work on this repo in parallel: backend, web console, demo and submiss
 
 - **CopilotKit Channels** hosts the Slack connection, delivers thread history, and renders the finding card as native Block Kit from one component tree.
 - **OpenAI** (or OpenRouter) runs the reviewer agent that decides what to read, which checker to run, and what to ask.
-- **Exa** is wired for explicitly requested external research and is not used in the core workflow.
 
 ## Research
 

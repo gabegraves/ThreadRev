@@ -4,7 +4,7 @@ Written 2026-09-12 12:10 PM EDT. Deadline 5:00 PM EDT today. Repo https://github
 
 ## 1. What ThreadRev is
 
-ThreadRev is a Slack-native engineering change reviewer for a solar-car team. It reads a channel, and when a document, revision, or request disagrees with what the thread already decided, it posts one finding card in the thread: the discrepancy, why it matters, sources with versions, what was reproduced by a checker versus inferred, and what resolves it. When a later message changes an input, the old card is marked stale in place and a new card bound to the new revision is posted. The model never computes a number that appears on a card. A local Python checker does, and `publish_result` is the only path to a card.
+ThreadRev is a Slack-native engineering change reviewer for a light electric vehicle maker. It reads a channel, and when a document, revision, or request disagrees with what the thread already decided, it posts one finding card in the thread: the discrepancy, why it matters, sources with versions, what was reproduced by a checker versus inferred, and what resolves it. When a later message changes an input, the old card is marked stale in place and a new card bound to the new revision is posted. The model never computes a number that appears on a card. A local Python checker does, and `publish_result` is the only path to a card.
 
 Built on the CopilotKit agents-everywhere-starter-kit. Slack via CopilotKit Channels (managed, no tunnel). Hackathon judging: four criteria scored 1 to 5, listed in `hackathon-overview.md`. Required deliverables: title, written description, two-minute video, public social post.
 
@@ -15,7 +15,7 @@ Built on the CopilotKit agents-everywhere-starter-kit. Slack via CopilotKit Chan
 - F3. A web review console is being written right now by another agent in `apps/web/src/components/review-console/`. Eleven files, all uncommitted, no CSS yet, and the web workspace typecheck currently fails on `review-console.tsx`. As of 12:12 PM that agent also rewrote `apps/web/src/app/page.tsx` to mount `ReviewConsole`, replacing the inherited incident page, also uncommitted. Do not edit, commit, or delete those files until that agent commits. Coordinate through Gabe.
 - F4. The evidence API at `apps/web/src/app/api/evidence/route.ts` is committed and returns the Scenario A sample graph when the live log is empty.
 - F5. No submission material exists yet. `SUBMISSION.md` is the unfilled starter checklist. No description, shot list, social post, or inherited-versus-built list has been written.
-- F6. Exa search is configured and verified live, but is not registered on the reviewer and is not part of the demo.
+- F6. Exa is not used. Not registered on the reviewer, key blank, not a sponsor technology we list.
 
 ## 3. What was built during the event
 
@@ -43,7 +43,7 @@ Channel `#ks4-electrical`. Precharge RC timing, `t_99.9 = R * C * 6.907755`, R =
 
 1. Dara Voss posts `precharge-review-r2.docx`: "Dropped one film cap, bus is now 680 uF."
 2. Tam Holloway: "Relay close timer in firmware is 2.5 s, matches the doc."
-3. Juno Marsh, trigger: "@reviewer can you check section 3 of the r2 doc before I sign the review?"
+3. Juno Marsh, trigger: "@Rev can you check section 3 of the r2 doc before I sign the review?"
 4. Card 1: section 3 text says 680 uF, section 2 diagram says 750 uF, printed 2.435 s reproduces only with 750 uF. With 680 uF it is 2.208 s. Section 4 example prints 6.91 s, recomputed 6.493 s. Question to Dara: which capacitance is right.
 5. Dara, requirement change: "Bus is 820 uF, not 680. Doc will be r3."
 6. Card 1 is marked stale in the thread. Card 2: at 820 uF, t_99.9 = 2.662 s, which is later than the 2.5 s relay timer. Bus reaches 99.85 percent at 2.5 s. Firmware timer or resistor must change. Bound to Dara's message, not to a document, because r3 does not exist yet.
@@ -91,7 +91,7 @@ Shot plan starting point, from `research/hackathon-design.md`:
 | 0 to 20 s | Slack channel with the seeded thread and the r2 doc, before the bot is invited. Say who Juno is and what signing a review means. |
 | 20 to 55 s | Juno's trigger. Card 1 posts. Zoom on reproduced values and the checker run id. |
 | 55 to 95 s | Dara's 820 uF message. Card 1 turns stale. Card 2 posts with the timer violation. |
-| 95 to 120 s | One sentence on what a standalone chatbox would have lost. Optional: replay scorecard or web console for a few seconds, labeled as recorded, not live. |
+| 95 to 120 s | The Slack comparison beat, exact words in `research/hackathon-design.md` step 5, then the approval beat, step 6: Rev proposes the section 4 edit, a human clicks Approve, the card redraws with the new file and hash. The rubric asks to show the decision and the resulting behavior separately; this is that. |
 
 Recording plan depends on F2. Two paths:
 

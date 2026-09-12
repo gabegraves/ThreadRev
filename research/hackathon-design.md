@@ -53,14 +53,20 @@ Before publishing, atomically check that the run still targets the current requi
 
 ## Recommended two-minute demonstration
 
-Use a public, fictional mounting plate or cantilever-like component with a drawing, a supplied STEP model, and explicit material/load assumptions. Pick one geometry check plus one bounded computation that can finish visibly. Do not promise arbitrary FEA or infer material properties from a picture.
+Scenario A at Kestrel Motors, a fictional maker of light electric city vehicles. The KS-4 precharge board review is about to be signed. Fixture: `fixtures/slack/scenario-a.json`. Cards: `contracts/examples/finding-scenario-a.json` and `finding-scenario-a-superseding.json`. Every number below comes from `checkers/check_rc.py`, none from the model.
 
-1. **0–20 seconds:** Ask in a real Slack thread whether the current part meets the stated requirement. Show a source crop and selected CAD revision.
-2. **20–55 seconds:** The agent retrieves relevant evidence, invokes the real computation and posts a compact check card: requirement, measured/calculated value, limit, source revision, run ID.
-3. **55–95 seconds:** A new message changes a load or interface dimension. The old result becomes stale immediately. The agent identifies the dependency and reruns the affected work.
-4. **95–120 seconds:** Show the changed result and underlying artifact. Display a small replay scorecard containing a clean control, conflicting-evidence case and mid-run revision. Clearly distinguish live execution from any recorded comparison.
+1. **0-15 s. The context.** Slack, `#ks4-electrical`. Dara Voss, electrical lead: "Precharge board r2 review doc is up. Dropped one film cap, bus is now 680 uF." with `precharge-review-r2.docx` attached. Tam Holloway, firmware, in thread: "Relay close timer in firmware is 2.5 s, matches the doc." Spoken: a light EV company, a board about to go to production, a review about to be signed.
+2. **15-30 s. The ask.** Juno Marsh, who joined in August: "@Rev can you check section 3 of the r2 doc before I sign the review?"
+3. **30-60 s. Card 1.** The reviewer reads the thread, opens the doc, runs the checker, posts one card. Section 3 says 680 uF, the section 2 diagram says 750 uF, and the printed 2.435 s only reproduces with 750 uF. At 680 uF it is 2.208 s. Section 4 prints 6.91 s for a 2 mF bank, recomputed 6.493 s. Question to Dara: which capacitance is right. Spoken: the model did not compute a number on this card, a local checker did, and the card names the doc revision and its hash.
+4. **60-85 s. The change.** Dara, in thread: "Correction: we are adding a 140 uF snubber bank on the motor controller side. Bus is 820 uF, not 680. Doc will be r3." Card 1 is marked stale in place, not deleted. Card 2: at 820 uF, t_99.9 = 2.662 s, later than the 2.5 s relay timer. The bus is at 99.85 percent when the relay closes. Timer or resistor must change. Bound to Dara's message because r3 does not exist yet.
+5. **85-105 s. The Slack comparison.** On screen: Card 1 marked stale above Card 2. Spoken, exact words: "Slack AI can summarize this thread, and the summary is right: bus 680 microfarads, timer 2.5 seconds, doc matches. It is the wrong answer. ThreadRev recomputed the numbers, bound the card to the revision it was checked against, and when Dara changed the bus, the old card went stale instead of sitting next to a new summary. Slack summarizes what was said. ThreadRev keeps what was decided, and what it was decided against." Then, if time allows, the cross-channel variant: the same correction posted two weeks earlier in `#ks4-purchasing` as a snubber order, found by `search_workspace` on the unit `uF`.
+6. **105-120 s. Rev asks before it writes.** Three shots, no cuts between them.
+   - **On screen (105 s):** the "Proposed edit: needs approval" card under Card 1. Zoom on the line `section 4, line 13: t = 6.91 s → t = 6.493 s`, the checker run id, and the sentence "Nothing has been written." Spoken: "The worked example in section 4 is wrong and its input isn't in dispute. So Rev proposes the exact line. It has not written anything."
+   - **On screen (111 s):** the cursor clicks **Approve and write the file**. Hold one second on the "approved, writing" redraw. Spoken: "A person approves."
+   - **On screen (114 s):** the card redraws to "Proposed edit: applied" with `precharge-review-r2-proposed.docx`, the new sha, and "Source untouched." Optional two-second cut to Finder showing both files side by side. Spoken: "It writes a new copy with a new hash. The file Juno signed keeps its hash. That is the whole rule: Rev proposes, you decide, the record shows both."
+   If time is short, drop the replay scorecard, not this. The rubric asks to show the decision and the resulting behavior separately; the click and the redraw are that.
 
-If full local inference passes the task, feature it in the main run. Otherwise show the hosted workflow honestly and label local status accurately; do not claim an unexecuted local mode.
+Say on screen whether the run is live Slack delivery or the offline replay harness. Do not claim a delivery path that did not run.
 
 ## Lessons from actual recent winners
 

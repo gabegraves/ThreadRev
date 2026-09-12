@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Generate fixtures/workspace/kestrel-workspace.json: a multi-channel,
-multi-month Slack export for the Kestrel Solar Racing workspace.
+multi-month Slack export for the Kestrel Motors workspace.
 
 Same message shape as fixtures/slack/*.json. Everything is fictional and
 consistent with research/synthetic-fixture-spec.md (cast, channels, numbers).
@@ -80,7 +80,7 @@ A(m("2026-04-06 10:15", "electrical", "dara", "Bus capacitance for KS-4: three 2
 A(m("2026-04-06 10:40", "firmware", "tam", "Precharge relay timer in firmware set to 2.0 s for bench testing. Will bump to match Dara's number once the bus is final."))
 A(m("2026-04-08 09:00", "purchasing", "dara", "Quote for 3 x 250 uF 450 V film caps: 312 USD from Arlen Components. OK to order?"))
 A(m("2026-04-08 09:25", "purchasing", "rowan", "Approved, PO-2207."))
-A(m("2026-04-14 15:30", "sim", "milo", "Sim v1-1: added the array shading model. Lap energy at 22 m/s is 3.9 kWh on the 220 km segment, mass still 280 kg."))
+A(m("2026-04-14 15:30", "sim", "milo", "Sim v1-1: added the HVAC load model. Segment energy at 22 m/s is 3.9 kWh on the 220 km segment, mass still 280 kg."))
 A(m("2026-04-22 11:10", "suspension", "ines", "Bracket rev B. Moved the lower mount 6 mm inboard for tire clearance."))
 
 # --- May: firmware timer, first precharge review ----------------------------
@@ -110,12 +110,12 @@ A(m("2026-08-03 10:30", "firmware", "tam", "Motor controller firmware 2.3 has th
 A(m("2026-08-05 11:20", "purchasing", "dara", "Rowan, please add a 140 uF snubber bank on the motor controller side to the August order. With it the HV bus is 820 uF, not 680. I will fold it into the precharge doc."))
 A(m("2026-08-05 11:34", "purchasing", "rowan", "Added. PO-2261, 2 x 70 uF film. Ships in 10 days."))
 A(m("2026-08-05 11:40", "purchasing", "dara", "Thanks. That is the last HV order before the review."))
-A(m("2026-08-11 13:15", "sim", "juno", "@reviewer can you run the 220 km segment at 22 m/s for end SoC 40 percent? I grabbed the params from the July 3 sheet."))
+A(m("2026-08-11 13:15", "sim", "juno", "@Rev can you run the 220 km segment at 22 m/s for end SoC 40 percent? I grabbed the params from the July 3 sheet."))
 A(m("2026-08-12 09:00", "suspension", "ines", "Rear bracket rev C released. No mass change."))
 # Scenario A thread, up to the trigger. Spec-cited ts values verbatim.
 A(m("2026-08-18 09:12", "electrical", "dara", "Precharge board r2 review doc is up. Dropped one film cap, bus is now 680 uF.", files=["documents/precharge-review-r2.docx"], seq=100))
 A(m("2026-08-18 09:40", "electrical", "tam", "Relay close timer in firmware is 2.5 s, matches the doc.", thread="1787062320.000100", seq=500))
-A(m("2026-08-19 14:05", "electrical", "juno", "@reviewer can you check section 3 of the r2 doc before I sign the review?", thread="1787062320.000100", role="trigger", seq=600))
+A(m("2026-08-19 14:05", "electrical", "juno", "@Rev can you check section 3 of the r2 doc before I sign the review?", thread="1787062320.000100", role="trigger", seq=600))
 # After the cutoff. search_workspace must never return these for the r2 trigger.
 A(m("2026-08-20 10:00", "purchasing", "rowan", "PO-2261 snubber bank delivered, 2 x 70 uF. Dara has them.", role="evaluator_only"))
 A(m("2026-08-21 09:15", "electrical", "dara", "r3 will state 820 uF. Drafting it now.", role="evaluator_only"))

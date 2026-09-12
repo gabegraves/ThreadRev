@@ -3,7 +3,11 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { finding, type CheckerResponse } from "agent-core";
-import { recallRun } from "../reviewer-tools";
+import { recallProposal, recallRun } from "../reviewer-tools";
+import { createHash } from "node:crypto";
+import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { execFileSync } from "node:child_process";
 import { loadFixture } from "./fixture-loader";
 import { runReplay, type ReplayResult } from "./harness";
 import { routeCases, scriptFor } from "./scripts";
@@ -173,4 +177,81 @@ it(
   assert.ok(preserved);
   assert.equal((preserved.inputs as { soc_end: number }).soc_end, 0.4);
   assert.equal(routeCases(preserved).mass_318kg!.feasible, false);
+});
+
+
+it("scenario A: proposes the section 4 edit, approval writes a new file, the source is untouched", { timeout: 20_000 }, async () => {
+  const outDir = mkdtempSync(join(tmpdir(), "threadrev-edit-"));
+  process.env.EDIT_OUTPUT_DIR = outDir;
+  try {
+    const result = await replay("scenario-a");
+    assert.equal(result.failure, undefined);
+    // The finding card and the proposal are two separate posts; only the card parses as a finding.
+    assert.equal(result.postedCards.length, 1);
+    const creates = result.payloads.filter((p) => p.kind === "slack.message.create");
+    const proposalPayload = creates.find((p) => JSON.stringify(p).includes("Proposed edit"));
+    assert.ok(proposalPayload, `no proposal card among ${creates.length} creates`);
+    const proposalText = JSON.stringify(proposalPayload);
+    assert.match(proposalText, /Proposed edit: needs approval/);
+    assert.match(proposalText, /t = 6\.91 s/);
+    assert.match(proposalText, /t = 6\.493 s/);
+    assert.match(proposalText, /Approve and write the file/);
+    assert.match(proposalText, /Nothing has been written/);
+
+    const toolResult = result.agentMessages.find((m) => m.role === "tool" && String(m.content).includes("proposal_id"));
+    assert.ok(toolResult, "propose_edit returned no proposal_id");
+    const { proposal_id, output } = JSON.parse(String(toolResult.content)) as { proposal_id: string; output: string };
+    assert.equal(output, "precharge-review-r2-proposed.docx");
+    const proposal = recallProposal(proposal_id);
+    assert.ok(proposal, "proposal not remembered");
+    assert.equal(proposal.view.status, "pending");
+    assert.equal(existsSync(join(outDir, output)), false, "nothing may be written before approval");
+
+    const sourcePath = join(import.meta.dirname, "../../../../fixtures/documents/precharge-review-r2.docx");
+    const sha = (p: string) => createHash("sha256").update(readFileSync(p)).digest("hex");
+    const sourceBefore = sha(sourcePath);
+
+    await proposal.decide(true, "Juno Marsh");
+    assert.equal(proposal.view.status, "applied", proposal.view.error);
+    assert.equal(sha(sourcePath), sourceBefore, "source file must not change");
+    const written = join(outDir, output);
+    assert.ok(existsSync(written));
+    assert.equal(proposal.view.result_sha256, sha(written));
+    assert.notEqual(proposal.view.result_sha256, sourceBefore);
+    const text = JSON.parse(execFileSync("python3", [join(import.meta.dirname, "../../../../extractors/docx_text.py"), written], { encoding: "utf8" })) as { paragraphs: string[] };
+    assert.ok(text.paragraphs.some((p) => p.includes("t = 6.493 s")), text.paragraphs.join("\n"));
+    assert.ok(!text.paragraphs.some((p) => p.includes("6.91")), "old printed value still present");
+    // Every other line is byte-identical in meaning: same paragraph count.
+    const before = JSON.parse(execFileSync("python3", [join(import.meta.dirname, "../../../../extractors/docx_text.py"), sourcePath], { encoding: "utf8" })) as { paragraphs: string[] };
+    assert.equal(text.paragraphs.length, before.paragraphs.length);
+    // Deciding twice is a no-op.
+    await proposal.decide(false, "someone else");
+    assert.equal(proposal.view.status, "applied");
+  } finally {
+    delete process.env.EDIT_OUTPUT_DIR;
+    rmSync(outDir, { recursive: true, force: true });
+  }
+});
+
+it("propose_edit refuses a replacement value the checker did not produce", { timeout: 20_000 }, async () => {
+  const messages = loadFixture("scenario-a");
+  const base = scriptFor("scenario-a", messages);
+  const steps = base.steps.slice(0, 4);
+  steps.push((ctx) => ({
+    name: "propose_edit",
+    args: {
+      run_id: ctx.checker!.run_id,
+      document: "precharge-review-r2.docx",
+      // 6.5 would be accepted: it is the one-decimal rounding of the checker's 6.4933. 7.0 is nobody's number.
+      edits: [{ locator: "section 4", find: "t = 6.91 s", replace: "t = 7.0 s" }],
+    },
+  }));
+  steps.push(() => undefined);
+  const result = await runReplay({ messages, steps });
+  assert.equal(result.failure, undefined);
+  const creates = result.payloads.filter((p) => p.kind === "slack.message.create");
+  assert.ok(!creates.some((p) => JSON.stringify(p).includes("Proposed edit")), "no proposal card may be posted for a refused edit");
+  const refusal = result.agentMessages.find((m) => m.role === "tool" && String(m.content).includes('"proposed":false'));
+  assert.ok(refusal, "expected a refusal from propose_edit");
+  assert.match(String(refusal.content), /7\.0.*not a value from run/);
 });

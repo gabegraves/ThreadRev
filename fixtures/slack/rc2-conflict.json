@@ -54,7 +54,7 @@
     "user": "U00SYN06",
     "user_name": "Juno Marsh",
     "thread_ts": null,
-    "text": "@reviewer run the Northgate to Ferris segment (220 km, no optional loop), start SoC 96%, end SoC 40%, two 20-minute driver swaps, 22 m/s constant. I grabbed the params from the July 3 sheet.",
+    "text": "@Rev run the Northgate to Ferris segment (220 km, no optional loop), start SoC 96%, end SoC 40%, two 20-minute stops, 22 m/s constant. I grabbed the params from the July 3 sheet.",
     "files": [],
     "role": "trigger"
   },
@@ -65,7 +65,7 @@
     "user": "U00SYN02",
     "user_name": "Milo Trent",
     "thread_ts": "1786472100.000800",
-    "text": "Race director allows end SoC 35% for this segment now, not 40%.",
+    "text": "Test lead allows end SoC 35% for this segment now, not 40%.",
     "files": [],
     "role": "evaluator_only"
   }

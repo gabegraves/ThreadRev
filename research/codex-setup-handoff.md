@@ -43,7 +43,7 @@ The checkout is already the ThreadRev repo: `origin` is https://github.com/gabeg
 
 ### 5. Bot in channels and seed messages
 
-1. In Slack, `/invite @ThreadRev` into all four `ks4-*` channels.
+1. In Slack, `/invite @Rev` into all four `ks4-*` channels.
 2. Start `npm run dev:slack`. In `#ks4-electrical`, mention the bot once in a fresh thread and confirm it replies. Screenshot the reply. Stop the listener.
 3. Do not paste the fixture scripts yet. The application code that reacts to them is not merged. Leave the channels empty apart from the smoke-test thread.
 

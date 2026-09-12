@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import { Providers } from "@/components/providers";
 import { AppSidebar } from "@/components/shell/app-sidebar";
+import { ConsoleOverlay } from "@/components/shell/console-overlay";
 import { MobileHeader } from "@/components/shell/mobile-header";
 import { THEME_INIT } from "@/components/shell/theme-toggle";
 import "@copilotkit/react-core/v2/styles.css";
@@ -33,6 +34,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <div className="mx-auto flex w-full max-w-[1800px] flex-grow flex-col gap-5 px-3 pt-city-content pb-10 sm:px-4 lg:px-6">{children}</div>
             </main>
           </div>
+          <ConsoleOverlay />
         </Providers>
       </body>
     </html>

@@ -30,7 +30,7 @@
           "ts": "2026-08-19T19:05:00.000Z",
           "from": "Juno Marsh",
           "bot": false,
-          "text": "@reviewer can you check section 3 of the r2 doc before I sign the review?",
+          "text": "@Rev can you check section 3 of the r2 doc before I sign the review?",
           "files": []
         }
       ]
@@ -43,7 +43,7 @@
       "result": {
         "document": "precharge-review-r2.docx",
         "revision": "r2",
-        "sha256": "bef5a5dc15a5e31fbaaceb77e8150767f421e55c86e5c14db33f3b54eefbd282",
+        "sha256": "b63f3e53bb2651e37c05c8d341f9c331e34a6edf516d2b91994dda8128b66c18",
         "lines": [
           {
             "n": 1,
@@ -51,7 +51,7 @@
           },
           {
             "n": 2,
-            "text": "Kestrel Solar Racing, KS-4 electrical. Revision r2. Author: Dara Voss."
+            "text": "Kestrel Motors, KS-4 electrical. Revision r2. Author: Dara Voss."
           },
           {
             "n": 3,
@@ -158,7 +158,7 @@
       "result": {
         "checker": "rc",
         "version": "1",
-        "run_id": "rc-20260912T162201Z-cd13",
+        "run_id": "rc-20260912T175524Z-95ad",
         "inputs": {
           "R_ohm": 470,
           "threshold": 0.999,
@@ -277,7 +277,7 @@
     {
       "name": "publish_result",
       "args": {
-        "run_id": "rc-20260912T162201Z-cd13",
+        "run_id": "rc-20260912T175524Z-95ad",
         "requirements_revision": "1787166300.000600",
         "discrepancy": "Section 3 text states C = 680 uF; the section 2 diagram caption states 750 uF. The printed t_99.9 = 2.435 s reproduces only with 750 uF. With 680 uF, t_99.9 = 2.208 s. Section 4 prints 6.91 s for a 2 mF bank; recomputed value is 6.493 s.",
         "why_it_matters": "The relay close timer of 2.5 s keeps positive margin either way (65 ms at 750 uF, 292 ms at 680 uF), but the document's stated basis is not the value it computed from, so the review cannot be signed against it.",
@@ -286,7 +286,7 @@
             "kind": "document",
             "id": "precharge-review-r2.docx",
             "revision": "r2",
-            "sha256": "bef5a5dc15a5e31fbaaceb77e8150767f421e55c86e5c14db33f3b54eefbd282",
+            "sha256": "b63f3e53bb2651e37c05c8d341f9c331e34a6edf516d2b91994dda8128b66c18",
             "locator": "line 8",
             "quote": "Bus capacitance C = 750 uF (3 x 250 uF film)."
           },
@@ -294,7 +294,7 @@
             "kind": "document",
             "id": "precharge-review-r2.docx",
             "revision": "r2",
-            "sha256": "bef5a5dc15a5e31fbaaceb77e8150767f421e55c86e5c14db33f3b54eefbd282",
+            "sha256": "b63f3e53bb2651e37c05c8d341f9c331e34a6edf516d2b91994dda8128b66c18",
             "locator": "line 11",
             "quote": "t_99.9 = -470 * 750e-6 * ln(0.001) = 2.435 s. Precharge relay closes at 2.5 s, margin OK."
           },
@@ -313,8 +313,30 @@
       },
       "result": {
         "published": true,
-        "finding_id": "fnd-mtylf1of-uwxa",
+        "finding_id": "fnd-mtyor520-qg01",
         "requirements_revision": "1787166300.000600"
+      }
+    },
+    {
+      "name": "propose_edit",
+      "args": {
+        "run_id": "rc-20260912T175524Z-95ad",
+        "document": "precharge-review-r2.docx",
+        "finding_id": "fnd-mtyor520-qg01",
+        "edits": [
+          {
+            "locator": "section 4, line 13",
+            "find": "t = 6.91 s",
+            "replace": "t = 6.493 s",
+            "reason": "printed value does not reproduce at 2 mF; checker gives 6.4933 s"
+          }
+        ]
+      },
+      "result": {
+        "proposed": true,
+        "proposal_id": "edt-mtyor525-876i",
+        "output": "precharge-review-r2-proposed.docx",
+        "note": "Posted with Approve and Reject buttons. Nothing is written until a human approves. Do not call again for the same edits."
       }
     }
   ],
@@ -322,7 +344,7 @@
     {
       "checker": "rc",
       "version": "1",
-      "run_id": "rc-20260912T162201Z-cd13",
+      "run_id": "rc-20260912T175524Z-95ad",
       "inputs": {
         "R_ohm": 470,
         "threshold": 0.999,
@@ -440,7 +462,7 @@
   ],
   "posted_cards": [
     {
-      "finding_id": "fnd-mtylf1of-uwxa",
+      "finding_id": "fnd-mtyor520-qg01",
       "status": "live",
       "requirements_revision": "1787166300.000600",
       "discrepancy": "Section 3 text states C = 680 uF; the section 2 diagram caption states 750 uF. The printed t_99.9 = 2.435 s reproduces only with 750 uF. With 680 uF, t_99.9 = 2.208 s. Section 4 prints 6.91 s for a 2 mF bank; recomputed value is 6.493 s.",
@@ -450,7 +472,7 @@
           "kind": "document",
           "id": "precharge-review-r2.docx",
           "revision": "r2",
-          "sha256": "bef5a5dc15a5e31fbaaceb77e8150767f421e55c86e5c14db33f3b54eefbd282",
+          "sha256": "b63f3e53bb2651e37c05c8d341f9c331e34a6edf516d2b91994dda8128b66c18",
           "locator": "line 8",
           "quote": "Bus capacitance C = 750 uF (3 x 250 uF film)."
         },
@@ -458,7 +480,7 @@
           "kind": "document",
           "id": "precharge-review-r2.docx",
           "revision": "r2",
-          "sha256": "bef5a5dc15a5e31fbaaceb77e8150767f421e55c86e5c14db33f3b54eefbd282",
+          "sha256": "b63f3e53bb2651e37c05c8d341f9c331e34a6edf516d2b91994dda8128b66c18",
           "locator": "line 11",
           "quote": "t_99.9 = -470 * 750e-6 * ln(0.001) = 2.435 s. Precharge relay closes at 2.5 s, margin OK."
         },
@@ -518,7 +540,7 @@
       "checker_run": {
         "checker": "rc",
         "version": "1",
-        "run_id": "rc-20260912T162201Z-cd13"
+        "run_id": "rc-20260912T175524Z-95ad"
       }
     }
   ],

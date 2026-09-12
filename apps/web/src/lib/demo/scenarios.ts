@@ -69,7 +69,7 @@ export const SCENARIOS: DemoScenario[] = [
         "ts": "1787166300.000600",
         "from": "Juno Marsh",
         "is_bot": false,
-        "text": "@reviewer can you check section 3 of the r2 doc before I sign the review?",
+        "text": "@Rev can you check section 3 of the r2 doc before I sign the review?",
         "is_change": false
       },
       {
@@ -80,7 +80,7 @@ export const SCENARIOS: DemoScenario[] = [
         "kind": "document_read",
         "document": "precharge-review-r2.docx",
         "revision": "r2",
-        "sha256": "bef5a5dc15a5e31fbaaceb77e8150767f421e55c86e5c14db33f3b54eefbd282",
+        "sha256": "b63f3e53bb2651e37c05c8d341f9c331e34a6edf516d2b91994dda8128b66c18",
         "line_count": 13,
         "named_in_ts": "1787062320.000100"
       },
@@ -206,11 +206,11 @@ export const SCENARIOS: DemoScenario[] = [
         "evidence_refs": [
           {
             "kind": "document",
-            "id": "bef5a5dc15a5e31fbaaceb77e8150767f421e55c86e5c14db33f3b54eefbd282"
+            "id": "b63f3e53bb2651e37c05c8d341f9c331e34a6edf516d2b91994dda8128b66c18"
           },
           {
             "kind": "document",
-            "id": "bef5a5dc15a5e31fbaaceb77e8150767f421e55c86e5c14db33f3b54eefbd282"
+            "id": "b63f3e53bb2651e37c05c8d341f9c331e34a6edf516d2b91994dda8128b66c18"
           },
           {
             "kind": "message",
@@ -235,7 +235,7 @@ export const SCENARIOS: DemoScenario[] = [
               "kind": "document",
               "id": "precharge-review-r2.docx",
               "revision": "r2",
-              "sha256": "bef5a5dc15a5e31fbaaceb77e8150767f421e55c86e5c14db33f3b54eefbd282",
+              "sha256": "b63f3e53bb2651e37c05c8d341f9c331e34a6edf516d2b91994dda8128b66c18",
               "locator": "section 2, diagram caption",
               "quote": "Bus capacitance C = 750 uF (3 x 250 uF film)."
             },
@@ -243,7 +243,7 @@ export const SCENARIOS: DemoScenario[] = [
               "kind": "document",
               "id": "precharge-review-r2.docx",
               "revision": "r2",
-              "sha256": "bef5a5dc15a5e31fbaaceb77e8150767f421e55c86e5c14db33f3b54eefbd282",
+              "sha256": "b63f3e53bb2651e37c05c8d341f9c331e34a6edf516d2b91994dda8128b66c18",
               "locator": "section 3, line 2",
               "quote": "t_99.9 = -470 * 750e-6 * ln(0.001) = 2.435 s."
             },
@@ -294,7 +294,27 @@ export const SCENARIOS: DemoScenario[] = [
       },
       {
         "event_id": "ev-1787062320000100-0008",
-        "at": "2026-08-19T19:30:24Z",
+        "at": "2026-08-19T18:05:24Z",
+        "thread": "1787062320.000100",
+        "trigger_ts": "1787166300.000600",
+        "kind": "edit_proposed",
+        "proposal_id": "edt-a-r2-001",
+        "finding_id": "fnd-a-r2-001",
+        "run_id": "rc-20260912T151200Z-7f3a",
+        "document": "precharge-review-r2.docx",
+        "source_sha256": "b63f3e53bb2651e37c05c8d341f9c331e34a6edf516d2b91994dda8128b66c18",
+        "edits": [
+          {
+            "locator": "section 4, line 13",
+            "find": "t = 6.91 s",
+            "replace": "t = 6.493 s",
+            "reason": "printed value does not reproduce at 2 mF; checker gives 6.4933 s"
+          }
+        ]
+      },
+      {
+        "event_id": "ev-1787062320000100-0009",
+        "at": "2026-08-19T19:30:26Z",
         "thread": "1787062320.000100",
         "trigger_ts": "1787171400.000200",
         "kind": "message_read",
@@ -305,8 +325,8 @@ export const SCENARIOS: DemoScenario[] = [
         "is_change": true
       },
       {
-        "event_id": "ev-1787062320000100-0009",
-        "at": "2026-08-19T19:30:26Z",
+        "event_id": "ev-1787062320000100-0010",
+        "at": "2026-08-19T19:30:28Z",
         "thread": "1787062320.000100",
         "trigger_ts": "1787171400.000200",
         "kind": "message_read",
@@ -317,20 +337,20 @@ export const SCENARIOS: DemoScenario[] = [
         "is_change": false
       },
       {
-        "event_id": "ev-1787062320000100-0010",
-        "at": "2026-08-19T19:30:28Z",
+        "event_id": "ev-1787062320000100-0011",
+        "at": "2026-08-19T19:30:30Z",
         "thread": "1787062320.000100",
         "trigger_ts": "1787171400.000200",
         "kind": "message_read",
         "ts": "1787166300.000600",
         "from": "Juno Marsh",
         "is_bot": false,
-        "text": "@reviewer can you check section 3 of the r2 doc before I sign the review?",
+        "text": "@Rev can you check section 3 of the r2 doc before I sign the review?",
         "is_change": false
       },
       {
-        "event_id": "ev-1787062320000100-0011",
-        "at": "2026-08-19T19:30:30Z",
+        "event_id": "ev-1787062320000100-0012",
+        "at": "2026-08-19T19:30:32Z",
         "thread": "1787062320.000100",
         "trigger_ts": "1787171400.000200",
         "kind": "message_read",
@@ -341,20 +361,20 @@ export const SCENARIOS: DemoScenario[] = [
         "is_change": true
       },
       {
-        "event_id": "ev-1787062320000100-0012",
-        "at": "2026-08-19T19:30:32Z",
+        "event_id": "ev-1787062320000100-0013",
+        "at": "2026-08-19T19:30:34Z",
         "thread": "1787062320.000100",
         "trigger_ts": "1787171400.000200",
         "kind": "document_read",
         "document": "precharge-review-r2.docx",
         "revision": "r2",
-        "sha256": "bef5a5dc15a5e31fbaaceb77e8150767f421e55c86e5c14db33f3b54eefbd282",
+        "sha256": "b63f3e53bb2651e37c05c8d341f9c331e34a6edf516d2b91994dda8128b66c18",
         "line_count": 13,
         "named_in_ts": "1787062320.000100"
       },
       {
-        "event_id": "ev-1787062320000100-0013",
-        "at": "2026-08-19T19:30:34Z",
+        "event_id": "ev-1787062320000100-0014",
+        "at": "2026-08-19T19:30:36Z",
         "thread": "1787062320.000100",
         "trigger_ts": "1787171400.000200",
         "kind": "check_run",
@@ -478,13 +498,13 @@ export const SCENARIOS: DemoScenario[] = [
           },
           {
             "kind": "document",
-            "id": "bef5a5dc15a5e31fbaaceb77e8150767f421e55c86e5c14db33f3b54eefbd282"
+            "id": "b63f3e53bb2651e37c05c8d341f9c331e34a6edf516d2b91994dda8128b66c18"
           }
         ]
       },
       {
-        "event_id": "ev-1787062320000100-0014",
-        "at": "2026-08-19T19:30:36Z",
+        "event_id": "ev-1787062320000100-0015",
+        "at": "2026-08-19T19:30:38Z",
         "thread": "1787062320.000100",
         "trigger_ts": "1787171400.000200",
         "kind": "finding_superseded",
@@ -493,8 +513,8 @@ export const SCENARIOS: DemoScenario[] = [
         "cause_ts": "1787171400.000200"
       },
       {
-        "event_id": "ev-1787062320000100-0015",
-        "at": "2026-08-19T19:30:38Z",
+        "event_id": "ev-1787062320000100-0016",
+        "at": "2026-08-19T19:30:40Z",
         "thread": "1787062320.000100",
         "trigger_ts": "1787171400.000200",
         "kind": "finding_published",
@@ -515,7 +535,7 @@ export const SCENARIOS: DemoScenario[] = [
               "kind": "document",
               "id": "precharge-review-r2.docx",
               "revision": "r2",
-              "sha256": "bef5a5dc15a5e31fbaaceb77e8150767f421e55c86e5c14db33f3b54eefbd282",
+              "sha256": "b63f3e53bb2651e37c05c8d341f9c331e34a6edf516d2b91994dda8128b66c18",
               "locator": "section 1",
               "quote": "Precharge resistor R = 470 ohm, 10 W."
             }
@@ -542,6 +562,28 @@ export const SCENARIOS: DemoScenario[] = [
             "run_id": "rc-20260912T153100Z-b21c"
           }
         }
+      },
+      {
+        "event_id": "ev-1787062320000100-0017",
+        "at": "2026-08-19T19:33:42Z",
+        "thread": "1787062320.000100",
+        "trigger_ts": "1787166300.000600",
+        "kind": "edit_decided",
+        "proposal_id": "edt-a-r2-001",
+        "decision": "approved",
+        "by": "Juno Marsh"
+      },
+      {
+        "event_id": "ev-1787062320000100-0018",
+        "at": "2026-08-19T19:33:44Z",
+        "thread": "1787062320.000100",
+        "trigger_ts": "1787166300.000600",
+        "kind": "edit_applied",
+        "proposal_id": "edt-a-r2-001",
+        "document": "precharge-review-r2.docx",
+        "source_sha256": "b63f3e53bb2651e37c05c8d341f9c331e34a6edf516d2b91994dda8128b66c18",
+        "output": "precharge-review-r2-proposed.docx",
+        "sha256": "839e48a591bc255000f6cd9a80a5679a0aac990357b11f18f18cb8c68421c93f"
       }
     ]
   },
@@ -589,7 +631,7 @@ export const SCENARIOS: DemoScenario[] = [
         "ts": "1787166300.000600",
         "from": "Juno Marsh",
         "is_bot": false,
-        "text": "@reviewer can you check section 3 of the r2 doc before I sign the review?",
+        "text": "@Rev can you check section 3 of the r2 doc before I sign the review?",
         "is_change": false,
         "via": "thread"
       },
@@ -677,7 +719,7 @@ export const SCENARIOS: DemoScenario[] = [
         "kind": "document_read",
         "document": "precharge-review-r2.docx",
         "revision": "r2",
-        "sha256": "bef5a5dc15a5e31fbaaceb77e8150767f421e55c86e5c14db33f3b54eefbd282",
+        "sha256": "b63f3e53bb2651e37c05c8d341f9c331e34a6edf516d2b91994dda8128b66c18",
         "line_count": 15,
         "named_in_ts": "1787062320.000100"
       },
@@ -687,7 +729,7 @@ export const SCENARIOS: DemoScenario[] = [
         "thread": "1787062320.000100",
         "trigger_ts": "1787166300.000600",
         "kind": "check_run",
-        "run_id": "rc-20260912T163950Z-010b",
+        "run_id": "rc-20260912T170612Z-290b",
         "checker": "rc",
         "version": "1",
         "inputs": {
@@ -810,11 +852,11 @@ export const SCENARIOS: DemoScenario[] = [
         "evidence_refs": [
           {
             "kind": "document",
-            "id": "bef5a5dc15a5e31fbaaceb77e8150767f421e55c86e5c14db33f3b54eefbd282"
+            "id": "b63f3e53bb2651e37c05c8d341f9c331e34a6edf516d2b91994dda8128b66c18"
           },
           {
             "kind": "document",
-            "id": "bef5a5dc15a5e31fbaaceb77e8150767f421e55c86e5c14db33f3b54eefbd282"
+            "id": "b63f3e53bb2651e37c05c8d341f9c331e34a6edf516d2b91994dda8128b66c18"
           },
           {
             "kind": "message",
@@ -833,7 +875,7 @@ export const SCENARIOS: DemoScenario[] = [
         "trigger_ts": "1787166300.000600",
         "kind": "finding_published",
         "finding": {
-          "finding_id": "fnd-mtym1y04-68fr",
+          "finding_id": "fnd-mtymzv3w-ic00",
           "status": "live",
           "requirements_revision": "1787166300.000600",
           "discrepancy": "Section 3 states 680 uF, the section 2 diagram states 750 uF, and the printed 2.435 s reproduces only with 750 uF. Neither is the project's current bus: Dara's 2026-08-05 message in #ks4-purchasing added a 140 uF snubber bank, bus 820 uF, and r2 does not mention it. At 820 uF t_99.9 = 2.6622 s, later than the 2.5 s relay timer. Section 4 prints 6.91 s; recomputed 6.4933 s.",
@@ -843,7 +885,7 @@ export const SCENARIOS: DemoScenario[] = [
               "kind": "document",
               "id": "precharge-review-r2.docx",
               "revision": "r2",
-              "sha256": "bef5a5dc15a5e31fbaaceb77e8150767f421e55c86e5c14db33f3b54eefbd282",
+              "sha256": "b63f3e53bb2651e37c05c8d341f9c331e34a6edf516d2b91994dda8128b66c18",
               "locator": "line 8",
               "quote": "Bus capacitance C = 750 uF (3 x 250 uF film)."
             },
@@ -851,7 +893,7 @@ export const SCENARIOS: DemoScenario[] = [
               "kind": "document",
               "id": "precharge-review-r2.docx",
               "revision": "r2",
-              "sha256": "bef5a5dc15a5e31fbaaceb77e8150767f421e55c86e5c14db33f3b54eefbd282",
+              "sha256": "b63f3e53bb2651e37c05c8d341f9c331e34a6edf516d2b91994dda8128b66c18",
               "locator": "line 11",
               "quote": "t_99.9 = -470 * 750e-6 * ln(0.001) = 2.435 s. Precharge relay closes at 2.5 s, margin OK."
             },
@@ -923,7 +965,7 @@ export const SCENARIOS: DemoScenario[] = [
           "checker_run": {
             "checker": "rc",
             "version": "1",
-            "run_id": "rc-20260912T163950Z-010b"
+            "run_id": "rc-20260912T170612Z-290b"
           }
         }
       }
@@ -983,7 +1025,7 @@ export const SCENARIOS: DemoScenario[] = [
         "ts": "1786472100.000800",
         "from": "Juno Marsh",
         "is_bot": false,
-        "text": "@reviewer run the Northgate to Ferris segment (220 km, no optional loop), start SoC 96%, end SoC 40%, two 20-minute driver swaps, 22 m/s constant. I grabbed the params from the July 3 sheet.",
+        "text": "@Rev run the Northgate to Ferris segment (220 km, no optional loop), start SoC 96%, end SoC 40%, two 20-minute stops, 22 m/s constant. I grabbed the params from the July 3 sheet.",
         "is_change": false
       },
       {
@@ -994,7 +1036,7 @@ export const SCENARIOS: DemoScenario[] = [
         "kind": "document_read",
         "document": "ks4-sim-inputs-v2-0.xlsx",
         "revision": "v2-0",
-        "sha256": "90b83e645932f0b9a8cc447d3ce86ac30398948d702474016a7e172723cb230f",
+        "sha256": "ea78422e330d94417e45a6c29f01bf4a0139001098a58fff929f4e70d3ecad20",
         "line_count": 9,
         "named_in_ts": "1783092000.000700"
       },
@@ -1006,7 +1048,7 @@ export const SCENARIOS: DemoScenario[] = [
         "kind": "document_read",
         "document": "ks4-sim-inputs-v2-1.xlsx",
         "revision": "v2-1",
-        "sha256": "8e2419c7620047d5b80fa273828bd062fecbe50bd3404aed39dd2301d07e6ab4",
+        "sha256": "f9ce6b5def1327ac6e7b42a0b390c8b83cab8875b0e91961cd62cd9b23fc0e94",
         "line_count": 10,
         "named_in_ts": "1784929680.000300"
       },
@@ -1108,11 +1150,11 @@ export const SCENARIOS: DemoScenario[] = [
           },
           {
             "kind": "document",
-            "id": "90b83e645932f0b9a8cc447d3ce86ac30398948d702474016a7e172723cb230f"
+            "id": "ea78422e330d94417e45a6c29f01bf4a0139001098a58fff929f4e70d3ecad20"
           },
           {
             "kind": "document",
-            "id": "8e2419c7620047d5b80fa273828bd062fecbe50bd3404aed39dd2301d07e6ab4"
+            "id": "f9ce6b5def1327ac6e7b42a0b390c8b83cab8875b0e91961cd62cd9b23fc0e94"
           }
         ]
       },
@@ -1148,7 +1190,7 @@ export const SCENARIOS: DemoScenario[] = [
               "kind": "document",
               "id": "ks4-sim-inputs-v2-0.xlsx",
               "revision": "v2-0",
-              "sha256": "90b83e645932f0b9a8cc447d3ce86ac30398948d702474016a7e172723cb230f",
+              "sha256": "ea78422e330d94417e45a6c29f01bf4a0139001098a58fff929f4e70d3ecad20",
               "locator": "sheet params, rows 2 to 5",
               "quote": "mass_kg 290, Crr 0.0040, CdA 0.12, pack_kWh 5.2"
             },
@@ -1156,7 +1198,7 @@ export const SCENARIOS: DemoScenario[] = [
               "kind": "document",
               "id": "ks4-sim-inputs-v2-1.xlsx",
               "revision": "v2-1",
-              "sha256": "8e2419c7620047d5b80fa273828bd062fecbe50bd3404aed39dd2301d07e6ab4",
+              "sha256": "f9ce6b5def1327ac6e7b42a0b390c8b83cab8875b0e91961cd62cd9b23fc0e94",
               "locator": "sheet params, rows 2 to 5, and cell A8",
               "quote": "mass_kg 318, Crr 0.0048, CdA 0.12, pack_kWh 5.2. A8: mass and Crr updated after KS-4 suspension swap, see #ks4-suspension 2026-07-22."
             }
@@ -1189,8 +1231,8 @@ export const SCENARIOS: DemoScenario[] = [
             }
           ],
           "inferred": [
-            "The optional loop is excluded and the two 20-minute swaps are the full swap budget, both taken from the request text as written.",
-            "Array input is assumed zero. The model is constant-speed rolling plus aero only.",
+            "The optional loop is excluded and the two 20-minute stops are the full swap budget, both taken from the request text as written.",
+            "Regen is assumed zero. The model is constant-speed rolling plus aero only.",
             "Driving time at 22 m/s is 2.778 h, plus 40 min of swaps gives 3.44 h wall time. Not recomputed by the checker."
           ],
           "resolution": "Juno confirms the run should use v2-1, or Milo states v2-0 is intentionally being used for a KS-3 comparison. The v2-1 result above is posted but the run is blocked on that confirmation, not final.",
@@ -1250,7 +1292,7 @@ export const SCENARIOS: DemoScenario[] = [
         "ts": "1786472100.000800",
         "from": "Juno Marsh",
         "is_bot": false,
-        "text": "@reviewer run the Northgate to Ferris segment (220 km, no optional loop), start SoC 96%, end SoC 40%, two 20-minute driver swaps, 22 m/s constant. I grabbed the params from the July 3 sheet.",
+        "text": "@Rev run the Northgate to Ferris segment (220 km, no optional loop), start SoC 96%, end SoC 40%, two 20-minute stops, 22 m/s constant. I grabbed the params from the July 3 sheet.",
         "is_change": false
       },
       {
@@ -1262,7 +1304,7 @@ export const SCENARIOS: DemoScenario[] = [
         "ts": "1786474920.000900",
         "from": "Milo Trent",
         "is_bot": false,
-        "text": "Race director allows end SoC 35% for this segment now, not 40%.",
+        "text": "Test lead allows end SoC 35% for this segment now, not 40%.",
         "is_change": true
       },
       {
@@ -1273,7 +1315,7 @@ export const SCENARIOS: DemoScenario[] = [
         "kind": "document_read",
         "document": "ks4-sim-inputs-v2-0.xlsx",
         "revision": "v2-0",
-        "sha256": "90b83e645932f0b9a8cc447d3ce86ac30398948d702474016a7e172723cb230f",
+        "sha256": "ea78422e330d94417e45a6c29f01bf4a0139001098a58fff929f4e70d3ecad20",
         "line_count": 9,
         "named_in_ts": "1783092000.000700"
       },
@@ -1285,7 +1327,7 @@ export const SCENARIOS: DemoScenario[] = [
         "kind": "document_read",
         "document": "ks4-sim-inputs-v2-1.xlsx",
         "revision": "v2-1",
-        "sha256": "8e2419c7620047d5b80fa273828bd062fecbe50bd3404aed39dd2301d07e6ab4",
+        "sha256": "f9ce6b5def1327ac6e7b42a0b390c8b83cab8875b0e91961cd62cd9b23fc0e94",
         "line_count": 10,
         "named_in_ts": "1784929680.000300"
       },
@@ -1387,7 +1429,7 @@ export const SCENARIOS: DemoScenario[] = [
           },
           {
             "kind": "document",
-            "id": "8e2419c7620047d5b80fa273828bd062fecbe50bd3404aed39dd2301d07e6ab4"
+            "id": "f9ce6b5def1327ac6e7b42a0b390c8b83cab8875b0e91961cd62cd9b23fc0e94"
           }
         ]
       },
@@ -1418,7 +1460,7 @@ export const SCENARIOS: DemoScenario[] = [
             {
               "kind": "message",
               "id": "1786474920.000900",
-              "quote": "Race director allows end SoC 35% for this segment now, not 40%."
+              "quote": "Test lead allows end SoC 35% for this segment now, not 40%."
             },
             {
               "kind": "message",
@@ -1434,7 +1476,7 @@ export const SCENARIOS: DemoScenario[] = [
               "kind": "document",
               "id": "ks4-sim-inputs-v2-1.xlsx",
               "revision": "v2-1",
-              "sha256": "8e2419c7620047d5b80fa273828bd062fecbe50bd3404aed39dd2301d07e6ab4",
+              "sha256": "f9ce6b5def1327ac6e7b42a0b390c8b83cab8875b0e91961cd62cd9b23fc0e94",
               "locator": "sheet params, rows 2 to 5",
               "quote": "mass_kg 318, Crr 0.0048, CdA 0.12, pack_kWh 5.2"
             }
@@ -1467,8 +1509,8 @@ export const SCENARIOS: DemoScenario[] = [
             }
           ],
           "inferred": [
-            "Start SoC 96 percent, 220 km, no optional loop, and two 20-minute swaps are carried from the 13:15 request because the 14:02 message changed only the end SoC.",
-            "Array input is assumed zero."
+            "Start SoC 96 percent, 220 km, no optional loop, and two 20-minute stops are carried from the 13:15 request because the 14:02 message changed only the end SoC.",
+            "Regen is assumed zero."
           ],
           "resolution": "Run is feasible at 22 m/s under v2-1 with the 35 percent end SoC. Juno should still confirm v2-1 so the posted margin is the one the team plans against.",
           "checker_run": {
@@ -1522,7 +1564,7 @@ export const SCENARIOS: DemoScenario[] = [
         "ts": "1787166300.000600",
         "from": "Juno Marsh",
         "is_bot": false,
-        "text": "@reviewer can you check section 3 of the r2 doc before I sign the review?",
+        "text": "@Rev can you check section 3 of the r2 doc before I sign the review?",
         "is_change": false
       },
       {
@@ -1533,7 +1575,7 @@ export const SCENARIOS: DemoScenario[] = [
         "kind": "document_read",
         "document": "precharge-review-r2-clean.docx",
         "revision": "r2",
-        "sha256": "f4baeedfb68c3d448b4a6a9ff47da3b7ec0491899e206a0945a6b58fd65d43c2",
+        "sha256": "9f0855657d2f45aee9d6e55b8483ba76a0ad00079aaf859bdc90571a4b41c1a7",
         "line_count": 12,
         "named_in_ts": "1787062320.000100"
       },
@@ -1737,7 +1779,7 @@ export const SCENARIOS: DemoScenario[] = [
         "ts": "1786472100.000800",
         "from": "Juno Marsh",
         "is_bot": false,
-        "text": "@reviewer run the Northgate to Ferris segment (220 km, no optional loop), start SoC 96%, end SoC 40%, two 20-minute driver swaps, 22 m/s constant. I grabbed the params from the July 3 sheet.",
+        "text": "@Rev run the Northgate to Ferris segment (220 km, no optional loop), start SoC 96%, end SoC 40%, two 20-minute stops, 22 m/s constant. I grabbed the params from the July 3 sheet.",
         "is_change": false
       },
       {
@@ -1748,7 +1790,7 @@ export const SCENARIOS: DemoScenario[] = [
         "kind": "document_read",
         "document": "ks4-sim-inputs-v2-0.xlsx",
         "revision": "v2-0",
-        "sha256": "90b83e645932f0b9a8cc447d3ce86ac30398948d702474016a7e172723cb230f",
+        "sha256": "ea78422e330d94417e45a6c29f01bf4a0139001098a58fff929f4e70d3ecad20",
         "line_count": 9,
         "named_in_ts": "1783092000.000700"
       },
@@ -1760,7 +1802,7 @@ export const SCENARIOS: DemoScenario[] = [
         "kind": "document_read",
         "document": "ks4-sim-inputs-v2-1.xlsx",
         "revision": "v2-1",
-        "sha256": "8e2419c7620047d5b80fa273828bd062fecbe50bd3404aed39dd2301d07e6ab4",
+        "sha256": "f9ce6b5def1327ac6e7b42a0b390c8b83cab8875b0e91961cd62cd9b23fc0e94",
         "line_count": 10,
         "named_in_ts": "1784929680.000300"
       },
@@ -1847,7 +1889,7 @@ export const SCENARIOS: DemoScenario[] = [
           },
           {
             "kind": "document",
-            "id": "8e2419c7620047d5b80fa273828bd062fecbe50bd3404aed39dd2301d07e6ab4"
+            "id": "f9ce6b5def1327ac6e7b42a0b390c8b83cab8875b0e91961cd62cd9b23fc0e94"
           }
         ]
       },
@@ -1888,7 +1930,7 @@ export const SCENARIOS: DemoScenario[] = [
               "kind": "document",
               "id": "ks4-sim-inputs-v2-1.xlsx",
               "revision": "v2-1",
-              "sha256": "8e2419c7620047d5b80fa273828bd062fecbe50bd3404aed39dd2301d07e6ab4",
+              "sha256": "f9ce6b5def1327ac6e7b42a0b390c8b83cab8875b0e91961cd62cd9b23fc0e94",
               "locator": "sheet params, rows 2 to 5",
               "quote": "mass_kg 318, Crr 0.0048, CdA 0.12, pack_kWh 5.2"
             }
@@ -1923,7 +1965,7 @@ export const SCENARIOS: DemoScenario[] = [
           "inferred": [
             "310 kg is Milo's stated 8 kg correction applied to 318 kg. It is a candidate, not a measured value.",
             "Crr 0.0048 is carried unchanged for both masses because the July 30 message questions only the mass.",
-            "Array input is assumed zero. Optional loop excluded and two 20-minute swaps taken from the request text."
+            "Regen is assumed zero. Optional loop excluded and two 20-minute stops taken from the request text."
           ],
           "resolution": "Milo posts the re-weigh result, or states that 318 kg stands. Until then neither mass is final and the run is blocked on that answer.",
           "question": {
@@ -1993,7 +2035,7 @@ export const SCENARIOS: DemoScenario[] = [
         "ts": "1786472100.000800",
         "from": "Juno Marsh",
         "is_bot": false,
-        "text": "@reviewer run the Northgate to Ferris segment (220 km, no optional loop), start SoC 96%, end SoC 40%, two 20-minute driver swaps, 22 m/s constant. I grabbed the params from the July 3 sheet.",
+        "text": "@Rev run the Northgate to Ferris segment (220 km, no optional loop), start SoC 96%, end SoC 40%, two 20-minute stops, 22 m/s constant. I grabbed the params from the July 3 sheet.",
         "is_change": false
       },
       {
@@ -2004,7 +2046,7 @@ export const SCENARIOS: DemoScenario[] = [
         "kind": "document_read",
         "document": "ks4-sim-inputs-v2-0.xlsx",
         "revision": "v2-0",
-        "sha256": "90b83e645932f0b9a8cc447d3ce86ac30398948d702474016a7e172723cb230f",
+        "sha256": "ea78422e330d94417e45a6c29f01bf4a0139001098a58fff929f4e70d3ecad20",
         "line_count": 9,
         "named_in_ts": "1783092000.000700"
       },
@@ -2016,7 +2058,7 @@ export const SCENARIOS: DemoScenario[] = [
         "kind": "document_read",
         "document": "ks4-sim-inputs-v2-1.xlsx",
         "revision": "v2-1",
-        "sha256": "8e2419c7620047d5b80fa273828bd062fecbe50bd3404aed39dd2301d07e6ab4",
+        "sha256": "f9ce6b5def1327ac6e7b42a0b390c8b83cab8875b0e91961cd62cd9b23fc0e94",
         "line_count": 10,
         "named_in_ts": "1784929680.000300"
       },
@@ -2118,11 +2160,11 @@ export const SCENARIOS: DemoScenario[] = [
           },
           {
             "kind": "document",
-            "id": "90b83e645932f0b9a8cc447d3ce86ac30398948d702474016a7e172723cb230f"
+            "id": "ea78422e330d94417e45a6c29f01bf4a0139001098a58fff929f4e70d3ecad20"
           },
           {
             "kind": "document",
-            "id": "8e2419c7620047d5b80fa273828bd062fecbe50bd3404aed39dd2301d07e6ab4"
+            "id": "f9ce6b5def1327ac6e7b42a0b390c8b83cab8875b0e91961cd62cd9b23fc0e94"
           }
         ]
       },
@@ -2135,7 +2177,7 @@ export const SCENARIOS: DemoScenario[] = [
         "ts": "1786474920.000900",
         "from": "Milo Trent",
         "is_bot": false,
-        "text": "Race director allows end SoC 35% for this segment now, not 40%.",
+        "text": "Test lead allows end SoC 35% for this segment now, not 40%.",
         "is_change": true
       },
       {
@@ -2194,7 +2236,7 @@ export const SCENARIOS: DemoScenario[] = [
         "ts": "1786472100.000800",
         "from": "Juno Marsh",
         "is_bot": false,
-        "text": "@reviewer run the Northgate to Ferris segment (220 km, no optional loop), start SoC 96%, end SoC 40%, two 20-minute driver swaps, 22 m/s constant. I grabbed the params from the July 3 sheet.",
+        "text": "@Rev run the Northgate to Ferris segment (220 km, no optional loop), start SoC 96%, end SoC 40%, two 20-minute stops, 22 m/s constant. I grabbed the params from the July 3 sheet.",
         "is_change": false
       },
       {
@@ -2206,7 +2248,7 @@ export const SCENARIOS: DemoScenario[] = [
         "ts": "1786474920.000900",
         "from": "Milo Trent",
         "is_bot": false,
-        "text": "Race director allows end SoC 35% for this segment now, not 40%.",
+        "text": "Test lead allows end SoC 35% for this segment now, not 40%.",
         "is_change": true
       },
       {
@@ -2217,7 +2259,7 @@ export const SCENARIOS: DemoScenario[] = [
         "kind": "document_read",
         "document": "ks4-sim-inputs-v2-0.xlsx",
         "revision": "v2-0",
-        "sha256": "90b83e645932f0b9a8cc447d3ce86ac30398948d702474016a7e172723cb230f",
+        "sha256": "ea78422e330d94417e45a6c29f01bf4a0139001098a58fff929f4e70d3ecad20",
         "line_count": 9,
         "named_in_ts": "1783092000.000700"
       },
@@ -2229,7 +2271,7 @@ export const SCENARIOS: DemoScenario[] = [
         "kind": "document_read",
         "document": "ks4-sim-inputs-v2-1.xlsx",
         "revision": "v2-1",
-        "sha256": "8e2419c7620047d5b80fa273828bd062fecbe50bd3404aed39dd2301d07e6ab4",
+        "sha256": "f9ce6b5def1327ac6e7b42a0b390c8b83cab8875b0e91961cd62cd9b23fc0e94",
         "line_count": 10,
         "named_in_ts": "1784929680.000300"
       },
@@ -2331,7 +2373,7 @@ export const SCENARIOS: DemoScenario[] = [
           },
           {
             "kind": "document",
-            "id": "8e2419c7620047d5b80fa273828bd062fecbe50bd3404aed39dd2301d07e6ab4"
+            "id": "f9ce6b5def1327ac6e7b42a0b390c8b83cab8875b0e91961cd62cd9b23fc0e94"
           }
         ]
       },
@@ -2352,7 +2394,7 @@ export const SCENARIOS: DemoScenario[] = [
             {
               "kind": "message",
               "id": "1786474920.000900",
-              "quote": "Race director allows end SoC 35% for this segment now, not 40%."
+              "quote": "Test lead allows end SoC 35% for this segment now, not 40%."
             },
             {
               "kind": "message",
@@ -2368,7 +2410,7 @@ export const SCENARIOS: DemoScenario[] = [
               "kind": "document",
               "id": "ks4-sim-inputs-v2-1.xlsx",
               "revision": "v2-1",
-              "sha256": "8e2419c7620047d5b80fa273828bd062fecbe50bd3404aed39dd2301d07e6ab4",
+              "sha256": "f9ce6b5def1327ac6e7b42a0b390c8b83cab8875b0e91961cd62cd9b23fc0e94",
               "locator": "sheet params, rows 2 to 5",
               "quote": "mass_kg 318, Crr 0.0048, CdA 0.12, pack_kWh 5.2"
             }
@@ -2401,8 +2443,8 @@ export const SCENARIOS: DemoScenario[] = [
             }
           ],
           "inferred": [
-            "Start SoC 96 percent, 220 km, no optional loop, and two 20-minute swaps are carried from the 13:15 request because the 14:02 message changed only the end SoC.",
-            "Array input is assumed zero."
+            "Start SoC 96 percent, 220 km, no optional loop, and two 20-minute stops are carried from the 13:15 request because the 14:02 message changed only the end SoC.",
+            "Regen is assumed zero."
           ],
           "resolution": "Run is feasible at 22 m/s under v2-1 with the 35 percent end SoC. Juno should still confirm v2-1 so the posted margin is the one the team plans against.",
           "checker_run": {

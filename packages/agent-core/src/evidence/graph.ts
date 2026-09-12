@@ -201,6 +201,11 @@ export function buildEvidenceGraph(events: EvidenceEvent[], opts: { thread?: str
       case "workspace_search":
         // Hits are message_read events with via: "workspace_search"; nothing extra to draw.
         break;
+      case "edit_proposed":
+      case "edit_decided":
+      case "edit_applied":
+        // Shown on the evidence timeline; not part of the finding graph.
+        break;
     }
   }
 

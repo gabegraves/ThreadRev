@@ -1,8 +1,8 @@
 # Synthetic fixtures (W1)
 
-Everything here is fictional. Team: Kestrel Solar Racing (KSR) at the Halvern Institute of Technology, workspace `kestrel-solar.slack.example`. Slack IDs use the `U00SYN` / `C00SYN` prefix only. The single source for every name, number, timestamp, and message is `research/synthetic-fixture-spec.md`. If a value here disagrees with the spec, the spec wins and this directory is wrong.
+Everything here is fictional. Company: Kestrel Motors, a fictional maker of light electric city vehicles, workspace `kestrel-motors.slack.example`. Slack IDs use the `U00SYN` / `C00SYN` prefix only. The single source for every name, number, timestamp, and message is `research/synthetic-fixture-spec.md`. If a value here disagrees with the spec, the spec wins and this directory is wrong.
 
-Regenerate the documents with `python3 fixtures/generate.py` (needs python-docx and openpyxl), then `shasum -a 256 fixtures/documents/* > fixtures/SHA256SUMS` from the repo root. Output is byte-for-byte reproducible.
+Regenerate the documents with `python3 fixtures/generate.py` (needs python-docx and openpyxl), then `shasum -a 256 fixtures/documents/* > fixtures/SHA256SUMS` from the repo root. Output is byte-for-byte reproducible: metadata timestamps are pinned, including the `dcterms:modified` stamp openpyxl rewrites on save, and zip entries carry a fixed date. Verified by running the generator twice and diffing the sums.
 
 ## documents/
 
@@ -15,13 +15,13 @@ Regenerate the documents with `python3 fixtures/generate.py` (needs python-docx 
 
 `ks4-hv-interface-req-r1.xlsx` (optional in the brief) is not generated. The spec gives it no cell values, so anything written would be invented rather than sourced.
 
-Scenario A model: first-order ideal RC, `t_99.9 = R * C * 6.907755`. Scenario B model: the toy closed form `E = (m * g * Crr + 0.5 * rho * CdA * v^2) * d` with `g = 9.81`, `rho = 1.20`, `CdA = 0.12`, `d = 220 km`, array input assumed zero. Neither is real simulation code.
+Scenario A model: first-order ideal RC, `t_99.9 = R * C * 6.907755`. Scenario B model: the toy closed form `E = (m * g * Crr + 0.5 * rho * CdA * v^2) * d` with `g = 9.81`, `rho = 1.20`, `CdA = 0.12`, `d = 220 km`, regen assumed zero. Neither is real simulation code.
 
 ## slack/
 
 One JSON array per file, one object per message, in `ts` order. Fields: `ts`, `channel`, `channel_name`, `user`, `user_name`, `thread_ts` (parent `ts` for replies, else `null`), `text`, `files` (paths relative to `fixtures/`), `role`.
 
-`role` values: `seed` (corpus before the trigger), `trigger` (the `@reviewer` request the harness replays), `change` (requirement-change message that must invalidate the live card), `evaluator_only` (after the replay cutoff, visible to the scorer only).
+`role` values: `seed` (corpus before the trigger), `trigger` (the `@Rev` request the harness replays), `change` (requirement-change message that must invalidate the live card), `evaluator_only` (after the replay cutoff, visible to the scorer only).
 
 Optional `edit_of: "<ts>"` marks a message as a Slack `message_changed` edit of the earlier message with that `ts`. The edit keeps its own `ts` (later than the original), its own `text`, and its own `role`. The replay loader emits it as a new revision of the original: same `logicalMessageId`, new `revisionId`, and both entries stay in the transcript in `ts` order, which is how a thread reads after an edit. `edit_of` must name a `ts` present in the same file; an edit of an edit resolves to the root message. Use it for adversarial cases where a requirement changes by editing an earlier message instead of posting a new one.
 

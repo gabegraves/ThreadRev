@@ -19,9 +19,12 @@ export const KIND_LABEL: Record<EventKind, string> = {
   publish_refused: "publish refused",
   silence: "silence",
   workspace_search: "workspace search",
+  edit_proposed: "edit proposed",
+  edit_decided: "edit decided",
+  edit_applied: "edit applied",
 };
 
-export const KIND_ORDER: EventKind[] = ["message_read", "workspace_search", "document_read", "check_run", "finding_published", "finding_superseded", "publish_refused", "silence"];
+export const KIND_ORDER: EventKind[] = ["message_read", "workspace_search", "document_read", "check_run", "finding_published", "finding_superseded", "publish_refused", "silence", "edit_proposed", "edit_decided", "edit_applied"];
 
 /** Event kind → state tone. Hue is state only. */
 export function kindTone(kind: EventKind): StatusTone {
@@ -127,6 +130,11 @@ export function eventHref(ev: EvidenceEvent): string | null {
       return hrefs.finding(ev.finding_id);
     case "workspace_search":
       return "/workspace";
+    case "edit_proposed":
+      return hrefs.run(ev.run_id);
+    case "edit_decided":
+    case "edit_applied":
+      return "/runs";
     case "silence":
       return null;
   }
@@ -165,6 +173,12 @@ export function eventSubject(ev: EvidenceEvent): string {
       return ev.reason;
     case "workspace_search":
       return `${ev.returned}/${ev.total} hits · ${Object.entries(ev.query).map(([k, v]) => `${k}=${String(v)}`).join(", ")}`;
+    case "edit_proposed":
+      return `${ev.proposal_id} · ${ev.document} · ${ev.edits.length} edit${ev.edits.length === 1 ? "" : "s"}`;
+    case "edit_decided":
+      return `${ev.proposal_id} · ${ev.decision}${ev.by ? ` by ${ev.by}` : ""}`;
+    case "edit_applied":
+      return `${ev.proposal_id} · ${ev.output}`;
   }
 }
 

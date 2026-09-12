@@ -39,7 +39,7 @@
           "ts": "2026-08-11T18:15:00.000Z",
           "from": "Juno Marsh",
           "bot": false,
-          "text": "@reviewer run the Northgate to Ferris segment (220 km, no optional loop), start SoC 96%, end SoC 40%, two 20-minute driver swaps, 22 m/s constant. I grabbed the params from the July 3 sheet.",
+          "text": "@Rev run the Northgate to Ferris segment (220 km, no optional loop), start SoC 96%, end SoC 40%, two 20-minute stops, 22 m/s constant. I grabbed the params from the July 3 sheet.",
           "files": []
         }
       ]
@@ -61,7 +61,7 @@
       "result": {
         "checker": "route",
         "version": "1",
-        "run_id": "route-20260912T162202Z-18ec",
+        "run_id": "route-20260912T170613Z-c3b6",
         "inputs": {
           "mass_kg": 290,
           "Crr": 0.004,
@@ -116,7 +116,7 @@
       "result": {
         "checker": "route",
         "version": "1",
-        "run_id": "route-20260912T162202Z-2a31",
+        "run_id": "route-20260912T170613Z-8799",
         "inputs": {
           "mass_kg": 318,
           "Crr": 0.0048,
@@ -157,7 +157,7 @@
     {
       "name": "publish_result",
       "args": {
-        "run_id": "route-20260912T162202Z-2a31",
+        "run_id": "route-20260912T170613Z-8799",
         "requirements_revision": "1786472100.000800",
         "discrepancy": "Request uses the July 3 sheet (v2-0); v2-1 (July 24) supersedes it per Milo and Ines. Under v2-0 the segment at 22 m/s is feasible (2.825 kWh against 2.912 kWh); under v2-1 it is not feasible (3.0447 kWh). The conclusion flips.",
         "why_it_matters": "A feasibility answer posted from v2-0 would be wrong by 0.22 kWh, 4 percent of the pack.",
@@ -179,8 +179,8 @@
           }
         ],
         "inferred": [
-          "Array input assumed zero.",
-          "Optional loop excluded and two 20 minute swaps taken from the request text."
+          "Regen assumed zero.",
+          "Optional loop excluded and two 20 minute stops taken from the request text."
         ],
         "resolution": "Juno confirms v2-1, or Milo states v2-0 is intentionally used for a KS-3 comparison. The v2-1 result is blocked on that confirmation.",
         "question": {
@@ -190,7 +190,7 @@
       },
       "result": {
         "published": true,
-        "finding_id": "fnd-mtylf278-yyah",
+        "finding_id": "fnd-mtymzvr2-nxhi",
         "requirements_revision": "1786472100.000800"
       }
     }
@@ -199,7 +199,7 @@
     {
       "checker": "route",
       "version": "1",
-      "run_id": "route-20260912T162202Z-18ec",
+      "run_id": "route-20260912T170613Z-c3b6",
       "inputs": {
         "mass_kg": 290,
         "Crr": 0.004,
@@ -239,7 +239,7 @@
     {
       "checker": "route",
       "version": "1",
-      "run_id": "route-20260912T162202Z-2a31",
+      "run_id": "route-20260912T170613Z-8799",
       "inputs": {
         "mass_kg": 318,
         "Crr": 0.0048,
@@ -279,7 +279,7 @@
   ],
   "posted_cards": [
     {
-      "finding_id": "fnd-mtylf278-yyah",
+      "finding_id": "fnd-mtymzvr2-nxhi",
       "status": "live",
       "requirements_revision": "1786472100.000800",
       "discrepancy": "Request uses the July 3 sheet (v2-0); v2-1 (July 24) supersedes it per Milo and Ines. Under v2-0 the segment at 22 m/s is feasible (2.825 kWh against 2.912 kWh); under v2-1 it is not feasible (3.0447 kWh). The conclusion flips.",
@@ -309,8 +309,8 @@
         }
       ],
       "inferred": [
-        "Array input assumed zero.",
-        "Optional loop excluded and two 20 minute swaps taken from the request text."
+        "Regen assumed zero.",
+        "Optional loop excluded and two 20 minute stops taken from the request text."
       ],
       "resolution": "Juno confirms v2-1, or Milo states v2-0 is intentionally used for a KS-3 comparison. The v2-1 result is blocked on that confirmation.",
       "question": {
@@ -320,7 +320,7 @@
       "checker_run": {
         "checker": "route",
         "version": "1",
-        "run_id": "route-20260912T162202Z-2a31"
+        "run_id": "route-20260912T170613Z-8799"
       }
     }
   ],

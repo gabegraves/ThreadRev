@@ -1,6 +1,6 @@
 # Synthetic engineering Slack fixture specification
 
-Drafted September 12, 2026. Fully fictional. Every name, ID, channel, team, vehicle, document, quote, and number below is invented for a public hackathon demo. Only failure patterns and document types were derived from the private source research; no message text, identifier, part number, supplier, or document content was copied. Safe to publish in a public repo and video.
+Drafted September 12, 2026. Fully fictional. Every name, ID, channel, company, vehicle, document, quote, and number below is invented for a public hackathon demo. Only failure patterns and document types were derived from the private source research; no message text, identifier, part number, supplier, or document content was copied. Safe to publish in a public repo and video.
 
 Companion to [hackathon-design.md](hackathon-design.md). The reviewer under test is the Slack-native engineering change reviewer described there: `Slack revision -> source evidence -> proposed inputs -> isolated computation -> trusted checks -> revision-bound Slack card`.
 
@@ -38,14 +38,14 @@ Each pattern: trigger message shape, evidence the reviewer must find, correct fi
 
 ### P5. Correction stated earlier in a thread is ignored by a later request
 
-- Trigger: "please run the route from A to B, start SoC X, end SoC Y, with N driver swaps" that names, or silently assumes, an inputs file.
+- Trigger: "please run the route from A to B, start SoC X, end SoC Y, with N stops" that names, or silently assumes, an inputs file.
 - Evidence: a diagnosis message days earlier stating the previous run used the wrong vehicle model and naming the corrected inputs file.
 - Finding: block the run on the stale inputs, name the corrected file and its message permalink, verify the swap count and route endpoints in the request are carried into the run, record units and timezone.
 - Non-finding: the request already names the corrected file and its hash. Run it, no flag.
 
 ### P6. Quoted, paid, ordered, shipped, and received are conflated
 
-- Trigger: "critical items list for the mock race, what is on the way?"
+- Trigger: "critical items list for the validation drive, what is on the way?"
 - Evidence: a purchasing thread with a quote, an invoice with payment pending, a ship date after the need-by date, and a second item shown available on a website but unavailable until a later month.
 - Finding: keep the five states separate per item, flag any ship date after the need-by date, ask for a matching-spec alternative, and never mark received without a receipt message.
 - Non-finding: an item has a receipt message with a photo. Marking it received is correct.
@@ -73,16 +73,16 @@ Observed in the source research (types only):
 | System briefing / diagnosis plan (DOCX) | P2 | No |
 | Design-criteria story deck (PPTX) | context | No |
 | Waterjet DXF / CAD ZIP / STEP references | P4 | No, reference by filename only |
-| Race lap data, sensor CSV | context | No |
+| Test drive data, sensor CSV | context | No |
 | Firmware decoder table + frame capture (text) | P1 | No |
 
 Four to synthesize: `precharge-review-r2.docx` (or markdown rendering of it), `ks4-sim-inputs-v2-0.xlsx`, `ks4-sim-inputs-v2-1.xlsx`, `ks4-hv-interface-req.xlsx`. CSV renderings of each XLSX are acceptable for the checker.
 
 ## 3. Fictional team
 
-- Team: Kestrel Solar Racing (KSR), a student solar car team at the fictional Halvern Institute of Technology.
-- Vehicles: KS-3 (previous car, raced 2025), KS-4 (current build).
-- Workspace: `kestrel-solar.slack.example`. Slack IDs use the synthetic prefix `U00SYN` / `C00SYN` so they cannot collide with real IDs.
+- Company: Kestrel Motors, a fictional maker of light electric city vehicles.
+- Vehicles: KS-3 (previous platform, shipped 2025), KS-4 (current platform, in development). Both are light electric city vehicles, which is why the pack is 5.2 kWh, the HV bus is 120 V, and the curb mass is around 300 kg.
+- Workspace: `kestrel-motors.slack.example`. Slack IDs use the synthetic prefix `U00SYN` / `C00SYN` so they cannot collide with real IDs.
 
 Channels:
 
@@ -141,7 +141,7 @@ Script:
 2026-08-18 09:40  Tam Holloway (thread)
   Relay close timer in firmware is 2.5 s, matches the doc.
 2026-08-19 14:05  Juno Marsh (thread)   <-- TRIGGER
-  @reviewer can you check section 3 of the r2 doc before I sign the review?
+  @Rev can you check section 3 of the r2 doc before I sign the review?
 ```
 
 Expected finding card (posted in thread, bound to r2 sha256):
@@ -165,7 +165,7 @@ Checker contract for A (`check_rc.py`, stdlib only): inputs R, C list, timer; ou
 
 ### Scenario B: simulation stale inputs, July correction ignored by August request (P5)
 
-Channel `#ks4-strategy-sim`. Simple constant-speed energy model, no array input (stated assumption): `E = (m * g * Crr + 0.5 * rho * CdA * v^2) * d`, g = 9.81, rho = 1.20 kg/m^3, CdA = 0.12 m^2, d = 220 km, pack 5.2 kWh usable.
+Channel `#ks4-strategy-sim`. Simple constant-speed energy model, no regen or auxiliary load (stated assumption): `E = (m * g * Crr + 0.5 * rho * CdA * v^2) * d`, g = 9.81, rho = 1.20 kg/m^3, CdA = 0.12 m^2, d = 220 km, pack 5.2 kWh usable.
 
 Attached workbooks:
 
@@ -179,7 +179,7 @@ Correct arithmetic at v = 22 m/s (79.2 km/h), d = 220 km:
 | v2-0 | 11.380 | 34.848 | 46.228 | 2.8250 |
 | v2-1 | 14.974 | 34.848 | 49.822 | 3.0447 |
 
-Budget for SoC 96 to 40 percent: 0.56 * 5.2 = 2.912 kWh. v2-0 says 22 m/s is feasible (2.825 < 2.912). v2-1 says it is not (3.045 > 2.912). Max feasible speed under v2-1 at that budget: 21.30 m/s (76.7 km/h). Under v2-0: 22.45 m/s. Driving time at 22 m/s: 2.778 h, plus 40 min of swaps = 3.44 h wall time.
+Budget for SoC 96 to 40 percent: 0.56 * 5.2 = 2.912 kWh. v2-0 says 22 m/s is feasible (2.825 < 2.912). v2-1 says it is not (3.045 > 2.912). Max feasible speed under v2-1 at that budget: 21.30 m/s (76.7 km/h). Under v2-0: 22.45 m/s. Driving time at 22 m/s: 2.778 h, plus 40 min of stops = 3.44 h wall time.
 
 Script:
 
@@ -193,8 +193,8 @@ Script:
 2026-07-24 17:02  Ines Calder (thread)
   Confirmed, corner weights from Tuesday add up to 318 with driver.
 2026-08-11 13:15  Juno Marsh   <-- TRIGGER
-  @reviewer run the Northgate to Ferris segment (220 km, no optional loop), start SoC 96%,
-  end SoC 40%, two 20-minute driver swaps, 22 m/s constant. I grabbed the params from the
+  @Rev run the Northgate to Ferris segment (220 km, no optional loop), start SoC 96%,
+  end SoC 40%, two 20-minute stops, 22 m/s constant. I grabbed the params from the
   July 3 sheet.
 ```
 
@@ -203,17 +203,17 @@ Expected finding card:
 - Discrepancy: request uses v2-0 (July 3); v2-1 (July 24) supersedes it per Milo's message and Ines's confirmation. Under v2-0 the segment is feasible at 22 m/s (2.825 kWh vs 2.912 budget); under v2-1 it is not (3.045 kWh). Conclusion flips.
 - Why it matters: a feasibility answer posted from v2-0 would be wrong by 0.22 kWh and 4 percent of pack.
 - Sources and versions: v2-0 sha256, v2-1 sha256, message ts 1784929680.000300 (Milo, "use v2-1"), ts 1784930520.000400 (Ines).
-- Reproduced vs inferred: both energies reproduced by `check_route.py`. Whether the optional loop is excluded and whether 2 x 20 min swaps are the full swap budget is taken from the request text, not inferred. Array input is assumed zero and labeled as such.
+- Reproduced vs inferred: both energies reproduced by `check_route.py`. Whether the optional loop is excluded and whether 2 x 20 min stops are the full stop budget is taken from the request text, not inferred. Regen is assumed zero and labeled as such.
 - What resolves it: Juno confirms v2-1, or Milo states v2-0 is intentionally being used for a KS-3 comparison. The reviewer posts the v2-1 result but labels the run as blocked on that confirmation rather than final.
 
 Requirement-change message:
 
 ```
 2026-08-11 14:02  Milo Trent (thread)
-  Race director allows end SoC 35% for this segment now, not 40%.
+  Test lead allows end SoC 35% for this segment now, not 40%.
 ```
 
-Expected invalidation: the 13:15 card is stale. Recomputed budget 0.61 * 5.2 = 3.172 kWh. Under v2-1, 22 m/s is feasible (3.045 < 3.172), max speed 22.65 m/s. Under v2-0 still feasible. New card states the conclusion no longer flips between input versions at 22 m/s, but still binds to v2-1 and still carries the swap and loop assumptions.
+Expected invalidation: the 13:15 card is stale. Recomputed budget 0.61 * 5.2 = 3.172 kWh. Under v2-1, 22 m/s is feasible (3.045 < 3.172), max speed 22.65 m/s. Under v2-0 still feasible. New card states the conclusion no longer flips between input versions at 22 m/s, but still binds to v2-1 and still carries the stop and loop assumptions.
 
 Checker contract for B (`check_route.py`, stdlib only): inputs m, Crr, CdA, rho, v, d, pack, soc_start, soc_end; outputs energy_kWh, budget_kWh, feasible, v_max (bisection, 80 iterations). Expected: `(v2-0, 40%) feasible=True`, `(v2-1, 40%) feasible=False`, `(v2-1, 35%) feasible=True`.
 
@@ -242,7 +242,7 @@ Each case has a cutoff, a trigger, an expected reviewer output, and a pass rule.
 ## 6. What not to synthesize
 
 - No real person names, Slack handles, user IDs, channel IDs, permalinks, or workspace domains from the source research. Synthetic IDs use the `U00SYN` / `C00SYN` prefix only.
-- No real team, university, vehicle, or race names. No real race route city pairs.
+- No real company, vehicle, or test route names. No real route city pairs.
 - No real supplier names, quote amounts, invoice numbers, or ship dates.
 - No part numbers, board revision labels, capacitance or resistance values, CAN IDs, or byte values copied from the source. Scenario A deliberately uses 470 ohm and 680 / 750 / 820 uF, which do not appear in the source.
 - No quoted or paraphrased message text from the source archives. All fixture messages are written fresh.

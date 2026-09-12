@@ -16,6 +16,9 @@ const KIND_LABEL: Record<EvidenceEvent["kind"], string> = {
   publish_refused: "refused",
   silence: "silence",
   workspace_search: "workspace search",
+  edit_proposed: "edit proposed",
+  edit_decided: "edit decided",
+  edit_applied: "edit applied",
 };
 
 const Mono = ({ children }: { children: ReactNode }) => <span className="font-mono text-[11.5px] tabular-nums text-foreground">{children}</span>;

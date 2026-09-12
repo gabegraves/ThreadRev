@@ -14,7 +14,7 @@
  */
 import { spawn } from "node:child_process";
 import { basename, resolve } from "node:path";
-import { defineChannelTool } from "@copilotkit/channels";
+import { Actions, Button, Message, defineChannelTool } from "@copilotkit/channels";
 import type { MessageRef } from "@copilotkit/channels";
 import { z } from "zod";
 import {
@@ -27,12 +27,17 @@ import { runChecker } from "./replay/run-checker";
 import { guardPublish, markStale } from "./replay/publish-guard";
 import { CHANGE_PATTERN, latestRevision } from "./revision";
 import { record, runContext, threadKey } from "./evidence";
-import { renderFindingCard } from "./finding-card";
+import { editProposalBody, renderFindingCard, type EditProposalView } from "./finding-card";
 import { queryIndex, workspaceIndex } from "./workspace";
 
 export const REPO_ROOT = resolve(import.meta.dirname, "../../..");
 const DOCUMENTS_DIR = resolve(REPO_ROOT, "fixtures", "documents");
 const DOCX_EXTRACTOR = resolve(REPO_ROOT, "extractors", "docx_text.py");
+const DOCX_EDITOR = resolve(REPO_ROOT, "checkers", "apply_docx_edit.py");
+/** Where approved edits are written. Tests point this at a temp dir. */
+export function editOutputDir() {
+  return process.env.EDIT_OUTPUT_DIR ? resolve(process.env.EDIT_OUTPUT_DIR) : DOCUMENTS_DIR;
+}
 
 /* ------------------------------------------------------------------ runs */
 
@@ -146,11 +151,11 @@ export const searchWorkspace = defineChannelTool({
 
 /* -------------------------------------------------------- read_evidence */
 
-function runPython(script: string, args: string[]): Promise<string> {
+function runPython(script: string, args: string[], input?: string): Promise<string> {
   return new Promise((done, fail) => {
     const child = spawn(process.env.PYTHON ?? "python3", [script, ...args], {
       cwd: REPO_ROOT,
-      stdio: ["ignore", "pipe", "pipe"],
+      stdio: ["pipe", "pipe", "pipe"] as const,
       timeout: 10_000,
     });
     let out = "";
@@ -159,6 +164,7 @@ function runPython(script: string, args: string[]): Promise<string> {
     child.stderr.on("data", (d) => (err += d));
     child.on("error", fail);
     child.on("close", () => done(out || err));
+    child.stdin.end(input ?? "");
   });
 }
 
@@ -459,3 +465,206 @@ export const publishResult = defineChannelTool({
     return { published: true, finding_id: f.finding_id, requirements_revision: f.requirements_revision };
   },
 });
+
+/* ---------------------------------------------------------- propose_edit */
+
+/** Every numeric leaf a checker run produced: outputs (recursively) and check actuals. */
+function numbersIn(run: CheckerResponse): number[] {
+  const out: number[] = [];
+  const walk = (v: unknown) => {
+    if (typeof v === "number" && Number.isFinite(v)) out.push(v);
+    else if (Array.isArray(v)) v.forEach(walk);
+    else if (v && typeof v === "object") Object.values(v).forEach(walk);
+  };
+  walk(run.outputs);
+  for (const c of run.checks) walk(c.actual);
+  return out;
+}
+
+const NUMBER = /-?\d+(?:\.\d+)?/g;
+
+/** True when `text`'s numbers are each a rounding of some checker number. */
+function numbersComeFromRun(text: string, pool: number[]): { ok: true } | { ok: false; value: string } {
+  const found = text.match(NUMBER) ?? [];
+  if (found.length === 0) return { ok: false, value: text };
+  for (const raw of found) {
+    const decimals = raw.includes(".") ? raw.length - raw.indexOf(".") - 1 : 0;
+    const v = Number(raw);
+    const tol = 0.5 * 10 ** -decimals + 1e-9;
+    if (!pool.some((n) => Math.abs(n - v) <= tol)) return { ok: false, value: raw };
+  }
+  return { ok: true };
+}
+
+function newProposalId() {
+  return `edt-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+}
+
+type Decide = (approve: boolean, by?: string, live?: { update: (ref: MessageRef, ui: unknown) => Promise<unknown> }) => Promise<void>;
+
+function proposalCard(p: EditProposalView, onDecide?: Decide) {
+  const body = editProposalBody(p);
+  if (p.status !== "pending" || !onDecide) {
+    return <Message accent={p.status === "applied" ? "#2E7D5B" : p.status === "rejected" || p.status === "failed" ? "#5B6478" : "#1F5FBF"}>{body}</Message>;
+  }
+  return (
+    <Message accent="#1F5FBF">
+      {body}
+      <Actions>
+        <Button
+          value="approve"
+          style="primary"
+          onClick={async ({ user, actor, thread: live }) => {
+            await onDecide(true, user?.name ?? actor.name ?? actor.handle, live as unknown as { update: (ref: MessageRef, ui: unknown) => Promise<unknown> });
+          }}
+        >
+          Approve and write the file
+        </Button>
+        <Button
+          value="reject"
+          style="danger"
+          onClick={async ({ user, actor, thread: live }) => {
+            await onDecide(false, user?.name ?? actor.name ?? actor.handle, live as unknown as { update: (ref: MessageRef, ui: unknown) => Promise<unknown> });
+          }}
+        >
+          Reject
+        </Button>
+      </Actions>
+    </Message>
+  );
+}
+
+/** Run the stdlib editor: source → new file. Never touches the source. */
+export async function applyEditProposal(p: Pick<EditProposalView, "document" | "output" | "edits">) {
+  const raw = await runPython(
+    DOCX_EDITOR,
+    [],
+    JSON.stringify({
+      source: resolve(DOCUMENTS_DIR, p.document),
+      out: resolve(editOutputDir(), p.output),
+      replacements: p.edits.map((e) => ({ find: e.find, replace: e.replace })),
+    }),
+  );
+  let parsed: { out?: string; sha256?: string; source_sha256?: string; error?: string };
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return { ok: false as const, error: `Editor failed: ${raw.slice(0, 200)}` };
+  }
+  if (parsed.error || !parsed.sha256 || !parsed.source_sha256) return { ok: false as const, error: parsed.error ?? "editor returned no hash" };
+  return { ok: true as const, out: parsed.out!, sha256: parsed.sha256, source_sha256: parsed.source_sha256 };
+}
+
+export const proposeEdit = defineChannelTool({
+  name: "propose_edit",
+  description:
+    "Propose replacing a printed result in a document with the checker's recomputed value, and ask a human to approve. Writes nothing until they click Approve; then the edit is applied to a NEW copy of the file and the original is untouched. Every number in `replace` must come from the run_check outputs of run_id. Use only for printed results whose inputs are not in dispute. Never propose changing an input value or a design choice.",
+  parameters: z.object({
+    run_id: z.string().min(1),
+    document: z.string().min(1).describe("Filename as returned by read_evidence."),
+    finding_id: z.string().optional().describe("The card this edit follows from."),
+    edits: z
+      .array(
+        z.object({
+          locator: z.string().min(1).describe('e.g. "section 4, line 13".'),
+          find: z.string().min(1).max(200).describe("Exact printed text to replace, copied from the document line, e.g. \"t = 6.91 s\". Must occur once."),
+          replace: z.string().min(1).max(200).describe("Same text with the checker's value, e.g. \"t = 6.493 s\"."),
+          reason: z.string().max(200).optional(),
+        }),
+      )
+      .min(1)
+      .max(5),
+  }),
+  async handler(args, { thread }) {
+    const run = recallRun(args.run_id);
+    if (!run) return { proposed: false, reason: `Unknown run_id ${args.run_id}. Call run_check first.` };
+    if (run.error) return { proposed: false, reason: `Run ${args.run_id} ended with an error; nothing to propose.` };
+    const name = basename(args.document);
+    if (!DOC_NAME.test(name)) return { proposed: false, reason: `Cannot edit "${name}". Only .docx documents from the store.` };
+    const key = threadKey(thread);
+    const ctx = runContext(key);
+    const source = ctx.documents.at(-1)?.sha256;
+    if (!source) return { proposed: false, reason: `Call read_evidence on ${name} before proposing an edit.` };
+
+    const pool = numbersIn(run);
+    for (const e of args.edits) {
+      if (e.find === e.replace) return { proposed: false, reason: `Edit at ${e.locator} changes nothing.` };
+      if (!(e.find.match(NUMBER) ?? []).length) return { proposed: false, reason: `"${e.find}" has no number. Only printed results may be edited.` };
+      const check = numbersComeFromRun(e.replace, pool);
+      if (!check.ok) return { proposed: false, reason: `"${check.value}" in "${e.replace}" is not a value from run ${args.run_id}. Copy the checker's number.` };
+    }
+
+    const view: EditProposalView = {
+      proposal_id: newProposalId(),
+      document: name,
+      revision: /-(r\d+)\b/.exec(name)?.[1],
+      source_sha256: source,
+      run_id: args.run_id,
+      output: name.replace(/\.docx$/, "-proposed.docx"),
+      edits: args.edits,
+      status: "pending",
+    };
+    record({
+      kind: "edit_proposed",
+      thread: key,
+      trigger_ts: ctx.trigger_ts,
+      proposal_id: view.proposal_id,
+      finding_id: args.finding_id,
+      run_id: args.run_id,
+      document: name,
+      source_sha256: source,
+      edits: args.edits,
+    });
+
+    let ref: MessageRef | undefined;
+    // The card is redrawn through whichever thread handle is live at click time.
+    // A redraw failure never blocks the decision or the write; the evidence log has it.
+    const redraw = async (live?: { update: (ref: MessageRef, ui: unknown) => Promise<unknown> }) => {
+      if (!ref) return;
+      try {
+        await (live ?? thread).update(ref, proposalCard(view));
+      } catch (e) {
+        console.warn("[propose_edit] card not redrawn:", (e as Error).message);
+      }
+    };
+    const decide: Decide = async (approve, by, live) => {
+      if (view.status !== "pending") return;
+      record({ kind: "edit_decided", thread: key, trigger_ts: ctx.trigger_ts, proposal_id: view.proposal_id, decision: approve ? "approved" : "rejected", by });
+      view.by = by;
+      if (!approve) {
+        view.status = "rejected";
+        await redraw(live);
+        return;
+      }
+      view.status = "approved";
+      await redraw(live);
+      const applied = await applyEditProposal(view);
+      if (applied.ok) {
+        view.status = "applied";
+        view.result_sha256 = applied.sha256;
+        record({ kind: "edit_applied", thread: key, trigger_ts: ctx.trigger_ts, proposal_id: view.proposal_id, document: name, source_sha256: applied.source_sha256, output: view.output, sha256: applied.sha256 });
+      } else {
+        view.status = "failed";
+        view.error = applied.error;
+        record({ kind: "edit_applied", thread: key, trigger_ts: ctx.trigger_ts, proposal_id: view.proposal_id, document: name, source_sha256: source, output: view.output, sha256: source, error: applied.error });
+      }
+      await redraw(live);
+    };
+
+    ref = await thread.post(proposalCard(view, decide));
+    proposals.set(view.proposal_id, { view, decide });
+    return {
+      proposed: true,
+      proposal_id: view.proposal_id,
+      output: view.output,
+      note: "Posted with Approve and Reject buttons. Nothing is written until a human approves. Do not call again for the same edits.",
+    };
+  },
+});
+
+/** Proposals this process posted, by id, so a test or a later handler can decide them without a click. */
+const proposals = new Map<string, { view: EditProposalView; decide: Decide }>();
+export function recallProposal(id: string) {
+  return proposals.get(id);
+}
+export const __proposalsForTest = { numbersComeFromRun, numbersIn };

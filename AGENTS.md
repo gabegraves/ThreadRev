@@ -24,18 +24,20 @@ If you need a change outside your lane, write the request to the owner and keep 
 - `main` must pass `npm run verify` at all times. Whoever pushes is responsible for it passing afterward. If it fails because of another lane's files, tell that owner in `STATUS.md`; do not fix their files.
 - Before starting, read `STATUS.md`. When you finish a unit of work, update your lane's line: what you pushed, what you are editing next, what you are blocked on.
 - Never commit `.env`, tokens, screenshots containing secrets, or anything from the private research archive outside this repo. No co-author trailers on commits.
-- The project name is ThreadRev. Do not rename, reorganize, or clean up files outside your lane.
+- The project name is ThreadRev. The bot's Slack name is Rev: people type `@Rev`, the Channel code is `rev`, the welcome card says "Rev is in this channel". Do not rename, reorganize, or clean up files outside your lane.
 - Report only what you verified. Say which command you ran.
 
 ## ThreadRev workspace
 
 Read [SCRATCHPAD.md](SCRATCHPAD.md) for accepted project decisions, including Convex storage scope and its implementation boundaries.
 
-This checkout is ThreadRev, a Slack-native engineering change reviewer built on the CopilotKit starter. Built during the event: `apps/channel/src/reviewer-tools.tsx`, `finding-card.tsx`, `review-moment.ts`, `revision.ts`, the silence filter in `agent.ts`, `checkers/`, `extractors/`, `contracts/`, `fixtures/`, `apps/channel/src/replay/`, and `packages/agent-core/src/reviewer-prompt.ts`. Inherited: everything else, including the incident tools and components in `tools.tsx` and `components.tsx`, which are no longer registered on the channel but remain for their tests. The reviewer never computes a number it shows; `publish_result` copies numbers from a checker run and is the only path to a card.
+This checkout is ThreadRev, a Slack-native engineering change reviewer built on the CopilotKit starter.
+
+**What we are building and how it differs from Slack's own AI.** Slack already searches and summarizes threads and files, runs scheduled Slackbot skills, and edits Notion pages. ThreadRev does not compete on any of that. It keeps a record of what the team decided, bound to the document revision it was decided against, with every number recomputed by a local checker, so the next engineer can trust it or see exactly why not. Three verbs Slack's summary does not do: recompute, bind to a revision, go stale. The full comparison and the four capabilities we are building toward are in README "What Slack already does, and what ThreadRev adds". Do not write copy, prompts, or descriptions that pitch summarization, automation, or doc updates as the value. Built during the event: `apps/channel/src/reviewer-tools.tsx` (six tools, including `propose_edit` with Approve/Reject buttons), `finding-card.tsx`, `review-moment.ts`, `revision.ts`, the silence filter in `agent.ts`, `checkers/` (including `apply_docx_edit.py`, which writes a new copy on approval and never the source), `extractors/`, `contracts/`, `fixtures/`, `apps/channel/src/replay/`, and `packages/agent-core/src/reviewer-prompt.ts`. Rev never writes a file without a human clicking Approve, and a proposed replacement may only carry a checker output. Inherited: everything else, including the incident tools and components in `tools.tsx` and `components.tsx`, which are no longer registered on the channel but remain for their tests. The reviewer never computes a number it shows; `publish_result` copies numbers from a checker run and is the only path to a card.
 
 Start with [SETUP.md](SETUP.md). The research and proposed design live in [../RESEARCH.md](../RESEARCH.md) and [../research/hackathon-design.md](../research/hackathon-design.md), outside this checkout. Preserve them. Use the Slack template first; web is an optional local preview, not another required product surface.
 
-For Exa API changes, follow [.agents/skills/build-with-exa/SKILL.md](.agents/skills/build-with-exa/SKILL.md) as the canonical API guide.
+Exa is not used by ThreadRev. The inherited `search_web` capability is not registered on the reviewer, `EXA_API_KEY` is blank, and no doc, prompt, or video should list Exa as something we use.
 
 Reuse existing tools and dependencies before adding new ones. Keep credentials in ignored local environment files, never in prompts, committed files or logs. No automatic cloud fallback may be introduced for a future private mode. Do not access the GPU rig until its connection details are supplied.
 

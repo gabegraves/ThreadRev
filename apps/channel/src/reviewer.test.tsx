@@ -6,7 +6,7 @@ import { guardPublish } from "./replay/publish-guard";
 
 test("attachments and review vocabulary open the gate", () => {
   assert.equal(isReviewMoment({ text: "r2 review doc is up", hasFiles: true }), true);
-  assert.equal(isReviewMoment({ text: "@reviewer can you check section 3 before I sign the review?" }), true);
+  assert.equal(isReviewMoment({ text: "@Rev can you check section 3 before I sign the review?" }), true);
   assert.equal(isReviewMoment({ text: "Correction: bus is 820 uF, not 680. Doc will be r3." }), true);
 });
 
@@ -20,7 +20,7 @@ test("latest revision is the newest human change message", () => {
   const msgs = [
     { ts: "1787062320.000100", text: "Precharge board r2 review doc is up. Dropped one film cap, bus is now 680 uF." },
     { ts: "1787064000.000200", text: "Relay close timer in firmware is 2.5 s, matches the doc." },
-    { ts: "1787166300.000300", text: "@reviewer can you check section 3 of the r2 doc before I sign the review?" },
+    { ts: "1787166300.000300", text: "@Rev can you check section 3 of the r2 doc before I sign the review?" },
     { ts: "1787171400.000400", text: "Correction: adding a 140 uF snubber bank. Bus is 820 uF, not 680. Doc will be r3." },
     { ts: "1787171500.000500", text: "card posted", isBot: true },
   ];

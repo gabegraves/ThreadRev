@@ -14,6 +14,8 @@ ROOT = os.path.dirname(HERE)
 EXAMPLES = os.path.join(ROOT, "contracts", "examples")
 RC = os.path.join(HERE, "check_rc.py")
 ROUTE = os.path.join(HERE, "check_route.py")
+EDITOR = os.path.join(HERE, "apply_docx_edit.py")
+DOCS = os.path.join(ROOT, "fixtures", "documents")
 
 
 def run_checker(script, payload):
@@ -205,3 +207,45 @@ class CheckRouteTest(unittest.TestCase, ResponseEnvelope):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ApplyDocxEditTests(unittest.TestCase):
+    def _sha(self, path):
+        import hashlib
+        with open(path, "rb") as fh:
+            return hashlib.sha256(fh.read()).hexdigest()
+
+    def test_writes_new_file_and_leaves_source_alone(self):
+        import tempfile
+        src = os.path.join(DOCS, "precharge-review-r2.docx")
+        before = self._sha(src)
+        with tempfile.TemporaryDirectory() as d:
+            out = os.path.join(d, "r2-proposed.docx")
+            code, res, err = run_checker(EDITOR, {"source": src, "out": out, "replacements": [{"find": "t = 6.91 s", "replace": "t = 6.493 s"}]})
+            self.assertEqual(code, 0, err)
+            self.assertEqual(res["source_sha256"], before)
+            self.assertEqual(self._sha(out), res["sha256"])
+            self.assertNotEqual(res["sha256"], before)
+            code2, text, _ = run_checker(os.path.join(ROOT, "extractors", "docx_text.py"), "")
+            # extractor takes a path arg, not stdin: call it directly
+            proc = subprocess.run([sys.executable, os.path.join(ROOT, "extractors", "docx_text.py"), out], capture_output=True, text=True, check=False)
+            paras = json.loads(proc.stdout)["paragraphs"]
+            self.assertTrue(any("t = 6.493 s" in p for p in paras), paras)
+            self.assertFalse(any("6.91" in p for p in paras))
+        self.assertEqual(self._sha(src), before)
+
+    def test_refuses_ambiguous_or_missing_text(self):
+        import tempfile
+        src = os.path.join(DOCS, "precharge-review-r2.docx")
+        with tempfile.TemporaryDirectory() as d:
+            out = os.path.join(d, "x.docx")
+            code, res, _ = run_checker(EDITOR, {"source": src, "out": out, "replacements": [{"find": "680 uF", "replace": "820 uF"}]})
+            self.assertEqual(code, 1)
+            self.assertIn("occurs 2 times", res["error"])
+            self.assertFalse(os.path.exists(out))
+            code, res, _ = run_checker(EDITOR, {"source": src, "out": out, "replacements": [{"find": "no such text", "replace": "x"}]})
+            self.assertEqual(code, 1)
+            self.assertIn("occurs 0 times", res["error"])
+            code, res, _ = run_checker(EDITOR, {"source": src, "out": src, "replacements": [{"find": "t = 6.91 s", "replace": "t = 6.493 s"}]})
+            self.assertEqual(code, 1)
+            self.assertIn("never modified", res["error"])

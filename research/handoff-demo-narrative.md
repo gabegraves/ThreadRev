@@ -4,10 +4,14 @@ Project: ThreadRev, a Slack-native engineering change reviewer. Agents, Everywhe
 
 You own what the judges see and whether an engineer would believe it. Agents are generating fixtures, checkers, and code. Nobody else is asking whether the precharge scenario is something a real electrical lead would recognize, whether the two-minute video lands, or whether the description scores. That is yours.
 
+## Company frame (changed 1:30 PM)
+
+The fixture company is Kestrel Motors, a fictional maker of light electric city vehicles, not a student solar team. KS-4 is the platform in development. Dara Voss owns the precharge board, Tam Holloway owns firmware, Juno Marsh joined in August and is signing the r2 review. Say this in the first fifteen seconds. The consequence that makes the finding matter: a relay that closes before the bus is charged puts inrush through the main contactor on every key-on, and the number in the signed review is the number that ships. The two-minute shot list in `research/hackathon-design.md` is the current cut; `submission/video-shotlist.md` starts from it.
+
 ## Read first
 
 1. `research/synthetic-fixture-spec.md`, section 4 Scenario A and section 5 replay cases. This is the story as currently written.
-2. `research/hackathon-design.md`, "Recommended two-minute demonstration" and "Lessons from actual recent winners".
+2. `research/hackathon-design.md`, "Recommended two-minute demonstration" and "Lessons from actual recent winners". README "What Slack already does, and what ThreadRev adds" is the differentiation the description and video must match.
 3. `hackathon-overview.md` judging criteria, `hackathon-rules.md` deliverables, `SUBMISSION.md` checklist.
 4. `research/change-agent-novelty-audit.md` and `research/engineering-change-competitors.md`: the competitors we cannot pretend do not exist.
 5. `contracts/examples/finding-scenario-a.json` and `finding-scenario-a-superseding.json`: exactly what the bot will say.
@@ -17,6 +21,8 @@ You own what the judges see and whether an engineer would believe it. Agents are
 **D-NAR1. Is Scenario A believable?** Put on the electrical lead hat. A design review document with a text/diagram capacitance mismatch and a wrong printed example: would you be glad the bot caught it, or annoyed it flagged a typo? If the latter, change the scenario within the same arithmetic (same R, same three capacitances, same checker) so the discrepancy has a consequence the lead cares about. The requirement change to 820 µF already crosses the relay timer; decide whether that moment should be the first finding rather than the second. You can change the script and the card text; you cannot change the numbers the checker verifies without telling the integration owner.
 
 **D-NAR2. The two-minute cut.** Write the shot list with timestamps, what is on screen, and the exact words spoken. The rubric wants one complete interaction with a visible result, and an explanation of what is lost if the context is removed. Decide where in the two minutes that sentence lands. Include the stale card being superseded on screen. Decide whether the replay scorecard appears at all, and if so, for how many seconds. Cut anything that is infrastructure pride rather than user benefit.
+
+**The Slack comparison beat (added 1:25 PM).** The video and the description both carry one explicit comparison, placed right after Card 1 goes stale. The exact spoken words are in `research/hackathon-design.md` step 5. The point: a Slack AI thread summary is correct (680 uF, 2.5 s, doc matches) and wrong, because the document disagrees with itself and the correction is not in any document. Three verbs Slack does not do: recompute, bind to a revision, go stale. The one-sentence claim is in README "What Slack already does, and what ThreadRev adds": ThreadRev keeps a record of what the team decided, bound to the revision it was decided against, with the numbers recomputed. Do not say Slack cannot be configured to do this; say it does not, and show the stale card as the evidence.
 
 **D-NAR3. The claim we make.** Write the 250-word description. It has to survive a judge who knows AllSpice, Glean, or CodeRabbit exist. Do not claim a market gap. Claim the specific thing: the bot knew the July message superseded the document because it read the thread, and it recomputed instead of trusting the printed number. Say what "verified" means and what it does not mean. Say what the bot cannot see.
 

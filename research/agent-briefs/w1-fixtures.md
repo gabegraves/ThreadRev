@@ -12,7 +12,7 @@ You own **W1**, the synthetic fixture assets. No credentials, no application cod
 ## Rules
 
 - Commit and push to `origin main` after every file that is done. Small commits, no batching. Pull before you push.
-- Fictional data only. The team is Kestrel Solar Racing at the fictional Halvern Institute. If a name, number, supplier, or part is not in the spec, invent one that is obviously fictional.
+- Fictional data only. The company is Kestrel Motors, a fictional maker of light electric city vehicles. If a name, number, supplier, or part is not in the spec, invent one that is obviously fictional.
 - Do not edit anything under `apps/`, `packages/`, or `checkers/`. If a fixture needs the spec changed, say so in your commit message and tell the integration owner; do not silently diverge.
 - No credentials, no real Slack IDs, no real people.
 

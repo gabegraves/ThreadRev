@@ -112,7 +112,7 @@ export const WORKSPACE: WorkspaceMessage[] = [
     "user": "U00SYN02",
     "user_name": "Milo Trent",
     "thread_ts": null,
-    "text": "Sim v1-1: added the array shading model. Lap energy at 22 m/s is 3.9 kWh on the 220 km segment, mass still 280 kg.",
+    "text": "Sim v1-1: added the HVAC load model. Segment energy at 22 m/s is 3.9 kWh on the 220 km segment, mass still 280 kg.",
     "files": []
   },
   {
@@ -338,7 +338,7 @@ export const WORKSPACE: WorkspaceMessage[] = [
     "user": "U00SYN06",
     "user_name": "Juno Marsh",
     "thread_ts": null,
-    "text": "@reviewer can you run the 220 km segment at 22 m/s for end SoC 40 percent? I grabbed the params from the July 3 sheet.",
+    "text": "@Rev can you run the 220 km segment at 22 m/s for end SoC 40 percent? I grabbed the params from the July 3 sheet.",
     "files": []
   },
   {
@@ -380,7 +380,7 @@ export const WORKSPACE: WorkspaceMessage[] = [
     "user": "U00SYN06",
     "user_name": "Juno Marsh",
     "thread_ts": "1787062320.000100",
-    "text": "@reviewer can you check section 3 of the r2 doc before I sign the review?",
+    "text": "@Rev can you check section 3 of the r2 doc before I sign the review?",
     "files": []
   },
   {

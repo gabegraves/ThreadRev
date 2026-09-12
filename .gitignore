@@ -18,3 +18,13 @@ apps/mobile/.expo/
 
 # live evidence log (sample lives in contracts/examples)
 /evidence/
+
+# Added by CopilotKit CLI: credential files, which must never be committed.
+.env.*
+!.env.example
+
+# CopilotKit CLI state: channels.json holds the Slack bot token and signing secret
+.copilotkit/
+
+# Rev-applied document edits (live demo output); the fixture sources stay tracked
+fixtures/documents/*-proposed.docx

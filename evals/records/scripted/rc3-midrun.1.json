@@ -39,7 +39,7 @@
           "ts": "2026-08-11T18:15:00.000Z",
           "from": "Juno Marsh",
           "bot": false,
-          "text": "@reviewer run the Northgate to Ferris segment (220 km, no optional loop), start SoC 96%, end SoC 40%, two 20-minute driver swaps, 22 m/s constant. I grabbed the params from the July 3 sheet.",
+          "text": "@Rev run the Northgate to Ferris segment (220 km, no optional loop), start SoC 96%, end SoC 40%, two 20-minute stops, 22 m/s constant. I grabbed the params from the July 3 sheet.",
           "files": []
         }
       ]
@@ -61,7 +61,7 @@
       "result": {
         "checker": "route",
         "version": "1",
-        "run_id": "route-20260912T162201Z-a936",
+        "run_id": "route-20260912T170616Z-309c",
         "inputs": {
           "mass_kg": 318,
           "Crr": 0.0048,
@@ -102,7 +102,7 @@
     {
       "name": "publish_result",
       "args": {
-        "run_id": "route-20260912T162201Z-a936",
+        "run_id": "route-20260912T170616Z-309c",
         "requirements_revision": "1786472100.000800",
         "discrepancy": "Under v2-1 the segment at 22 m/s is not feasible at end SoC 40 percent (3.0447 kWh against 2.912 kWh).",
         "why_it_matters": "The request used v2-0; v2-1 supersedes it.",
@@ -114,7 +114,7 @@
           }
         ],
         "inferred": [
-          "Array input assumed zero."
+          "Regen assumed zero."
         ],
         "resolution": "Juno confirms v2-1."
       },
@@ -141,7 +141,7 @@
       "result": {
         "checker": "route",
         "version": "1",
-        "run_id": "route-20260912T162201Z-89ef",
+        "run_id": "route-20260912T170616Z-1af7",
         "inputs": {
           "mass_kg": 318,
           "Crr": 0.0048,
@@ -182,7 +182,7 @@
     {
       "name": "publish_result",
       "args": {
-        "run_id": "route-20260912T162201Z-89ef",
+        "run_id": "route-20260912T170616Z-1af7",
         "requirements_revision": "2026-08-11T19:02:00.000Z",
         "discrepancy": "Under v2-1 the segment at 22 m/s is feasible at end SoC 35 percent (3.0447 kWh against 3.172 kWh).",
         "why_it_matters": "The request used v2-0; v2-1 supersedes it.",
@@ -194,13 +194,13 @@
           }
         ],
         "inferred": [
-          "Array input assumed zero."
+          "Regen assumed zero."
         ],
         "resolution": "Juno confirms v2-1."
       },
       "result": {
         "published": true,
-        "finding_id": "fnd-mtylf15j-1mth",
+        "finding_id": "fnd-mtymzxuo-5vy7",
         "requirements_revision": "2026-08-11T19:02:00.000Z"
       }
     }
@@ -209,7 +209,7 @@
     {
       "checker": "route",
       "version": "1",
-      "run_id": "route-20260912T162201Z-a936",
+      "run_id": "route-20260912T170616Z-309c",
       "inputs": {
         "mass_kg": 318,
         "Crr": 0.0048,
@@ -249,7 +249,7 @@
     {
       "checker": "route",
       "version": "1",
-      "run_id": "route-20260912T162201Z-89ef",
+      "run_id": "route-20260912T170616Z-1af7",
       "inputs": {
         "mass_kg": 318,
         "Crr": 0.0048,
@@ -289,7 +289,7 @@
   ],
   "posted_cards": [
     {
-      "finding_id": "fnd-mtylf15j-1mth",
+      "finding_id": "fnd-mtymzxuo-5vy7",
       "status": "live",
       "requirements_revision": "2026-08-11T19:02:00.000Z",
       "discrepancy": "Under v2-1 the segment at 22 m/s is feasible at end SoC 35 percent (3.0447 kWh against 3.172 kWh).",
@@ -309,13 +309,13 @@
         }
       ],
       "inferred": [
-        "Array input assumed zero."
+        "Regen assumed zero."
       ],
       "resolution": "Juno confirms v2-1.",
       "checker_run": {
         "checker": "route",
         "version": "1",
-        "run_id": "route-20260912T162201Z-89ef"
+        "run_id": "route-20260912T170616Z-1af7"
       }
     }
   ],

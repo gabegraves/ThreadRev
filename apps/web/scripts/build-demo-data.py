@@ -14,6 +14,8 @@ from __future__ import annotations
 import json
 import os
 import re
+import subprocess
+import tempfile
 from datetime import datetime, timedelta, timezone
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
@@ -105,6 +107,22 @@ def publish(log, trigger, card):
     log.add(trigger, "finding_published", finding=fix_shas(card))
 
 
+# Scenario A's section 4 proposal, as the harness script makes it after Card 1
+# (apps/channel/src/replay/scripts.ts; evals/records/scripted/scenario-a.1.json).
+A_EDIT = {"locator": "section 4, line 13", "find": "t = 6.91 s", "replace": "t = 6.493 s", "reason": "printed value does not reproduce at 2 mF; checker gives 6.4933 s"}
+A_PROPOSAL = "edt-a-r2-001"
+A_OUTPUT = "precharge-review-r2-proposed.docx"
+
+
+def apply_edit(source_doc: str, edit: dict) -> dict:
+    """Run checkers/apply_docx_edit.py into a temp dir so the applied sha256 is
+    the real one for that replacement, never typed by hand. The source is untouched."""
+    with tempfile.TemporaryDirectory() as tmp:
+        req = {"source": os.path.join(ROOT, "fixtures", "documents", source_doc), "out": os.path.join(tmp, A_OUTPUT), "replacements": [{"find": edit["find"], "replace": edit["replace"]}]}
+        res = subprocess.run(["python3", os.path.join(ROOT, "checkers", "apply_docx_edit.py")], input=json.dumps(req), capture_output=True, text=True, check=True)
+        return json.loads(res.stdout)
+
+
 def scenario_a():
     msgs = load("fixtures/slack/scenario-a.json")
     log = Log(msgs[0]["ts"], datetime(2026, 8, 19, 18, 5, 8, tzinfo=timezone.utc))
@@ -116,6 +134,9 @@ def scenario_a():
     a1 = fix_shas(CARD["scenario-a"])
     log.add(trig, "check_run", **{**{k: RC_RESP[k] for k in ("run_id", "checker", "version", "inputs", "outputs", "error")}, "checks": strip_tol(RC_RESP["checks"]), "evidence_refs": refs(a1)})
     publish(log, trig, a1)
+    # Rev proposes the section 4 fix right after Card 1. Nothing is written yet.
+    doc = "precharge-review-r2.docx"
+    log.add(trig, "edit_proposed", proposal_id=A_PROPOSAL, finding_id=a1["finding_id"], run_id=a1["checker_run"]["run_id"], document=doc, source_sha256=SHAS[doc], edits=[A_EDIT])
     # Run 2: Dara's 820 uF change.
     log.t += timedelta(minutes=85)
     log.run(change, msgs)
@@ -123,6 +144,12 @@ def scenario_a():
     log.add(change, "check_run", **{**{k: RC_RESP[k] for k in ("checker", "version", "inputs", "outputs", "error")}, "checks": strip_tol(RC_RESP["checks"]), "run_id": a2["checker_run"]["run_id"], "evidence_refs": refs(a2)})
     log.add(change, "finding_superseded", finding_id=a1["finding_id"], superseded_by=a2["finding_id"], cause_ts=change)
     publish(log, change, a2)
+    # Juno approves the section 4 proposal; the edit goes into a new copy, the source keeps its hash.
+    log.t += timedelta(minutes=3)
+    applied = apply_edit(doc, A_EDIT)
+    assert applied["source_sha256"] == SHAS[doc], "fixture sha moved; regenerate SHA256SUMS"
+    log.add(trig, "edit_decided", proposal_id=A_PROPOSAL, decision="approved", by="Juno Marsh")
+    log.add(trig, "edit_applied", proposal_id=A_PROPOSAL, document=doc, source_sha256=applied["source_sha256"], output=A_OUTPUT, sha256=applied["sha256"])
     return log.events
 
 

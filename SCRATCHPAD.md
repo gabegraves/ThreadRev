@@ -16,7 +16,7 @@ Decision: use Convex for the hosted version of ThreadRev's persistent evidence a
 
 Keep CopilotKit Channels and its BuiltInAgent loop for the hackathon, with the existing local Python checkers. Convex supplies persistence and retrieval; adopting its agent framework or replacing the Slack harness is not part of this decision. The model investigates; trusted checker outputs and application validation determine what a finding may claim.
 
-Exa remains optional for explicitly requested external research such as supplier alternatives or manufacturer documentation. It is unnecessary for the core internal-evidence workflow and is not registered in the current reviewer tool list. Preserve the existing integration and credentials; do not add external search to routine reviews by default.
+Exa is not used (decided 1:33 PM). The reviewer's truth is inside the workspace, and a web result cannot be bound to a revision or hashed. `EXA_API_KEY` is blank; the inherited capability stays in `agent-core` for its tests only. Do not add external search to the reviewer.
 
 ### Correctness boundaries
 
@@ -35,6 +35,6 @@ The motivating solar-car cases are repeated historical research, existing hardwa
 
 - [Convex transactions and serializability](https://docs.convex.dev/database/advanced/occ)
 - [Convex full-text search](https://docs.convex.dev/search/text-search)
-- [Solar-car failure patterns and synthetic fixtures](research/synthetic-fixture-spec.md)
+- [Engineering failure patterns and synthetic fixtures](research/synthetic-fixture-spec.md)
 - [Prior harness comparison](research/harness-hermes-vs-channels.md)
 - [Current runtime setup and verification](SETUP.md)
