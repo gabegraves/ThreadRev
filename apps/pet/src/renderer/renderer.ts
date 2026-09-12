@@ -423,6 +423,8 @@ function renderBadge(): void {
   const unread = unreadCount(findings, seen);
   countEl.hidden = unread === 0;
   countEl.textContent = String(unread);
+  // The CSS hop keys off this, so Rev only moves while something red is unseen.
+  petEl.dataset.unread = String(unread > 0);
 }
 
 function recomputeState(): void {

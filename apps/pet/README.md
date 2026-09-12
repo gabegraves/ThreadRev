@@ -69,11 +69,11 @@ the look is a status display rather than decoration:
 
 | State       | Look                                 | Means                         |
 | ----------- | ------------------------------------ | ----------------------------- |
-| `idle`      | half aperture, blue, slow breathe    | watching                      |
+| `idle`      | half aperture, blue, still           | watching                      |
 | `reading`   | open, pupil scanning                 | reading the thread            |
 | `searching` | wide, sonar ring                     | searching the workspace       |
 | `checking`  | stopped down, tick marks             | a checker is recomputing      |
-| `found`     | wide, amber, alert hop               | live findings need a decision |
+| `found`     | wide, red, hops until opened          | live findings need a decision |
 | `clear`     | relaxed, green                       | nothing to flag               |
 | `stale`     | desaturated, fracture across the lens| superseded                    |
 | `asleep`    | shut, zzz                            | idle past the sleep threshold |
