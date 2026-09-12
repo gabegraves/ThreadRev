@@ -512,3 +512,190 @@ export function severityOf<
   );
   return critical ? "critical" : "minor";
 }
+
+/* ------------------------------------------------------------ feed input --- */
+
+/**
+ * Everything below validates the reviewer's response.
+ *
+ * The endpoint is loopback, but it is still input this process does not
+ * produce: a half-written file, an older reviewer, or a proxy returning an
+ * error page all arrive here. Before this existed, a finding missing
+ * `reproduced` threw inside the render loop and took the whole panel out — and
+ * because the poll then kept re-rendering, it stayed out.
+ *
+ * The rule is coerce, never throw: anything unusable is dropped and the rest is
+ * still shown. A reviewer that reports nine good findings and one malformed one
+ * should show nine.
+ */
+
+export type FindingStatus = "live" | "stale";
+
+export interface CleanSource {
+  kind: "document" | "message";
+  id: string;
+  revision?: string;
+  sha256?: string;
+  locator?: string;
+}
+
+export interface CleanReproduced {
+  label: string;
+  printed?: number;
+  computed: number;
+  unit: string;
+  matches?: boolean;
+}
+
+export interface CleanFinding {
+  finding_id: string;
+  status: FindingStatus;
+  discrepancy: string;
+  why_it_matters: string;
+  resolution: string;
+  requirements_revision: string;
+  supersedes_reason?: string;
+  sources: CleanSource[];
+  reproduced: CleanReproduced[];
+  inferred: string[];
+  question?: { to: string; ask: string };
+}
+
+export type AgentPhase = "idle" | "reading" | "searching" | "checking";
+
+export interface CleanFeed {
+  findings: CleanFinding[];
+  phase?: AgentPhase;
+  revision?: string;
+}
+
+/** Guard against a hostile or broken producer flooding the panel. */
+const MAX_FINDINGS = 100;
+const MAX_ROWS = 60;
+const MAX_SOURCES = 40;
+/** Long enough for a real discrepancy, short enough that one cannot wedge the UI. */
+const MAX_TEXT = 2000;
+
+const isRecord = (v: unknown): v is Record<string, unknown> =>
+  typeof v === "object" && v !== null && !Array.isArray(v);
+
+/** A trimmed string, or undefined. Rejects the empty string. */
+function str(v: unknown, max = MAX_TEXT): string | undefined {
+  if (typeof v !== "string") return undefined;
+  const s = v.trim();
+  if (!s) return undefined;
+  return s.length > max ? `${s.slice(0, max - 1)}…` : s;
+}
+
+/** A real number. Rejects NaN and Infinity, which format into nonsense. */
+function fin(v: unknown): number | undefined {
+  return typeof v === "number" && Number.isFinite(v) ? v : undefined;
+}
+
+function cleanSource(v: unknown): CleanSource | null {
+  if (!isRecord(v)) return null;
+  const id = str(v.id, 300);
+  if (!id) return null;
+  return {
+    kind: v.kind === "message" ? "message" : "document",
+    id,
+    revision: str(v.revision, 40),
+    sha256: str(v.sha256, 64),
+    locator: str(v.locator, 200),
+  };
+}
+
+function cleanReproduced(v: unknown): CleanReproduced | null {
+  if (!isRecord(v)) return null;
+  const label = str(v.label, 200);
+  const computed = fin(v.computed);
+  // A row with no computed value is the one thing this table cannot show: its
+  // whole purpose is putting a recomputed number beside the printed one.
+  if (!label || computed === undefined) return null;
+  return {
+    label,
+    printed: fin(v.printed),
+    computed,
+    unit: str(v.unit, 24) ?? "",
+    matches: typeof v.matches === "boolean" ? v.matches : undefined,
+  };
+}
+
+function cleanQuestion(v: unknown): { to: string; ask: string } | undefined {
+  if (!isRecord(v)) return undefined;
+  const to = str(v.to, 120);
+  const ask = str(v.ask, 600);
+  return to && ask ? { to, ask } : undefined;
+}
+
+export function cleanFinding(v: unknown): CleanFinding | null {
+  if (!isRecord(v)) return null;
+  const finding_id = str(v.finding_id, 200);
+  const discrepancy = str(v.discrepancy);
+  // Without an id there is no way to track what has been seen, and without a
+  // discrepancy the card has no headline. Everything else can be missing.
+  if (!finding_id || !discrepancy) return null;
+
+  return {
+    finding_id,
+    status: v.status === "stale" ? "stale" : "live",
+    discrepancy,
+    why_it_matters: str(v.why_it_matters) ?? "",
+    resolution: str(v.resolution) ?? "",
+    requirements_revision: str(v.requirements_revision, 40) ?? "—",
+    supersedes_reason: str(v.supersedes_reason),
+    sources: (Array.isArray(v.sources) ? v.sources : [])
+      .slice(0, MAX_SOURCES)
+      .map(cleanSource)
+      .filter((s): s is CleanSource => s !== null),
+    reproduced: (Array.isArray(v.reproduced) ? v.reproduced : [])
+      .slice(0, MAX_ROWS)
+      .map(cleanReproduced)
+      .filter((r): r is CleanReproduced => r !== null),
+    inferred: (Array.isArray(v.inferred) ? v.inferred : [])
+      .slice(0, MAX_ROWS)
+      .map((s) => str(s))
+      .filter((s): s is string => s !== undefined),
+    question: cleanQuestion(v.question),
+  };
+}
+
+const PHASES: readonly string[] = ["idle", "reading", "searching", "checking"];
+
+/** Coerce a whole response. Never throws; drops what it cannot use. */
+export function cleanFeed(raw: unknown): CleanFeed {
+  if (!isRecord(raw)) return { findings: [] };
+  const findings = (Array.isArray(raw.findings) ? raw.findings : [])
+    .slice(0, MAX_FINDINGS)
+    .map(cleanFinding)
+    .filter((f): f is CleanFinding => f !== null);
+
+  // Two findings sharing an id would make "seen" tracking and the badge lie.
+  const byId = new Map<string, CleanFinding>();
+  for (const f of findings) if (!byId.has(f.finding_id)) byId.set(f.finding_id, f);
+
+  return {
+    findings: [...byId.values()],
+    phase: typeof raw.phase === "string" && PHASES.includes(raw.phase)
+      ? (raw.phase as AgentPhase)
+      : undefined,
+    revision: str(raw.revision, 40),
+  };
+}
+
+/* ---------------------------------------------------------------- drag --- */
+
+/**
+ * Distance, in CSS px, the cursor may travel between press and release and
+ * still count as a click rather than a drag.
+ *
+ * Without a threshold, `moved` flips on the first mousemove — and a mouse
+ * emits moves from the hand tremor of pressing the button. The pet then read
+ * almost every click as a zero-distance drag and never opened. Windows uses 4px
+ * (SM_CXDRAG) for the same decision.
+ */
+export const DRAG_THRESHOLD_PX = 4;
+
+export function isDrag(fromX: number, fromY: number, toX: number, toY: number): boolean {
+  return Math.hypot(toX - fromX, toY - fromY) > DRAG_THRESHOLD_PX;
+}
