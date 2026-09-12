@@ -18,7 +18,7 @@ import {
   type Finding,
   type ReproducedValue,
 } from "agent-core";
-import { runChecker } from "./replay/run-checker";
+import { checkerEnv, runChecker } from "./replay/run-checker";
 import { guardPublish, markStale } from "./replay/publish-guard";
 import { CHANGE_PATTERN, latestRevision, unitsFromInputs } from "./revision";
 import { record, runContext, threadKey } from "./evidence";
@@ -120,7 +120,11 @@ function runPython(script: string, args: string[]): Promise<string> {
     const child = spawn(process.env.PYTHON ?? "python3", [script, ...args], {
       cwd: REPO_ROOT,
       stdio: ["ignore", "pipe", "pipe"],
-      timeout: 10_000,
+      // 10s was tighter than the checker's 30s for no reason, and a cold
+      // interpreter start reads as the reviewer refusing a document it can
+      // read perfectly well.
+      timeout: 30_000,
+      env: checkerEnv(),
     });
     let out = "";
     let err = "";
