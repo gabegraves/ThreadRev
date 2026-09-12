@@ -25,7 +25,7 @@ import {
 } from "agent-core";
 import { runChecker } from "./replay/run-checker";
 import { guardPublish, markStale } from "./replay/publish-guard";
-import { CHANGE_PATTERN, latestRevision, tsNum } from "./revision";
+import { CHANGE_PATTERN, latestRevision, tsNum, unitsFromInputs } from "./revision";
 import { record, runContext, threadKey } from "./evidence";
 import { editProposalBody, renderFindingCard, type EditProposalView } from "./finding-card";
 import { queryIndex, workspaceIndex } from "./workspace";
@@ -397,6 +397,31 @@ export const publishResult = defineChannelTool({
     if (run.error) return { published: false, reason: `Run ${args.run_id} ended with an error; nothing to publish.` };
 
     const messages = await thread.getMessages();
+
+    // An unreadable thread is not an unchanged thread. getMessages() is
+    // capability-gated and answers [] rather than throwing where history is
+    // unavailable, and the fallback below is the revision the *model* claims
+    // it bound to — so on an empty read the guard would compare that value
+    // against itself, find no change, and publish a possibly stale card as
+    // fresh. The reviewer was triggered by a message in this thread, so an
+    // empty history means the read failed, never that nothing was said.
+    if (messages.length === 0) {
+      record({
+        kind: "publish_refused",
+        thread: threadKey(thread),
+        trigger_ts: runContext(threadKey(thread)).trigger_ts,
+        run_id: args.run_id,
+        bound_revision: args.requirements_revision,
+        current_revision: args.requirements_revision,
+        reason: "thread history unavailable; freshness could not be established",
+      });
+      return {
+        published: false,
+        reason:
+          "Thread history came back empty, so I cannot tell whether the requirements moved since this run. Not publishing. Call read_thread again; if history is still unavailable, say so in the thread instead of posting a card.",
+      };
+    }
+
     // Bind to the revision the thread had when the run executed. The model's
     // string is kept when it names the same instant (Slack ts and transcript
     // occurredAt spell one moment two ways); it is replaced when it names a
@@ -409,6 +434,7 @@ export const publishResult = defineChannelTool({
     const current = latestRevision(
       messages.map((m) => ({ ts: m.ts, text: m.text, isBot: m.isBot })),
       bound,
+      unitsFromInputs(run.inputs),
     );
     const state = (await thread.state<ReviewState>()) ?? { cards: [], staleRuns: [] };
 
