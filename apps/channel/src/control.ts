@@ -48,8 +48,20 @@ export function parseControl(text: string, isHuman = true): Control | undefined 
 
 /** What the reviewer says back. Short, and it states how to undo itself. */
 export function controlAck(control: Control): string {
-  if (control === "mute") {
-    return "Standing down in this thread. Say \"reviewer, resume\" and I'll pick it back up. Anything already posted stays.";
+  // Exhaustive, because the old fallthrough answered "explain" with "Back on in
+  // this thread" — unreachable only because the channel happens to handle
+  // explain first. A reply that misstates what the reviewer just did is the
+  // wrong thing to depend on call order for.
+  switch (control) {
+    case "mute":
+      return "Standing down in this thread. Say \"reviewer, resume\" and I'll pick it back up. Anything already posted stays.";
+    case "resume":
+      return "Back on in this thread.";
+    case "explain":
+      return "Here's what I did in this thread.";
+    default: {
+      const unhandled: never = control;
+      return unhandled;
+    }
   }
-  return "Back on in this thread.";
 }

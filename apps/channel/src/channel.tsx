@@ -62,27 +62,39 @@ channel.onMessage(async ({ thread, message }) => {
     muted: Boolean(state?.muted),
   });
 
-  if (action.kind === "control" && action.control === "explain") {
-    // readEvidence reads the whole log and reports how many lines it could not
-    // parse; the trail is per-thread, so filter here.
-    const { events } = readEvidenceLog();
-    await thread.post(
-      renderWorkTrail(events.filter((e) => e.thread === thread.conversationKey)),
-    );
-    return;
+  // A switch rather than an if-chain ending in runAgent, deliberately. The
+  // chain meant any action kind nobody had handled fell through to running the
+  // model — fail-open in the one place that decides whether the reviewer
+  // speaks at all. Here an unhandled kind is a compile error.
+  switch (action.kind) {
+    case "control": {
+      if (action.control === "explain") {
+        // readEvidence reads the whole log and reports how many lines it could
+        // not parse; the trail is per-thread, so filter here.
+        const { events } = readEvidenceLog();
+        await thread.post(
+          renderWorkTrail(events.filter((e) => e.thread === thread.conversationKey)),
+        );
+        return;
+      }
+      const next = state ?? { cards: [], staleRuns: [] };
+      next.muted = action.control === "mute";
+      await thread.setState(next);
+      await thread.post(controlAck(action.control));
+      return;
+    }
+    case "muted":
+    case "gate_closed":
+      record({ kind: "silence", thread: thread.conversationKey, reason: "gate_closed" });
+      return;
+    case "review":
+      await thread.runAgent();
+      return;
+    default: {
+      const unhandled: never = action;
+      void unhandled;
+    }
   }
-  if (action.kind === "control") {
-    const next = state ?? { cards: [], staleRuns: [] };
-    next.muted = action.control === "mute";
-    await thread.setState(next);
-    await thread.post(controlAck(action.control));
-    return;
-  }
-  if (action.kind === "muted" || action.kind === "gate_closed") {
-    record({ kind: "silence", thread: thread.conversationKey, reason: "gate_closed" });
-    return;
-  }
-  await thread.runAgent();
 });
 
 channel.onWelcome(async ({ thread, platform }) => {
