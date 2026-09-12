@@ -2,13 +2,21 @@ import { createChannel } from "@copilotkit/channels";
 import { makeChannelAgent } from "./agent";
 import { required } from "./env";
 import { reviewerWelcome } from "./finding-card";
-import { proposeEdit, publishResult, readEvidence, readThread, runCheck, searchWorkspace, type ReviewState } from "./reviewer-tools";
-import { controlAck, parseControl } from "./control";
+import {
+  proposeEdit,
+  publishResult,
+  readEvidence,
+  readThread,
+  runCheck,
+  searchWorkspace,
+  type ReviewState,
+} from "./reviewer-tools";
+import { controlAck } from "./control";
+import { decideMessage } from "./gate";
 import { renderWorkTrail } from "./work-trail";
 // agent-core also exports a readEvidence — the evidence LOG reader. The channel
 // tool of the same name reads documents. Renamed here so the two never blur.
 import { readEvidence as readEvidenceLog } from "agent-core";
-import { isReviewMoment } from "./review-moment";
 import { record } from "./evidence";
 
 export const channel = createChannel({
@@ -46,12 +54,15 @@ channel.onMention(async ({ thread }) => {
 // Every other message in an invited channel passes through the cheap gate
 // first. The model only runs on review moments; it can still decide NO_FINDING.
 channel.onMessage(async ({ thread, message }) => {
-  const human = message.actor.kind === "human";
+  const state = (await thread.state()) as ReviewState | undefined;
+  const action = decideMessage({
+    text: message.text,
+    hasFiles: (message.contentParts?.length ?? 0) > 0,
+    isHuman: message.actor.kind === "human",
+    muted: Boolean(state?.muted),
+  });
 
-  // A person telling the reviewer to stop outranks everything below, and has
-  // to take effect on the turn it is said rather than after a model round trip.
-  const control = parseControl(message.text, human);
-  if (control === "explain") {
+  if (action.kind === "control" && action.control === "explain") {
     // readEvidence reads the whole log and reports how many lines it could not
     // parse; the trail is per-thread, so filter here.
     const { events } = readEvidenceLog();
@@ -60,26 +71,14 @@ channel.onMessage(async ({ thread, message }) => {
     );
     return;
   }
-  if (control) {
-    const state = ((await thread.state()) as ReviewState | undefined) ?? { cards: [], staleRuns: [] };
-    state.muted = control === "mute";
-    await thread.setState(state);
-    await thread.post(controlAck(control));
+  if (action.kind === "control") {
+    const next = state ?? { cards: [], staleRuns: [] };
+    next.muted = action.control === "mute";
+    await thread.setState(next);
+    await thread.post(controlAck(action.control));
     return;
   }
-
-  const state = (await thread.state()) as ReviewState | undefined;
-  if (state?.muted) {
-    record({ kind: "silence", thread: thread.conversationKey, reason: "gate_closed" });
-    return;
-  }
-
-  const moment = isReviewMoment({
-    text: message.text,
-    hasFiles: (message.contentParts?.length ?? 0) > 0,
-    isBot: !human,
-  });
-  if (!moment) {
+  if (action.kind === "muted" || action.kind === "gate_closed") {
     record({ kind: "silence", thread: thread.conversationKey, reason: "gate_closed" });
     return;
   }
