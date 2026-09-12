@@ -37,7 +37,7 @@
             </svg>
           </span>
           <div class="panel__ident">
-            <span class="panel__name">Rev</span>
+            <span id="panel-title" class="panel__name">Findings</span>
             <span id="panel-sub" class="panel__sub" role="status" aria-live="polite">watching</span>
           </div>
           <span
@@ -54,6 +54,7 @@
           </button>
         </header>
 
+        <div id="view-findings" class="view">
         <div class="tabs" role="tablist" aria-label="Filter findings">
           <button
             class="tab"
@@ -98,6 +99,95 @@
             aria-labelledby="tab-live"
             tabindex="0"
           ></div>
+        </div>
+        </div>
+
+        <!-- Status: is the reviewer actually answering, and what is it bound to. -->
+        <div id="view-status" class="view" hidden>
+          <div class="scroller">
+            <div class="panel__body sheet">
+              <dl class="facts">
+                <dt>Reviewer</dt>
+                <dd id="fact-conn" class="facts__value">checking…</dd>
+
+                <dt>Last answer</dt>
+                <dd id="fact-age" class="facts__value">—</dd>
+
+                <dt>Bound revision</dt>
+                <dd id="fact-rev" class="facts__value mono">—</dd>
+
+                <dt>Findings</dt>
+                <dd id="fact-counts" class="facts__value">—</dd>
+
+                <dt>Endpoint</dt>
+                <dd id="fact-endpoint" class="facts__value mono trunc">—</dd>
+              </dl>
+
+              <div class="stack">
+                <button id="go-console" class="action" type="button">
+                  <span class="action__label">Open review console</span>
+                  <span class="action__hint">threads, diffs, evidence graph</span>
+                  <svg class="action__go" viewBox="0 0 16 16" aria-hidden="true">
+                    <path d="M6 3l5 5-5 5" />
+                  </svg>
+                </button>
+                <button id="go-voice" class="action" type="button">
+                  <span class="action__label">Open voice review</span>
+                  <span class="action__hint">talk through a finding</span>
+                  <svg class="action__go" viewBox="0 0 16 16" aria-hidden="true">
+                    <path d="M6 3l5 5-5 5" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Settings: the same options as the tray, in the app's own skin. -->
+        <div id="view-settings" class="view" hidden>
+          <div class="scroller">
+            <div class="panel__body sheet">
+              <label class="row">
+                <span class="row__text">
+                  <span class="row__label">Always on top</span>
+                  <span class="row__hint">Stay above other windows</span>
+                </span>
+                <input id="set-ontop" class="switch" type="checkbox" />
+              </label>
+
+              <label class="row">
+                <span class="row__text">
+                  <span class="row__label">Reduce motion</span>
+                  <span class="row__hint">Stop the idle breath and transitions</span>
+                </span>
+                <input id="set-motion" class="switch" type="checkbox" />
+              </label>
+
+              <div class="row row--stacked">
+                <span class="row__text">
+                  <span class="row__label">Sleep when idle</span>
+                  <span class="row__hint">Rev closes its aperture after this long</span>
+                </span>
+                <div id="set-sleep" class="segmented" role="radiogroup" aria-label="Sleep when idle">
+                  <button class="segmented__opt" type="button" role="radio" data-min="0">Never</button>
+                  <button class="segmented__opt" type="button" role="radio" data-min="2">2m</button>
+                  <button class="segmented__opt" type="button" role="radio" data-min="5">5m</button>
+                  <button class="segmented__opt" type="button" role="radio" data-min="15">15m</button>
+                </div>
+              </div>
+
+              <div class="stack">
+                <button id="set-reset" class="action" type="button">
+                  <span class="action__label">Reset position</span>
+                  <span class="action__hint">Back to the bottom-right corner</span>
+                </button>
+                <button id="set-quit" class="action action--danger" type="button">
+                  <span class="action__label">Quit Rev</span>
+                  <span class="action__hint">The tray icon goes too</span>
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
 
         <footer class="panel__foot">
@@ -146,11 +236,9 @@
           </svg>
         </button>
 
-        <button class="radial__item" type="button" data-action="voice">
+        <button class="radial__item" type="button" data-action="status">
           <svg viewBox="0 0 24 24" aria-hidden="true">
-            <rect x="9" y="3" width="6" height="11" rx="3" />
-            <path d="M5.5 11.5a6.5 6.5 0 0 0 13 0" />
-            <path d="M12 18v3" />
+            <path d="M3.5 13.5h4l2.5-6 3.5 11 2.5-8 1.5 3h3" />
           </svg>
         </button>
 
@@ -182,103 +270,24 @@
           aria-expanded="false"
           aria-label="Rev. Open menu."
         >
-          <svg class="pet__svg" viewBox="0 0 140 164" aria-hidden="true">
-            <defs>
-              <linearGradient id="body" x1="0.2" y1="0" x2="0.5" y2="1">
-                <stop offset="0%" stop-color="var(--body-hi)" />
-                <stop offset="55%" stop-color="var(--body-mid)" />
-                <stop offset="100%" stop-color="var(--body-lo)" />
-              </linearGradient>
-              <linearGradient id="rimlight" x1="0" y1="0" x2="0.4" y2="1">
-                <stop offset="0%" stop-color="rgb(255 255 255 / 0.5)" />
-                <stop offset="45%" stop-color="rgb(255 255 255 / 0.06)" />
-                <stop offset="100%" stop-color="rgb(255 255 255 / 0.16)" />
-              </linearGradient>
-              <radialGradient id="glass" cx="0.34" cy="0.28" r="0.9">
-                <stop offset="0%" stop-color="var(--glass-hi)" />
-                <stop offset="100%" stop-color="var(--glass-lo)" />
-              </radialGradient>
-              <clipPath id="lens-clip">
-                <circle cx="70" cy="86" r="30" />
-              </clipPath>
-            </defs>
+          <!--
+            Rev's face is the Zamp "Risk Analyst" role glyph, vendored from the
+            zamp-icons branch. It is an image rather than inline markup: 130KB of
+            embedded artwork would triple the HTML this window parses on boot.
 
-            <!-- revision tab, notched into the top of the stamp -->
-            <g class="pet__tab">
-              <path d="M46 40 v-13 a7 7 0 0 1 7-7 h34 a7 7 0 0 1 7 7 v13 Z" />
-              <text id="pet-rev" x="70" y="35" text-anchor="middle">r—</text>
-            </g>
-
-            <!-- stamp body -->
-            <rect x="14" y="34" width="112" height="112" rx="36" fill="url(#body)" />
-            <rect
-              class="pet__bevel"
-              x="14.75"
-              y="34.75"
-              width="110.5"
-              height="110.5"
-              rx="35.25"
-              stroke="url(#rimlight)"
-            />
-
-            <!-- state ring: readable from across the room -->
-            <circle class="pet__state-ring" cx="70" cy="86" r="38.5" />
-
-            <!-- lens -->
-            <circle class="pet__housing" cx="70" cy="86" r="34" />
-            <circle class="pet__glass" cx="70" cy="86" r="30" fill="url(#glass)" />
-
-            <g clip-path="url(#lens-clip)">
-              <!--
-                Six blades. Alternating tones give the iris visible edges: a
-                single flat fill reads as a hole, not as a mechanism.
-              -->
-              <g class="pet__blades">
-                <path d="M70 86 L70 34 L115 60 Z" />
-                <path class="alt" d="M70 86 L115 60 L115 112 Z" />
-                <path d="M70 86 L115 112 L70 138 Z" />
-                <path class="alt" d="M70 86 L70 138 L25 112 Z" />
-                <path d="M70 86 L25 112 L25 60 Z" />
-                <path class="alt" d="M70 86 L25 60 L70 34 Z" />
-              </g>
-
-              <!-- the opening -->
-              <g class="pet__iris">
-                <path
-                  class="pet__opening"
-                  d="M70 58 L94.2 72 L94.2 100 L70 114 L45.8 100 L45.8 72 Z"
-                />
-                <path
-                  class="pet__opening-edge"
-                  d="M70 58 L94.2 72 L94.2 100 L70 114 L45.8 100 L45.8 72 Z"
-                />
-                <g class="pet__pupil">
-                  <circle class="pet__glow" cx="70" cy="86" r="15" />
-                  <circle class="pet__iris-dot" cx="70" cy="86" r="9.5" />
-                  <circle class="pet__spec" cx="65.5" cy="81.5" r="3.2" />
-                </g>
-              </g>
-
-              <!-- staleness: a hairline fracture across the glass -->
-              <path class="pet__crack" d="M44 66 L62 84 L55 97 L79 109 L70 92 L98 72" />
-            </g>
-
-            <circle class="pet__rim" cx="70" cy="86" r="30" />
-
-            <!-- checker tick marks, shown while recomputing -->
-            <g class="pet__ticks">
-              <path d="M70 42 v8" />
-              <path d="M114 86 h-8" />
-              <path d="M70 130 v-8" />
-              <path d="M26 86 h8" />
-            </g>
-
-            <!-- sleep -->
-            <g class="pet__zzz">
-              <text x="110" y="44">z</text>
-              <text x="123" y="29">z</text>
-            </g>
-          </svg>
+            State is carried around it — the ring arc, the glow behind it, the
+            revision tab — so swapping the artwork never costs the status display.
+          -->
+          <!--
+            Rev is the glyph, nothing else. No capsule, no ring: a companion
+            that sits on your desktop all day should be a small object, not a
+            widget with chrome. State is carried by a tinted glow behind the
+            glyph and by the badge; the revision lives in the panel header,
+            which is where you are when you care about it.
+          -->
+          <span class="pet__aura" aria-hidden="true"></span>
+          <img class="pet__face" src="assets/rev-agent.svg" alt="" draggable="false" />
+          <span class="pet__zzz" aria-hidden="true"><i></i><i></i></span>
 
           <span id="pet-count" class="pet__count" hidden></span>
         </button>

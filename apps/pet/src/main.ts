@@ -42,8 +42,13 @@ const dirname = __dirname;
 /** Fixed window box, in DIP. Wide enough for the panel, tall enough for it to grow. */
 const WINDOW = { width: 412, height: 620 } as const;
 
-/** How far the pet pokes past the work-area edge, so it reads as peeking in. */
-const BLEED = 10;
+/*
+ * The window sits flush with the work area. It used to hang 10px past it, which
+ * suited a character with a capsule around it; a bare glyph clipped by the
+ * screen edge just looks broken. The inset from the edge is now the renderer's
+ * business, in one place, next to the size it has to agree with.
+ */
+const BLEED = 0;
 
 interface Settings {
   /** Window origin, or null to use the default corner. */
@@ -54,6 +59,9 @@ interface Settings {
   sleepAfterMin: number;
   reducedMotion: boolean;
 }
+
+/** The only idle thresholds offered, in minutes. 0 disables sleeping. */
+const SLEEP_CHOICES = [0, 2, 5, 15] as const;
 
 const DEFAULTS: Settings = {
   x: null,
@@ -201,6 +209,24 @@ function openExternally(url: unknown): void {
   }
 }
 
+/**
+ * Apply a settings change and tell the renderer.
+ *
+ * Both the tray menu and the in-overlay settings view write through here, so
+ * the two can never disagree about what is on — which they would if each
+ * mutated its own copy.
+ */
+function applySettings(patch: Partial<Settings>): void {
+  settings = { ...settings, ...patch };
+
+  if (patch.alwaysOnTop !== undefined && win && !win.isDestroyed()) {
+    win.setAlwaysOnTop(patch.alwaysOnTop, "screen-saver");
+  }
+  saveSettings();
+  win?.webContents.send("pet:settings", settings);
+  tray?.setContextMenu(buildMenu());
+}
+
 /* ---------------------------------------------------------------- menus --- */
 
 function buildMenu(): Electron.Menu {
@@ -214,48 +240,38 @@ function buildMenu(): Electron.Menu {
       label: "Always on top",
       type: "checkbox",
       checked: settings.alwaysOnTop,
-      click: (item) => {
-        settings.alwaysOnTop = item.checked;
-        win?.setAlwaysOnTop(item.checked, "screen-saver");
-        saveSettings();
-      },
+      click: (item) => applySettings({ alwaysOnTop: item.checked }),
     },
     {
       label: "Reduce motion",
       type: "checkbox",
       checked: settings.reducedMotion,
-      click: (item) => {
-        settings.reducedMotion = item.checked;
-        win?.webContents.send("pet:settings", settings);
-        saveSettings();
-      },
+      click: (item) => applySettings({ reducedMotion: item.checked }),
     },
     {
       label: "Sleep when idle",
-      submenu: ([0, 2, 5, 15] as const).map((min) => ({
+      submenu: SLEEP_CHOICES.map((min) => ({
         label: min === 0 ? "Never" : `After ${min} min`,
         type: "radio" as const,
         checked: settings.sleepAfterMin === min,
-        click: () => {
-          settings.sleepAfterMin = min;
-          win?.webContents.send("pet:settings", settings);
-          saveSettings();
-        },
+        click: () => applySettings({ sleepAfterMin: min }),
       })),
     },
     { type: "separator" },
     {
       label: "Reset position",
-      click: () => {
-        settings.x = null;
-        settings.y = null;
-        if (win) place(win);
-        saveSettings();
-      },
+      click: () => resetPosition(),
     },
     { type: "separator" },
     { label: "Quit ThreadRev Pet", click: () => app.quit() },
   ]);
+}
+
+function resetPosition(): void {
+  settings.x = null;
+  settings.y = null;
+  if (win && !win.isDestroyed()) place(win);
+  saveSettings();
 }
 
 function toggleVisible(): void {
@@ -471,6 +487,25 @@ function registerIpc(): void {
     win?.hide();
     tray?.setContextMenu(buildMenu());
   });
+
+  ipcMain.on("pet:set-setting", (_e, payload: unknown) => {
+    if (!isRecord(payload)) return;
+    const patch: Partial<Settings> = {};
+    // Validated field by field: this is the one channel that can change how the
+    // window behaves, and an unchecked value reaches setAlwaysOnTop.
+    if (typeof payload.alwaysOnTop === "boolean") patch.alwaysOnTop = payload.alwaysOnTop;
+    if (typeof payload.reducedMotion === "boolean") patch.reducedMotion = payload.reducedMotion;
+    if (
+      typeof payload.sleepAfterMin === "number" &&
+      Number.isFinite(payload.sleepAfterMin) &&
+      SLEEP_CHOICES.includes(payload.sleepAfterMin as (typeof SLEEP_CHOICES)[number])
+    ) {
+      patch.sleepAfterMin = payload.sleepAfterMin;
+    }
+    if (Object.keys(patch).length) applySettings(patch);
+  });
+
+  ipcMain.on("pet:reset-position", () => resetPosition());
 
   ipcMain.on("pet:quit", () => app.quit());
 

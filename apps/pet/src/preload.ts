@@ -34,6 +34,13 @@ contextBridge.exposeInMainWorld("pet", {
   hide(): void {
     ipcRenderer.send("pet:hide");
   },
+  /** Change a setting. Main validates, persists, and echoes the new state back. */
+  setSetting(patch: Partial<PetSettings>): void {
+    ipcRenderer.send("pet:set-setting", patch);
+  },
+  resetPosition(): void {
+    ipcRenderer.send("pet:reset-position");
+  },
   quit(): void {
     ipcRenderer.send("pet:quit");
   },

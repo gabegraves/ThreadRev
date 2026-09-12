@@ -47,5 +47,8 @@ await esbuild.build({
 
 await cp(path.join(root, "src/renderer/index.html"), path.join(out, "index.html"));
 await cp(path.join(root, "src/renderer/styles.css"), path.join(out, "styles.css"));
+// Rev's face. Kept as a file rather than inlined: it is 130KB of embedded
+// artwork and would triple the size of the HTML the window parses on boot.
+await cp(path.join(root, "assets"), path.join(out, "assets"), { recursive: true });
 
 console.log("pet: built to dist/");

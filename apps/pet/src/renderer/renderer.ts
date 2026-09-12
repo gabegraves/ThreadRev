@@ -29,7 +29,7 @@ import {
   unreadCount,
   type Filter,
 } from "../logic.js";
-import { WEB_ORIGIN } from "./findings.js";
+import { PET_ENDPOINT, WEB_ORIGIN } from "./findings.js";
 
 import type { PetSettings } from "../preload.js";
 
@@ -40,6 +40,8 @@ declare global {
       drag(dx: number, dy: number): void;
       dragEnd(): void;
       reportState(state: string): void;
+      setSetting(patch: Partial<PetSettings>): void;
+      resetPosition(): void;
       contextMenu(): void;
       hide(): void;
       quit(): void;
@@ -85,7 +87,6 @@ const panelEl = $("panel");
 const bodyEl = $("panel-body");
 const subEl = $("panel-sub");
 const revChip = $("rev-chip");
-const petRev = need<SVGTextElement>("pet-rev");
 const countEl = $("pet-count");
 const connEl = $("conn");
 const connLabel = $("conn-label");
@@ -96,12 +97,23 @@ const radialLabel = $("radial-label");
 const radialBadge = $("radial-badge");
 const radialArc = need<SVGPathElement>("radial-arc");
 const radialItems = [...document.querySelectorAll<HTMLButtonElement>(".radial__item")];
+const panelTitle = $("panel-title");
 const liveRegion = $("live-region");
 const liveCount = $("count-live");
 const staleCount = $("count-stale");
 
 let open = false;
 let menuOpen = false;
+
+type View = "findings" | "status" | "settings";
+
+const VIEW_TITLE: Record<View, string> = {
+  findings: "Findings",
+  status: "Status",
+  settings: "Settings",
+};
+
+let view: View = "findings";
 let dragging = false;
 let grab = { dx: 0, dy: 0 };
 /** Where the press started, so a click is not mistaken for a zero-distance drag. */
@@ -282,31 +294,125 @@ window.setInterval(() => {
   if (idleMs > settings.sleepAfterMin * 60_000 && state !== "found") setState("asleep");
 }, 5000);
 
+/* --------------------------------------------------------------- views --- */
+
+/**
+ * Show one view and hide the rest.
+ *
+ * `hidden` rather than display:none from a class, so the hidden views are out of
+ * the accessibility tree and out of the focus trap's reach without a second
+ * mechanism to keep in step.
+ */
+function setView(next: View): void {
+  view = next;
+  for (const name of ["findings", "status", "settings"] as View[]) {
+    $(`view-${name}`).hidden = name !== next;
+  }
+  panelTitle.textContent = VIEW_TITLE[next];
+  panelEl.setAttribute("aria-label", `ThreadRev ${VIEW_TITLE[next]}`);
+  if (next === "status") renderStatus();
+  if (next === "settings") renderSettings();
+}
+
+/* -------------------------------------------------------------- status --- */
+
+/** When the reviewer last answered, for the status view's "Last answer" row. */
+let lastAnswerAt: number | null = null;
+
+function ago(ms: number): string {
+  const s = Math.round(ms / 1000);
+  if (s < 2) return "just now";
+  if (s < 60) return `${s}s ago`;
+  const m = Math.round(s / 60);
+  if (m < 60) return `${m}m ago`;
+  return `${Math.round(m / 60)}h ago`;
+}
+
+function renderStatus(): void {
+  const conn = $("fact-conn");
+  conn.textContent = isSample ? "not connected" : "connected";
+  conn.dataset.tone = isSample ? "warn" : "ok";
+
+  $("fact-age").textContent = lastAnswerAt === null ? "never" : ago(Date.now() - lastAnswerAt);
+
+  const live = findings.filter((f) => f.status === "live").length;
+  const stale = findings.length - live;
+  $("fact-counts").textContent = `${live} live, ${stale} superseded${isSample ? " (sample)" : ""}`;
+  $("fact-rev").textContent = revChip.textContent ?? "—";
+
+  const endpoint = $("fact-endpoint");
+  // Without the scheme it fits, and the host and path are what identify it.
+  endpoint.textContent = PET_ENDPOINT.replace(/^https?:\/\//, "");
+  endpoint.title = PET_ENDPOINT;
+}
+
+// The age is the only thing that goes stale on its own.
+window.setInterval(() => {
+  if (open && view === "status") {
+    $("fact-age").textContent = lastAnswerAt === null ? "never" : ago(Date.now() - lastAnswerAt);
+  }
+}, 1000);
+
+$("go-console").addEventListener("click", () =>
+  openOutside(`${WEB_ORIGIN}/`, "Opening review console"),
+);
+$("go-voice").addEventListener("click", () =>
+  openOutside(`${WEB_ORIGIN}/voice`, "Opening voice review"),
+);
+
+/* ------------------------------------------------------------ settings --- */
+
+const sleepOpts = [...document.querySelectorAll<HTMLButtonElement>(".segmented__opt")];
+
+function renderSettings(): void {
+  $<HTMLInputElement>("set-ontop").checked = settings.alwaysOnTop;
+  $<HTMLInputElement>("set-motion").checked = settings.reducedMotion;
+  for (const opt of sleepOpts) {
+    opt.setAttribute("aria-checked", String(Number(opt.dataset.min) === settings.sleepAfterMin));
+  }
+}
+
+$<HTMLInputElement>("set-ontop").addEventListener("change", (e) => {
+  window.pet.setSetting({ alwaysOnTop: (e.target as HTMLInputElement).checked });
+});
+
+$<HTMLInputElement>("set-motion").addEventListener("change", (e) => {
+  window.pet.setSetting({ reducedMotion: (e.target as HTMLInputElement).checked });
+});
+
+for (const opt of sleepOpts) {
+  opt.addEventListener("click", () => {
+    const min = Number(opt.dataset.min);
+    if (Number.isFinite(min)) window.pet.setSetting({ sleepAfterMin: min });
+  });
+}
+
+$("set-reset").addEventListener("click", () => {
+  window.pet.resetPosition();
+  announce("Rev moved back to the corner.");
+});
+
+$("set-quit").addEventListener("click", () => window.pet.quit());
+
 /* --------------------------------------------------------------- menu --- */
 
 /** What each arc item does, and what the shared label calls it. */
 const MENU: Record<string, { label: string; run: () => void }> = {
   findings: {
     label: "Findings",
-    run: () => {
-      setMenuOpen(false);
-      setOpen(true);
-    },
+    run: () => openView("findings"),
   },
   console: {
     label: "Review console",
     run: () => openOutside(`${WEB_ORIGIN}/`, "Opening review console"),
   },
-  voice: {
-    label: "Voice review",
-    run: () => openOutside(`${WEB_ORIGIN}/voice`, "Opening voice review"),
+  status: {
+    label: "Status",
+    run: () => openView("status"),
   },
   settings: {
     label: "Settings",
-    run: () => {
-      setMenuOpen(false);
-      window.pet.contextMenu();
-    },
+    run: () => openView("settings"),
   },
   hide: {
     label: "Hide Rev",
@@ -396,6 +502,12 @@ function flashMenuLabel(text: string): void {
  * the click reads as having done nothing, and the natural response is to click
  * again.
  */
+function openView(next: View): void {
+  setView(next);
+  setMenuOpen(false);
+  setOpen(true);
+}
+
 function openOutside(url: string, message: string): void {
   window.pet.openExternal(url);
   flashMenuLabel(`${message}…`);
@@ -847,19 +959,15 @@ function render(conn: Connection): void {
     connEl.dataset.state = "offline";
     connLabel.textContent = "sample data — reviewer offline";
     revChip.textContent = "sample";
-    petRev.textContent = "r?";
   } else {
     everConnected = true;
+    lastAnswerAt = Date.now();
     findings = conn.feed.findings;
     connEl.dataset.state = "connected";
     connLabel.textContent = "connected to reviewer";
     const rev = conn.feed.revision ?? findings[0]?.requirements_revision ?? "—";
     revChip.textContent = rev;
-      // Spread, not slice: slice cuts UTF-16 units and would split a surrogate
-    // pair into a replacement character.
-    const glyphs = [...rev];
-    petRev.textContent = glyphs.length <= 3 ? rev : glyphs.slice(0, 3).join("");
-  }
+    }
 
   liveCount.textContent = String(findings.filter((f) => f.status === "live").length);
   staleCount.textContent = String(findings.filter((f) => f.status === "stale").length);
@@ -882,6 +990,7 @@ function render(conn: Connection): void {
     lastSignature = signature;
     renderList();
   }
+  if (open && view === "status") renderStatus();
   if (open) drawThread();
 }
 
@@ -894,6 +1003,8 @@ function applyMotionPreference(): void {
 window.pet.onSettings((s) => {
   settings = s;
   applyMotionPreference();
+  // The tray menu can change these too; the view must not show a stale state.
+  renderSettings();
 });
 osReducedMotion.addEventListener("change", applyMotionPreference);
 applyMotionPreference();
