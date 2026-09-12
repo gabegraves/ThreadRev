@@ -239,7 +239,7 @@ The workspace index is retrieval. It is retrieval by exact match over a structur
 
 What is **not** yet true:
 
-- **Stale update and Card 2** have not posted live. They are the next pending steps in the Slack session that ran Card 1. The stale-marking flow is fully tested in the replay harness.
+- **Stale update and Card 2** have not posted live. A correction posted in the live Card 1 thread at 19:27Z produced no reviewer turn; the cause is not yet known. The stale-marking flow is tested end to end in the replay harness, with the scripted reviewer.
 - Exa is not used. The inherited web-search capability stays in `agent-core` for its tests only; it is not registered on the reviewer and `EXA_API_KEY` is blank.
 - Persistent storage (the Convex decision in [`SCRATCHPAD.md`](SCRATCHPAD.md)) is a recorded direction, not implemented. Evidence lives in a local JSONL file.
 - The inherited dependency audit has unresolved advisories. This is not a production or security-cleared deployment.
