@@ -662,3 +662,87 @@ test("asking the reviewer to do its job is not an injection", async () => {
 
   assert.deepEqual(runContext(key).notices, [], "ordinary requests must not raise a notice");
 });
+
+import { fileFollowup, followupBody, followupTitle, pickTaskTool } from "./followup";
+
+const FINDING = {
+  finding_id: "fnd-a-r2-001",
+  status: "live" as const,
+  requirements_revision: "1787166300.000600",
+  discrepancy: "Section 3 states 680 uF; the diagram states 750 uF. The printed 2.435 s reproduces only with 750 uF.",
+  why_it_matters: "The review cannot be signed against a basis the document did not compute from.",
+  sources: [
+    { kind: "document" as const, id: "precharge-review-r2.docx", revision: "r2", locator: "line 8", sha256: "b".repeat(64) },
+    { kind: "message" as const, id: "1785946800.000501" },
+  ],
+  reproduced: [],
+  inferred: [],
+  resolution: "Dara confirms the bus capacitance and corrects the diagram or the text.",
+  question: { to: "Dara Voss", ask: "Is the bus 680 or 750 uF?" },
+  checker_run: { checker: "rc", version: "1", run_id: "rc-20260912T171557Z-8f77" },
+};
+
+test("the task-creating tool is discovered, not guessed", () => {
+  assert.equal(pickTaskTool(["mail_send", "tasks_create", "docs_create"]), "tasks_create");
+  assert.equal(pickTaskTool(["create_issue", "mail_send"]), "create_issue");
+  // Prefers the task-specific one over a generic creator.
+  assert.equal(pickTaskTool(["create_record", "add_task"]), "add_task");
+  assert.equal(pickTaskTool(["mail_send", "crm_update"]), undefined);
+});
+
+test("the task carries the card's own provenance", () => {
+  assert.match(followupTitle(FINDING), /^ThreadRev: Section 3 states 680 uF/);
+  const body = followupBody(FINDING);
+  assert.match(body, /fnd-a-r2-001/);
+  assert.match(body, /revision 1787166300\.000600/);
+  assert.match(body, /rc-20260912T171557Z-8f77/);
+  assert.match(body, /precharge-review-r2\.docx · r2 · line 8 \(sha bbbbbbbbbbbb\)/);
+  assert.match(body, /Question for Dara Voss/);
+  assert.match(body, /not a design sign-off/);
+});
+
+test("no workplace means no follow-up, and no error", async () => {
+  const saved = process.env.AMBIGUOUS_API_KEY;
+  try {
+    delete process.env.AMBIGUOUS_API_KEY;
+    assert.deepEqual(await fileFollowup(FINDING), { filed: false, reason: "no workplace configured" });
+  } finally {
+    if (saved === undefined) delete process.env.AMBIGUOUS_API_KEY;
+    else process.env.AMBIGUOUS_API_KEY = saved;
+  }
+});
+
+test("a workplace failure is reported, never thrown at the review", async () => {
+  const angry = {
+    listTools: async () => [{ name: "tasks_create" }],
+    callTool: async () => {
+      throw new Error("scope missing: tasks.write");
+    },
+  };
+  const out = await fileFollowup(FINDING, { session: angry as never });
+  assert.equal(out.filed, false);
+  assert.match((out as { reason: string }).reason, /scope missing/);
+});
+
+test("a workplace with nothing to file into says so", async () => {
+  const useless = { listTools: async () => [{ name: "mail_send" }], callTool: async () => ({}) };
+  const out = await fileFollowup(FINDING, { session: useless as never });
+  assert.equal(out.filed, false);
+  assert.match((out as { reason: string }).reason, /no task-creating tool/);
+});
+
+test("a healthy workplace gets exactly one task with the finding in it", async () => {
+  const calls: Array<{ name: string; args: Record<string, unknown> }> = [];
+  const good = {
+    listTools: async () => [{ name: "mail_send" }, { name: "tasks_create" }],
+    callTool: async (name: string, args: Record<string, unknown>) => {
+      calls.push({ name, args });
+      return { content: [{ type: "text", text: "task_7f3a created" }] };
+    },
+  };
+  const out = await fileFollowup(FINDING, { session: good as never });
+  assert.deepEqual(out, { filed: true, tool: "tasks_create", detail: "task_7f3a created" });
+  assert.equal(calls.length, 1, "exactly one task per card");
+  assert.match(String(calls[0]!.args.title), /ThreadRev:/);
+  assert.match(String(calls[0]!.args.description), /fnd-a-r2-001/);
+});
