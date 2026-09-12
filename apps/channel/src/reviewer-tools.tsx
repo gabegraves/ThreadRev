@@ -109,9 +109,28 @@ const runs = new Map<string, CheckerResponse>();
  * search_workspace and the card was refused as stale although nothing moved).
  */
 const runRevisions = new Map<string, string>();
+
+/**
+ * How many runs this process keeps in memory.
+ *
+ * The reviewer is a long-lived listener, not a request handler: without a
+ * bound this Map holds every checker response for the life of the process, and
+ * each one carries its full inputs and outputs. The thread's own copy is what
+ * makes an evicted run recoverable, so the cap costs nothing but memory
+ * ceiling.
+ */
+const MAX_RUNS = 200;
+
 export function rememberRun(r: CheckerResponse, revisionAtRun?: string) {
   runs.set(r.run_id, r);
   if (revisionAtRun) runRevisions.set(r.run_id, revisionAtRun);
+  // Map iterates in insertion order, so the first key is the oldest.
+  while (runs.size > MAX_RUNS) {
+    const oldest = runs.keys().next().value;
+    if (oldest === undefined) break;
+    runs.delete(oldest);
+    runRevisions.delete(oldest);
+  }
 }
 export function recallRun(id: string) {
   return runs.get(id);

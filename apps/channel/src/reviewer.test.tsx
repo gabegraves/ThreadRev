@@ -346,8 +346,8 @@ test("a failed post never withdraws the card it was going to replace", async () 
   const state = { cards: [priorLive()], staleRuns: [] };
   const update = mock.fn(async () => {});
 
-  await assert.rejects(() =>
-    publishResult.handler(
+  await assert.rejects(async () => {
+    await publishResult.handler(
       publishArgs,
       stubCtx({
         getMessages: async () => [{ ts: "100.000100", text: "please check section 3", isBot: false }],
@@ -358,8 +358,8 @@ test("a failed post never withdraws the card it was going to replace", async () 
         },
         update,
       }),
-    ),
-  );
+    );
+  });
 
   // The whole point: the engineer must never be left looking at a withdrawn
   // conclusion with no replacement.
