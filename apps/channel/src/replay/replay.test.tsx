@@ -192,7 +192,7 @@ it("author identity survives the managed transcript", { timeout: 20_000 }, async
   await runReplay({
     messages,
     steps: [
-      () => readThread,
+      () => ({ name: "read_thread", args: {} }),
       (ctx) => {
         seen = ctx.results[0] as typeof seen;
         return undefined;
