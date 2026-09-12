@@ -418,3 +418,63 @@ export function fitSweep(
   const span = SWEEP_CHOICES[SWEEP_CHOICES.length - 1];
   return { from: SWEEP_CENTRE - span / 2, step: span / (count - 1) };
 }
+
+/* ------------------------------------------------------- evidence feed --- */
+
+/**
+ * Turn the web console's `GET /api/evidence` response into what Rev renders.
+ *
+ * That route is the one place findings from Slack become visible outside Slack:
+ * `publish_result` appends the full Finding to the evidence log, and the route
+ * rebuilds a graph whose `findings` already carry the right live/stale status.
+ * Rev reads the same route rather than growing an endpoint of its own in
+ * another lane's app.
+ *
+ * `sample` is carried through, not flattened into "connected": when the live log
+ * is empty the route falls back to the Scenario A example, and presenting that
+ * as live reviewer output would be a lie told by the status display.
+ */
+
+/** How recently an event must have happened for Rev to show it as ongoing. */
+export const ACTIVE_WINDOW_MS = 20_000;
+
+const PHASE_FOR_KIND: Record<string, AgentPhase> = {
+  message_read: "reading",
+  document_read: "reading",
+  workspace_search: "searching",
+  check_run: "checking",
+};
+
+export interface EvidenceFeed extends CleanFeed {
+  /** True when the web console fell back to its bundled sample log. */
+  sample: boolean;
+}
+
+export function feedFromEvidence(raw: unknown, now: number = Date.now()): EvidenceFeed {
+  if (!isRecord(raw)) return { findings: [], sample: false };
+
+  const graph = isRecord(raw.graph) ? raw.graph : {};
+  // cleanFeed already validates, caps and de-duplicates; reuse it rather than
+  // trusting the route's shape a second time.
+  const { findings } = cleanFeed({ findings: graph.findings });
+  const sample = raw.sample === true;
+
+  let phase: AgentPhase | undefined;
+  if (!sample && Array.isArray(raw.events)) {
+    // The newest event wins; sample events carry old timestamps, so this only
+    // ever fires on real reviewer activity.
+    let newest: { at: number; kind: string } | undefined;
+    for (const e of raw.events) {
+      if (!isRecord(e) || typeof e.kind !== "string" || typeof e.at !== "string") continue;
+      const at = Date.parse(e.at);
+      if (!Number.isFinite(at)) continue;
+      if (!newest || at > newest.at) newest = { at, kind: e.kind };
+    }
+    if (newest && now - newest.at <= ACTIVE_WINDOW_MS && now >= newest.at) {
+      phase = PHASE_FOR_KIND[newest.kind];
+    }
+  }
+
+  const live = findings.find((f) => f.status === "live");
+  return { findings, sample, phase, revision: live?.requirements_revision };
+}

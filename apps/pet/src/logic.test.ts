@@ -9,6 +9,8 @@ import {
   DRAG_THRESHOLD_PX,
   cleanFeed,
   cleanFinding,
+  ACTIVE_WINDOW_MS,
+  feedFromEvidence,
   fitSweep,
   formatValue,
   isDrag,
@@ -388,4 +390,76 @@ test("a clock that ran backwards does not silence Rev", () => {
   // Without this, a clock stepped back an hour would suppress every startle
   // for that hour.
   assert.equal(arrivalReaction({ ...calm, lastStartleAt: 500_000, now: 100_000 }), "startle");
+});
+
+/* ------------------------------------------------------- evidence feed --- */
+
+const NOW = Date.parse("2026-09-12T19:00:00.000Z");
+const iso = (msAgo: number) => new Date(NOW - msAgo).toISOString();
+
+test("feedFromEvidence reads findings out of the graph", () => {
+  const feed = feedFromEvidence({ graph: { findings: [GOOD] }, sample: false, events: [] }, NOW);
+  assert.equal(feed.findings.length, 1);
+  assert.equal(feed.findings[0].finding_id, "f1");
+  assert.equal(feed.sample, false);
+  assert.equal(feed.revision, "r2");
+});
+
+test("the web console's sample fallback stays marked as sample", () => {
+  // Presenting the Scenario A example as live reviewer output would be the
+  // status display lying.
+  const feed = feedFromEvidence({ graph: { findings: [GOOD] }, sample: true, events: [] }, NOW);
+  assert.equal(feed.sample, true);
+});
+
+test("recent reviewer activity becomes Rev's phase", () => {
+  const phaseOf = (kind: string, msAgo: number) =>
+    feedFromEvidence({ graph: { findings: [] }, sample: false, events: [{ kind, at: iso(msAgo) }] }, NOW).phase;
+  assert.equal(phaseOf("check_run", 2000), "checking");
+  assert.equal(phaseOf("workspace_search", 2000), "searching");
+  assert.equal(phaseOf("message_read", 2000), "reading");
+  assert.equal(phaseOf("document_read", 2000), "reading");
+});
+
+test("old activity does not keep Rev looking busy", () => {
+  const feed = feedFromEvidence(
+    { graph: { findings: [] }, sample: false, events: [{ kind: "check_run", at: iso(ACTIVE_WINDOW_MS + 1) }] },
+    NOW,
+  );
+  assert.equal(feed.phase, undefined);
+});
+
+test("the newest event decides the phase, whatever order they arrive in", () => {
+  const feed = feedFromEvidence(
+    {
+      graph: { findings: [] },
+      sample: false,
+      events: [
+        { kind: "message_read", at: iso(1000) },
+        { kind: "check_run", at: iso(9000) },
+      ],
+    },
+    NOW,
+  );
+  assert.equal(feed.phase, "reading");
+});
+
+test("sample events never set a phase", () => {
+  const feed = feedFromEvidence(
+    { graph: { findings: [] }, sample: true, events: [{ kind: "check_run", at: iso(1000) }] },
+    NOW,
+  );
+  assert.equal(feed.phase, undefined);
+});
+
+test("a malformed or hostile response degrades to nothing, never a throw", () => {
+  for (const junk of [null, 7, "x", [], { graph: "no" }, { graph: { findings: "no" } }, { events: [{ at: "not a date", kind: 1 }] }]) {
+    const feed = feedFromEvidence(junk, NOW);
+    assert.deepEqual(feed.findings, []);
+  }
+});
+
+test("a stale-only feed has no bound revision to show", () => {
+  const feed = feedFromEvidence({ graph: { findings: [{ ...GOOD, status: "stale" }] }, sample: false, events: [] }, NOW);
+  assert.equal(feed.revision, undefined);
 });
