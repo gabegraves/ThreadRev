@@ -24,6 +24,27 @@ export const channel = createChannel({
   // Must equal the Channel Code in Intelligence, character for character.
   name: required("CHANNEL_CODE"),
   identifyUser: "platform",
+  /**
+   * One turn per thread at a time.
+   *
+   * The runtime's default is "parallel": concurrent turns in the same
+   * conversation run together with no lock. For this reviewer that is wrong in
+   * specific, observable ways — two triggers in one thread can both pass the
+   * duplicate check and post two cards, and because thread.setState replaces
+   * the whole value, any two writers can overwrite each other's field,
+   * including a mute. updateReviewState narrows those windows; serial removes
+   * them, which is the fix rather than a mitigation.
+   *
+   * Not "drop": that discards a turn that arrives while another is in flight,
+   * so a person saying "reviewer, stand down" during a review would simply be
+   * ignored. Serial makes that message wait for the review already running,
+   * then applies to everything after it — which is what stopping means.
+   *
+   * The cost is head-of-line blocking within a thread while a review runs.
+   * That is the right trade for a reviewer: a second review of a thread
+   * should not start before the first has decided anything.
+   */
+  store: { concurrency: "serial" },
   agent: makeChannelAgent,
   tools: [readThread, searchWorkspace, readEvidence, runCheck, publishResult],
   components: [],
