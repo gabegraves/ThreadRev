@@ -1613,3 +1613,8 @@ body[data-reduced-motion="true"] .radial[data-open="true"] .radial__item {
 .panel[data-state="asleep"] {
   --mark: #7b828c;
 }
+
+/* The bound revision is meaningless on the settings page. */
+.panel[data-view="settings"] .chip--rev {
+  display: none;
+}

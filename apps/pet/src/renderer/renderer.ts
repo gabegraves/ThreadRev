@@ -105,6 +105,27 @@ const staleCount = $("count-stale");
 let open = false;
 let menuOpen = false;
 
+/**
+ * Whether the user is driving with the keyboard right now.
+ *
+ * The menu moves focus to its first item when it opens, which keyboard users
+ * need. The label used to follow focus unconditionally, so every mouse click
+ * that opened the menu also announced "Findings" — the menu appeared to be
+ * titled after its first item. The label now follows focus only while the
+ * keyboard is in use; with a mouse it follows hover and nothing else.
+ */
+let keyboardNav = false;
+document.addEventListener(
+  "keydown",
+  (e) => {
+    if (e.key === "Tab" || e.key.startsWith("Arrow") || e.key === "Home" || e.key === "End") {
+      keyboardNav = true;
+    }
+  },
+  true,
+);
+document.addEventListener("pointerdown", () => (keyboardNav = false), true);
+
 type View = "findings" | "status" | "settings";
 
 const VIEW_TITLE: Record<View, string> = {
@@ -259,9 +280,21 @@ function applyState(next: PetState): void {
   state = next;
   petEl.dataset.state = next;
   panelEl.dataset.state = next;
-  subEl.textContent = SUBTITLE[next];
+  renderSubtitle();
   hitEl.setAttribute("aria-label", `Rev, ${SUBTITLE[next]}. ${open ? "Close" : "Open"} findings.`);
   window.pet.reportState(next);
+}
+
+/**
+ * The header subtitle depends on which view is open.
+ *
+ * On Findings it is Rev's state ("needs a decision"). On Settings that same
+ * text sat under a "Settings" title, describing findings on a page with none.
+ */
+function renderSubtitle(): void {
+  if (view === "findings") subEl.textContent = SUBTITLE[state];
+  else if (view === "status") subEl.textContent = isSample ? "reviewer offline" : "reviewer connected";
+  else subEl.textContent = "preferences";
 }
 
 function setState(next: PetState): void {
@@ -311,6 +344,8 @@ function setView(next: View): void {
   }
   panelTitle.textContent = VIEW_TITLE[next];
   panelEl.setAttribute("aria-label", `ThreadRev ${VIEW_TITLE[next]}`);
+  panelEl.dataset.view = next;
+  renderSubtitle();
   if (next === "status") renderStatus();
   if (next === "settings") renderSettings();
 }
@@ -532,8 +567,12 @@ function setMenuOpen(next: boolean): void {
     if (open) setOpen(false);
     const first = radialItems[0];
     if (first) {
-      showMenuLabel(first, true);
-      window.setTimeout(() => first.focus(), 160);
+      window.setTimeout(() => {
+        first.focus({ preventScroll: true });
+        // Only a keyboard user is "on" an item when the menu opens. A mouse user
+        // is on nothing yet, and naming the first item reads as a menu title.
+        if (keyboardNav) showMenuLabel(first);
+      }, 160);
     }
   } else {
     showMenuLabel(null);
@@ -550,15 +589,22 @@ for (const item of radialItems) {
   item.title = entry.label;
   item.addEventListener("click", entry.run);
   item.addEventListener("mouseenter", () => showMenuLabel(item));
-  item.addEventListener("focus", () => showMenuLabel(item));
-  const restoreHint = () => {
+  item.addEventListener("focus", () => {
+    if (keyboardNav) showMenuLabel(item);
+  });
+  // Leaving an item clears the label. It used to fall back to naming whichever
+  // item held focus — the first one, after a mouse open — so moving the cursor
+  // off any icon brought "Findings" straight back.
+  const clear = () => {
     if (!menuOpen) return;
-    const focused = document.activeElement as HTMLElement | null;
-    const named = focused?.closest<HTMLElement>(".radial__item");
-    showMenuLabel(named ?? item, !named);
+    const focused = (document.activeElement as HTMLElement | null)?.closest<HTMLElement>(
+      ".radial__item",
+    );
+    if (keyboardNav && focused) showMenuLabel(focused);
+    else showMenuLabel(null);
   };
-  item.addEventListener("mouseleave", restoreHint);
-  item.addEventListener("blur", restoreHint);
+  item.addEventListener("mouseleave", clear);
+  item.addEventListener("blur", () => window.setTimeout(clear, 0));
 }
 
 /** Arrows walk the arc; the arc is a line, so Up/Left and Down/Right pair up. */
