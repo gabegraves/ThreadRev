@@ -201,12 +201,12 @@ body {
 /* --- the glyph ----------------------------------------------------------- */
 
 /*
- * Rev has no chrome. The glyph is the whole character: no capsule, no ring, no
- * plate behind it. Anything that sits on a desktop permanently should read as a
- * small object rather than as a piece of UI someone forgot to close.
+ * Rev is one flat shape. No plate, no ring, no glow, and no drop shadow: a
+ * shadow under a flat glyph reads as a sticker peeling off the screen, and the
+ * shape carries enough contrast of its own against a light or a dark window.
  *
- * State is carried by a tinted glow behind the glyph and by the badge. Both sit
- * behind or beside it, so the artwork itself is never recoloured.
+ * State is the glyph's own colour. One thing changing rather than three, and the
+ * character never competes with a halo for the same signal.
  */
 
 .pet__face {
@@ -214,58 +214,82 @@ body {
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: contain;
-  /* Two shadows: a tight one for contact, a wide soft one so the glyph holds
-     its edge against a bright window as well as a dark one. */
-  filter:
-    drop-shadow(0 1px 2px rgb(0 0 0 / 0.45))
-    drop-shadow(0 6px 14px rgb(0 0 0 / 0.3));
+  overflow: visible;
   animation: breathe 7s ease-in-out infinite;
-  transition:
-    transform 260ms var(--ease-spring),
-    filter 300ms ease;
+  transition: transform 260ms var(--ease-spring);
 }
 
-.pet:not([data-dragging="true"]):hover .pet__face {
-  filter:
-    drop-shadow(0 1px 2px rgb(0 0 0 / 0.45))
-    drop-shadow(0 6px 14px rgb(0 0 0 / 0.3))
-    drop-shadow(0 0 10px color-mix(in srgb, var(--tone, var(--accent)) 55%, transparent));
+.pet__face path {
+  transition: fill 420ms ease;
 }
 
 /*
- * The state glow. Sits behind the glyph and is the only thing that changes
- * colour, so the artwork is never tinted and never competes with it.
+ * Two stops per state, light to dark down the shape. The gradient is what keeps
+ * a flat fill from reading as a placeholder.
  */
-.pet__aura {
-  position: absolute;
-  left: 50%;
-  top: 52%;
-  width: 86%;
-  height: 86%;
-  transform: translate(-50%, -50%);
-  border-radius: 50%;
-  background: radial-gradient(
-    circle,
-    color-mix(in srgb, var(--tone, var(--accent)) 60%, transparent) 0%,
-    transparent 70%
-  );
-  opacity: 0.22;
-  filter: blur(14px);
-  transition:
-    background 320ms ease,
-    opacity 320ms ease;
-  pointer-events: none;
+.pet {
+  --glyph-a: #7cc8ff;
+  --glyph-b: #3f7fe3;
+}
+
+.pet[data-state="found"] {
+  --glyph-a: #ffc978;
+  --glyph-b: #ef9a2e;
+}
+
+.pet[data-state="clear"] {
+  --glyph-a: #79e3b6;
+  --glyph-b: #34b183;
+}
+
+.pet[data-state="stale"] {
+  --glyph-a: #a8b0bb;
+  --glyph-b: #6d7680;
+}
+
+.pet[data-state="asleep"] {
+  --glyph-a: #8a929d;
+  --glyph-b: #545c66;
+}
+
+.pet:not([data-dragging="true"]):hover {
+  --glyph-a: #a5dbff;
+  --glyph-b: #5596ef;
+}
+
+.pet:not([data-dragging="true"]):hover[data-state="found"] {
+  --glyph-a: #ffd89a;
+  --glyph-b: #f7a945;
+}
+
+/* Working: the shape breathes a little harder, rather than a ring spinning
+   around something that is meant to be sitting still. */
+.pet[data-state="reading"] .pet__face,
+.pet[data-state="searching"] .pet__face,
+.pet[data-state="checking"] .pet__face {
+  animation: think 2s ease-in-out infinite;
+}
+
+.pet[data-state="searching"] .pet__face {
+  animation-duration: 1.4s;
+}
+
+.pet[data-state="found"] .pet__face {
+  animation: think 2.8s ease-in-out infinite;
+}
+
+.pet[data-state="asleep"] .pet__face {
+  animation: doze 5s ease-in-out infinite;
 }
 
 /* --- sleep --------------------------------------------------------------- */
 
 .pet__zzz {
   position: absolute;
-  top: 4%;
-  right: -2%;
-  width: 22px;
-  height: 22px;
+  top: 2%;
+  right: 0;
+  width: 20px;
+  height: 20px;
   pointer-events: none;
 }
 
@@ -279,69 +303,6 @@ body {
     0 4px 0 -1px var(--panel-dim),
     0 8px 0 -2px var(--panel-dim);
   opacity: 0;
-}
-
-/* --- states -------------------------------------------------------------- */
-
-.pet[data-state="idle"],
-.pet[data-state="reading"],
-.pet[data-state="searching"],
-.pet[data-state="checking"] {
-  --tone: var(--accent);
-}
-
-/* Working states pulse the glow rather than spin a ring around the character. */
-.pet[data-state="reading"] .pet__aura,
-.pet[data-state="searching"] .pet__aura,
-.pet[data-state="checking"] .pet__aura {
-  animation: think 1.9s ease-in-out infinite;
-}
-
-.pet[data-state="searching"] .pet__aura {
-  animation-duration: 1.3s;
-}
-
-.pet[data-state="checking"] .pet__aura {
-  animation-duration: 2.4s;
-}
-
-.pet[data-state="found"] {
-  --tone: var(--alert);
-}
-
-.pet[data-state="found"] .pet__aura {
-  /* Warm, not hot. It should catch peripheral vision, not pull the eye. */
-  opacity: 0.34;
-  animation: think 2.6s ease-in-out infinite;
-}
-
-.pet[data-state="clear"] {
-  --tone: var(--ok);
-}
-
-.pet[data-state="stale"] {
-  --tone: var(--stale);
-}
-
-.pet[data-state="stale"] .pet__face {
-  filter:
-    saturate(0.4) drop-shadow(0 1px 2px rgb(0 0 0 / 0.45))
-    drop-shadow(0 6px 14px rgb(0 0 0 / 0.3));
-}
-
-.pet[data-state="asleep"] {
-  --tone: var(--stale);
-}
-
-.pet[data-state="asleep"] .pet__face {
-  filter:
-    saturate(0.3) brightness(0.7) drop-shadow(0 1px 2px rgb(0 0 0 / 0.45))
-    drop-shadow(0 6px 14px rgb(0 0 0 / 0.3));
-  animation: doze 5s ease-in-out infinite;
-}
-
-.pet[data-state="asleep"] .pet__aura {
-  opacity: 0.12;
 }
 
 .pet[data-state="asleep"] .pet__zzz i {
@@ -406,7 +367,7 @@ body {
 .thread__path {
   fill: none;
   stroke: var(--accent);
-  stroke-width: 1.6;
+  stroke-width: 1.1;
   stroke-linecap: round;
   opacity: 0;
   stroke-dasharray: var(--len, 400);
@@ -414,7 +375,7 @@ body {
 }
 
 .thread[data-open="true"] .thread__path {
-  opacity: 0.55;
+  opacity: 0.35;
   stroke-dashoffset: 0;
   transition:
     stroke-dashoffset 420ms var(--ease-out),
@@ -439,7 +400,7 @@ body {
   flex-direction: column;
   /* A reading surface, so the scrim is heavy enough to hold 4.5:1 body text
      whatever is behind the window. The edge and blur still say glass. */
-  --glass-scrim: rgb(17 19 23 / 0.9);
+  --glass-scrim: rgb(17 19 23 / 0.965);
   background: var(--glass-tint), var(--glass-scrim);
   backdrop-filter: var(--glass-blur);
   border: 0;
@@ -478,18 +439,15 @@ body {
 
 .mark__svg {
   display: block;
-  width: 22px;
-  height: 22px;
+  width: 20px;
+  height: 20px;
 }
 
-.mark__ring {
-  fill: none;
-  stroke: var(--panel-dim);
-  stroke-width: 1.5;
-}
-
-.mark__iris {
-  fill: var(--accent);
+/* The header mark tracks Rev's state colour, so the panel reads as belonging to
+   the character that opened it. */
+.mark__svg path {
+  fill: var(--mark, var(--accent));
+  transition: fill 420ms ease;
 }
 
 .panel__ident {
@@ -1079,12 +1037,10 @@ body {
 @keyframes think {
   0%,
   100% {
-    opacity: 0.2;
-    transform: translate(-50%, -50%) scale(0.94);
+    transform: scale(1);
   }
   50% {
-    opacity: 0.46;
-    transform: translate(-50%, -50%) scale(1.06);
+    transform: scale(1.035);
   }
 }
 
@@ -1644,4 +1600,16 @@ body[data-reduced-motion="true"] .radial[data-open="true"] .radial__item {
 .action:focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: -2px;
+}
+
+/* The panel's mark carries Rev's state colour. */
+.panel[data-state="found"] {
+  --mark: #ef9a2e;
+}
+.panel[data-state="clear"] {
+  --mark: #34b183;
+}
+.panel[data-state="stale"],
+.panel[data-state="asleep"] {
+  --mark: #7b828c;
 }

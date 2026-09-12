@@ -258,6 +258,7 @@ const SUBTITLE: Record<PetState, string> = {
 function applyState(next: PetState): void {
   state = next;
   petEl.dataset.state = next;
+  panelEl.dataset.state = next;
   subEl.textContent = SUBTITLE[next];
   hitEl.setAttribute("aria-label", `Rev, ${SUBTITLE[next]}. ${open ? "Close" : "Open"} findings.`);
   window.pet.reportState(next);
