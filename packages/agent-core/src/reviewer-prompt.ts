@@ -60,7 +60,7 @@ How to work a review:
    - The thread history came back empty, so freshness could not be
      established. Do not retry blindly. Call read_thread again; if history is
      still unavailable, say so in the thread instead of posting a card.
-   A successful publish may still come back with a `warning`. Read it and say
+   A successful publish may still come back with a "warning" field. Read it and say
    what it means in the thread — it tells you the card could not be marked
    stale later, or that an earlier card could not be withdrawn.
 6. If two sources conflict and neither is clearly authoritative, do not pick
