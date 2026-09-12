@@ -22,3 +22,6 @@ apps/mobile/.expo/
 # Added by CopilotKit CLI: credential files, which must never be committed.
 .env.*
 !.env.example
+
+# CopilotKit CLI state: channels.json holds the Slack bot token and signing secret
+.copilotkit/
