@@ -9,11 +9,7 @@
 
 Slack keeps the conversation. ThreadRev keeps the decision, what it was decided against, and whether it is still true.
 
-<img src="assets/hero-scenario-a.png" alt="Card 1 marked STALE after Dara's 820 uF correction, Card 2 posted against her message" width="820">
-
-<sub>Web review console, Scenario A sample. The Slack card is the product; this view reads the same evidence log.</sub>
-
-[What it does](#what-it-does) · [Demo](#the-demo-scenario-a) · [How it works](#how-it-works) · [Approval workflow](#approval-workflow-rev-proposes-a-person-approves-rev-writes-a-copy) · [Versus Slack AI](#what-slack-already-does-and-what-threadrev-adds) · [Why search, not RAG](#why-search-by-identifier-not-rag) · [Status](#status) · [Run it](#run-it) · [Repo map](#repo-map) · [Team](#team-and-working-rules)
+[Judging criteria](#how-threadrev-meets-the-judging-criteria) · [What it does](#what-it-does) · [Demo](#the-demo-scenario-a) · [How it works](#how-it-works) · [Failure handling](#failure-handling-and-trust-guarantees) · [Approval workflow](#approval-workflow-rev-proposes-a-person-approves-rev-writes-a-copy) · [Versus Slack AI](#what-slack-already-does-and-what-threadrev-adds) · [Why search, not RAG](#why-search-by-identifier-not-rag) · [Status](#status) · [Run it](#run-it) · [Sponsors](#sponsor-technologies) · [Built vs inherited](#what-we-built-and-what-we-inherited)
 
 </div>
 
@@ -21,11 +17,36 @@ Slack keeps the conversation. ThreadRev keeps the decision, what it was decided 
 
 Built during the [Agents, Everywhere](https://aitinkerers.org/hackathons/global/agents-everywhere) hackathon on September 12, 2026, on top of CopilotKit's [agents-everywhere-starter-kit](https://github.com/CopilotKit/agents-everywhere-starter-kit). Inherited code is listed separately in [What we built and what we inherited](#what-we-built-and-what-we-inherited).
 
+---
+
+## In 30 seconds
+
+Three things a Slack AI summary never does:
+
+1. **Recompute.** A local Python checker reproduces every number. The model never writes a result. `publish_result` copies the checker's output onto the card.
+2. **Bind to a revision.** Every card names the document revision, its SHA-256, and the message timestamp of the last requirement change it was computed against.
+3. **Go stale.** When a later message changes an input, the old card is edited to **STALE** in place and a new card bound to the new revision is posted. A result whose revision moved mid-run is refused before it posts.
+
+These three properties make it possible to look at a finding six weeks later and know exactly what it claimed, what evidence it rested on, and whether anything has changed since.
+
+---
+
+## How ThreadRev meets the judging criteria
+
+| Criterion | ThreadRev's answer | Where to look |
+|---|---|---|
+| **Core Requirements & Functionality** | End-to-end Slack workflow: trigger → six-tool reviewer agent → stdlib checker → finding card → stale update → approval gate. Verified offline via replay harness; also proven with live OpenAI models against the fixture thread (recorded run `evals/records/model/scenario-a.1.json`). | `npm run verify` (149 tests pass); [`apps/channel/src/replay/`](apps/channel/src/replay/); [`evals/records/`](evals/records/) |
+| **Innovation & Theme Alignment** | The finding is impossible without Slack context: the superseding message is in the thread; the cross-channel correction is in `#ks4-purchasing`; the firmware timer is a separate teammate's message; the revision clock is the message timestamp. Remove the thread and the agent has a document it cannot contradict. | [`apps/channel/src/workspace.ts`](apps/channel/src/workspace.ts); [`revision.ts`](apps/channel/src/revision.ts); Scenario A cross-channel fixture [`fixtures/slack/scenario-a-cross.json`](fixtures/slack/scenario-a-cross.json) |
+| **Technical Execution & Integration** | Six-tool reviewer agent; stdlib-only Python checkers with JSON I/O; fail-closed freshness guard in `publish_result`; injection defence in `propose_edit`; append-only evidence log; graph query for downstream invalidation; replay harness that runs real tools offline; silence filter that ignores normal chatter. | [`apps/channel/src/reviewer-tools.tsx`](apps/channel/src/reviewer-tools.tsx); [`checkers/`](checkers/); [`packages/agent-core/src/evidence/`](packages/agent-core/src/evidence/); failure modes described [below](#failure-handling-and-trust-guarantees) |
+| **Usefulness & Agentic Experience** | One card per finding: exact discrepancy, engineering consequence, source hashes, checker run id, who to ask. Card goes stale instead of being deleted. Propose-and-approve before any file write. Silence on normal chatter. Rev never turns a tentative discussion into a decision. | [`apps/channel/src/finding-card.tsx`](apps/channel/src/finding-card.tsx); [approval flow](#approval-workflow-rev-proposes-a-person-approves-rev-writes-a-copy); [silence filter](apps/channel/src/review-moment.ts) |
+
+---
+
 ## What it does
 
 Engineering teams make decisions in Slack threads and then write documents that quietly disagree with them. A review document prints a result computed from a capacitance the thread already replaced. A simulation request pulls parameters from a sheet that a correction message superseded three weeks earlier. Nobody catches it because nobody rereads the thread.
 
-ThreadRev lives in the channel. When someone asks it to check a document, or when a message changes an input that an earlier finding depended on, it reads the thread, searches every other channel for the document and the values it rests on, and posts one card in the thread:
+ThreadRev lives in the channel. When someone asks it to check a document, or when a message changes an input that an earlier finding depended on, it reads the thread, searches every other channel for the document and the values it rests on, and posts one card in the thread. The card has five parts:
 
 1. **Discrepancy.** What the document says versus what the thread decided, with the exact line.
 2. **Why it matters.** The engineering consequence, in the team's own units.
@@ -35,14 +56,22 @@ ThreadRev lives in the channel. When someone asks it to check a document, or whe
 
 When a later message changes a requirement, the earlier card is marked **stale in place**, never deleted, and a new card bound to the new revision is posted. If a revision lands while a check is running, the result is refused before it posts, kept as a stale record, and rerun.
 
-When a printed result does not reproduce and its inputs are not in dispute, Rev **proposes the edit and asks**. The proposal card shows the file, the line, the exact text to replace, the checker's value, and two buttons. Nothing is written until a person clicks Approve. Then the edit goes into a new copy of the file with a new SHA-256, the original is untouched, and the card is redrawn with both hashes. Reject records the refusal. Rev only ever proposes replacing a printed result; an input value or a design choice is the question it asks, never an edit it makes.
+When a printed result does not reproduce and its inputs are not in dispute, Rev **proposes the edit and asks**. The proposal card shows the file, the line, the exact text to replace, the checker's value, and two buttons. Nothing is written until a person clicks Approve.
 
 Two rules shape everything:
 
 - **The model never computes a number that appears on a card.** A local, stdlib-only Python checker does. The card renderer is called only by the `publish_result` tool, which copies numbers from the checker's response.
 - **A possible contradiction is not automatically a finding.** The reviewer stays silent on normal chatter, posts a clean card when everything reproduces, and asks instead of deciding when the evidence conflicts.
 
+---
+
 ## The demo: Scenario A
+
+<img src="assets/demos/slack.gif" alt="Scenario A in Slack: Card 1 posts, goes STALE, Card 2 posts bound to Dara's 820 uF correction" width="820">
+
+<img src="assets/hero-scenario-a.png" alt="Web review console, Scenario A: Card 1 STALE, correction, Card 2" width="820">
+
+<sub>Web review console at <a href="https://threadrev-web.vercel.app">threadrev-web.vercel.app</a> (Scenario A sample). The Slack card is the product; this view reads the same evidence log.</sub>
 
 Kestrel Motors is a fictional maker of light electric city vehicles. The KS-4 is its next platform, in development. Dara Voss is the electrical lead and owns the precharge board. Tam Holloway owns firmware, including the relay timer. Juno Marsh joined in August and has to sign the r2 design review. If the relay closes before the bus is charged, every key-on puts the inrush through the main contactor, so the number in the signed review is the number that ships. Channel `#ks4-electrical`, precharge RC timing. Fixture script in [`fixtures/slack/scenario-a.json`](fixtures/slack/scenario-a.json), full spec in [`research/synthetic-fixture-spec.md`](research/synthetic-fixture-spec.md).
 
@@ -57,37 +86,70 @@ Kestrel Motors is a fictional maker of light electric city vehicles. The KS-4 is
 
 Scenario B (stale simulation inputs, `#ks4-strategy-sim`) and three replay cases are also built: a clean control that must produce no discrepancy, a conflicting-evidence case where the reviewer must ask instead of choose, and a mid-run revision where the first result must be refused before it posts. All four have finding examples under [`contracts/examples/`](contracts/examples/).
 
+---
+
 ## How it works
 
-```
-Slack thread ──▶ CopilotKit Channels ──▶ review gate (is this a review moment?)
-                                              │
-                                              ▼
-                                   reviewer agent, six tools
-   read_thread · search_workspace · read_evidence · run_check · publish_result · propose_edit
-                           │                  │                 │
-                           ▼                  │                 │
-              workspace index (every channel, │                 │
-              keyed by document, unit,        │                 │
-              quantity words, author)         │                 │
-                                              ▼                 ▼
-                              checkers/check_rc.py       finding card (Block Kit)
-                              checkers/check_route.py    posted in thread, updated
-                              stdlib only, JSON in/out   to stale on revision
-                                              │
-                                              ▼
-                                  evidence log (JSONL) ──▶ evidence graph ──▶ web console
+```mermaid
+flowchart TB
+    A["Slack message"] --> B["CopilotKit Channels\nManaged Slack adapter"]
+    B --> C{"Review gate\nreview-moment.ts"}
+    C -->|"not a review moment"| D["— silent —"]
+    C -->|"review trigger or\nrequirement change"| E["Reviewer agent\napps/channel/src/agent.ts"]
+
+    E --> T1["read_thread\nSlack history"]
+    E --> T2["search_workspace\nworkspace index\nexact match · no embeddings\ncutoff at trigger ts"]
+    E --> T3["read_evidence\ndocument text + SHA-256"]
+    E --> T4["run_check\nchecker subprocess"]
+    E --> T5["publish_result\nonly path to a card\nfail-closed freshness guard"]
+    E --> T6["propose_edit\nApprove / Reject gate"]
+
+    T4 --> PY["check_rc.py / check_route.py\nstdlib only · JSON I/O\nno network · no file writes"]
+    T5 --> CARD["Finding card · Block Kit\nposted in thread\nupdated to STALE on revision"]
+    T6 --> APPL["apply_docx_edit.py\nwrites new copy only\noriginal SHA unchanged"]
+
+    PY --> LOG["Evidence log · JSONL\nevery message read · every\ndoc hash · every run · every card"]
+    CARD --> LOG
+    APPL --> LOG
+    LOG --> GRAPH["Evidence graph\nmessage / doc / run / finding nodes\n'what did this change invalidate?'"]
+    GRAPH --> WEB["Web console\nthreadrev-web.vercel.app"]
 ```
 
-- **Reviewer tools** in [`apps/channel/src/reviewer-tools.tsx`](apps/channel/src/reviewer-tools.tsx). `read_thread` reads the Slack history; `search_workspace` queries the workspace index outside the thread; `read_evidence` extracts document text and hashes; `run_check` invokes a checker and records the run; `publish_result` is the only path to a card and refuses a result whose requirement revision is no longer current; `propose_edit` posts an Approve/Reject card and, on approval, runs [`checkers/apply_docx_edit.py`](checkers/apply_docx_edit.py) to write a new copy of the document. Every number in a proposed replacement must be a checker output, and the text to replace must occur exactly once.
+- **Reviewer tools** in [`apps/channel/src/reviewer-tools.tsx`](apps/channel/src/reviewer-tools.tsx). `read_thread` reads the Slack history; `search_workspace` queries the workspace index outside the thread; `read_evidence` extracts document text and hashes; `run_check` invokes a checker and records the run; `publish_result` is the only path to a card and refuses a result whose requirement revision is no longer current; `propose_edit` posts an Approve/Reject card and, on approval, runs [`checkers/apply_docx_edit.py`](checkers/apply_docx_edit.py) to write a new copy of the document.
 - **Workspace index** in [`workspace.ts`](apps/channel/src/workspace.ts). Built once from a Slack export ([`fixtures/workspace/kestrel-workspace.json`](fixtures/workspace/kestrel-workspace.json), five channels, March to August; `WORKSPACE_EXPORT` points at a real export). Every message is indexed by the documents it names, the values it states with their units, the quantity words around them, whether it reads as a change, and its author. A query returns every match at or before the trigger message, oldest first. No embeddings, no ranking, no cap that can drop a correction.
 - **Review gate and silence filter** in [`review-moment.ts`](apps/channel/src/review-moment.ts) and [`agent.ts`](apps/channel/src/agent.ts). Most messages get nothing.
 - **Revision tracking** in [`revision.ts`](apps/channel/src/revision.ts): a requirement-change message becomes the revision every later card binds to.
 - **Checkers** in [`checkers/`](checkers/), contract in [`contracts/checker-io.md`](contracts/checker-io.md). `check_rc.py` does first-order RC timing; `check_route.py` does the constant-speed route energy model. No network, no file writes, no imports outside the standard library.
 - **Finding contract** in [`packages/agent-core/src/contracts/finding.ts`](packages/agent-core/src/contracts/finding.ts) and the Slack card in [`finding-card.tsx`](apps/channel/src/finding-card.tsx).
-- **Evidence log and graph** in [`packages/agent-core/src/evidence/`](packages/agent-core/src/evidence/). Every message read, document hashed, checker run, card published, and silence decision is appended as an event. The graph builder turns the log into message, document, run, finding, and revision nodes with a downstream walk, so "what did this change invalidate" is a query.
+- **Evidence log and graph** in [`packages/agent-core/src/evidence/`](packages/agent-core/src/evidence/). Every message read, document hashed, checker run, card published, and silence decision is appended as an event. The graph builder turns the log into message, document, run, finding, and revision nodes with a downstream walk, so "what did this change invalidate" is a graph query.
 - **Replay harness** in [`apps/channel/src/replay/`](apps/channel/src/replay/). Replays a fixture Slack script through the real channel handlers and real checkers offline, with a scripted agent standing in for the model, and asserts the card that gets posted. This is the contract test for the checker-to-card seam and the scorecard for the three replay cases.
-- **Web review console** in [`apps/web/src/components/review-console/`](apps/web/src/components/review-console/), served by [`/api/evidence`](apps/web/src/app/api/evidence/route.ts). A browser view of the thread, the cards, and the evidence graph, polling the live log and falling back to the Scenario A sample. Secondary surface; Slack is the product.
+- **Web review console** in [`apps/web/src/components/review-console/`](apps/web/src/components/review-console/), served by [`/api/evidence`](apps/web/src/app/api/evidence/route.ts). Live at [threadrev-web.vercel.app](https://threadrev-web.vercel.app). A browser view of the thread, the cards, and the evidence graph, polling the live log and falling back to the Scenario A sample. Secondary surface; Slack is the product.
+
+---
+
+## Failure handling and trust guarantees
+
+These are the defences ThreadRev relies on. Each one is tested.
+
+### Fail-closed freshness guard
+`publish_result` reads the thread's current revision before accepting a result. If the revision recorded at the start of the run does not match the revision now, it refuses to post. The refused result is kept as a stale record. The reviewer reruns against the new revision. A result that was valid six seconds ago but is stale now never appears in the thread. This guard is what makes `propose_edit` possible: by the time a proposal card posts, the inputs are known to be current.
+
+### Stale marking, not deletion
+When a requirement-change message arrives after a card has been posted, the card is edited to **STALE** in place. The original finding, sources, and checker run id remain visible. A new card bound to the new revision is posted immediately after. No finding disappears; the thread accumulates a durable record of what was decided and when it was superseded.
+
+### Approve-before-write
+`propose_edit` posts an Approve/Reject card and stops. The write happens only inside the button handler, when a person clicks Approve. The tool enforces three hard constraints before a proposal card can post: the replacement value must be a number from the checker's response, the text to replace must contain a number, and it must occur exactly once in the document. A design choice, an input value, or an ambiguous case becomes the question on the finding card, not an edit proposal.
+
+### Injection defence
+The reviewer system prompt instructs the model to treat document text as evidence to be checked, not instructions to follow. `propose_edit` re-checks the find string against the document at call time; a string that does not occur exactly once, or that carries no number, is refused. The model cannot propose replacing a passage it did not read through `read_evidence`.
+
+### Checker isolation
+`check_rc.py` and `check_route.py` are stdlib-only. No network calls, no file writes, no imports outside the standard library. They receive a JSON object on stdin and return a JSON object on stdout. The model sees the output; it never sees source code or intermediate state it could influence. Run ids on every card let an engineer or another agent inspect the exact inputs and outputs.
+
+### Restart recovery
+The evidence log is an append-only JSONL file. Checker run ids, document hashes, card ids, revision strings, and silence decisions are all recorded. After a restart the log is intact; the graph answers "what did this change invalidate" from the log alone. Duplicate prevention uses the proposal id to refuse a second decision on the same proposal.
+
+---
 
 ## Approval workflow: Rev proposes, a person approves, Rev writes a copy
 
@@ -130,6 +192,8 @@ What cannot happen: a write without a click (the write lives inside the button h
 
 Replay tests cover the proposal card, approval writing the new file with the source hash unchanged, the refused value, and the editor's exactly-once rule: [`apps/channel/src/replay/replay.test.tsx`](apps/channel/src/replay/replay.test.tsx), [`checkers/test_checkers.py`](checkers/test_checkers.py).
 
+---
+
 ## What Slack already does, and what ThreadRev adds
 
 Slack AI tells you what was said. ThreadRev tells you what was decided, and whether it still holds.
@@ -161,9 +225,11 @@ What we are building toward, and how much of it exists on `main` today:
 | Which decisions still apply | Separate proposals, accepted decisions, and superseded conclusions; tie each to its component and revision | Built narrowly: every card binds to a revision; a later change marks it stale; conflicting sources produce a question, not a pick |
 | A reviewable evidence trail | Exact source versions, assumptions, conflicting evidence, and the record of changes | Built: the evidence log records every message read, document hash, checker run, card, and silence decision; the graph answers "what did this change invalidate" |
 | Check the underlying work | Reproduce the calculation; keep runnable checks another engineer or agent can inspect | Built: `checkers/`, `run_check`, `publish_result`, run ids on every card |
-| Continue existing work correctly | Update the right task, carry unresolved questions forward, never turn a tentative discussion into a decision or open a duplicate | Not built. The historical supplier-acceptance case in the research notes is the target: an old acceptance of one configuration is not approval of the new geometry, and the open confirmation has to travel to the right project |
+| Continue existing work correctly | Update the right task, carry unresolved questions forward, never turn a tentative discussion into a decision or open a duplicate | Not built. The historical supplier-acceptance case in the research notes is the target. |
 
-What we do not claim: a market gap ([`research/engineering-change-competitors.md`](research/engineering-change-competitors.md)), that Slack cannot be configured to approximate this, or that a summary is the wrong tool for open-ended questions. The next proof is the same historical cases run through a configured Slackbot and through ThreadRev. If they tie, the workflow gets built on Slack's tooling and the specialized part is the checker and revision contract.
+What we do not claim: a market gap ([`research/engineering-change-competitors.md`](research/engineering-change-competitors.md)), that Slack cannot be configured to approximate this, or that a summary is the wrong tool for open-ended questions. The next proof is the same historical cases run through a configured Slackbot and through ThreadRev.
+
+---
 
 ## Why search by identifier, not RAG
 
@@ -175,9 +241,13 @@ Retrieval-augmented generation stores chunks with embeddings, ranks them by simi
 
 The workspace index is retrieval. It is retrieval by exact match over a structured index, with a cutoff, with the numbers verified afterward and the result tied to a revision. If two channels describe the same quantity in different words, a synonym layer over the quantity table is the next step, behind the exact match, not in front of it.
 
+---
+
 ## Status
 
-Verified on `main` at 1:56 PM EDT, September 12, 2026, with `npm run verify`:
+Verified on `main`, September 12, 2026, with `npm run verify`:
+
+<img src="assets/verify.gif" alt="npm run verify passing" width="700">
 
 | Check | Result |
 |---|---|
@@ -189,13 +259,15 @@ Verified on `main` at 1:56 PM EDT, September 12, 2026, with `npm run verify`:
 
 What is **not** yet true:
 
-- **Slack is not connected.** The model key, Channel code, and Intelligence key are blank locally. The bot has not posted to a real workspace. Everything above is proven offline through the replay harness. The demo video will state clearly whether it shows live delivery or the harness.
-- The web console has no styling yet and is in active development.
+- **Slack is not connected.** The model key, Channel code, and Intelligence key are blank locally. The bot has not posted to a real workspace. Everything above is proven offline through the replay harness. Live model runs were verified at 3:50 PM EDT (Scenario A, `gpt-5.6-sol`, 12 tool calls, Card 1 as scripted, recorded in `evals/records/model/scenario-a.1.json`). The demo video states clearly whether it shows live delivery or the harness.
+- The web console has styling in progress; live at [threadrev-web.vercel.app](https://threadrev-web.vercel.app) with the Scenario A sample.
 - Exa is not used. The inherited web-search capability stays in `agent-core` for its tests only; it is not registered on the reviewer and `EXA_API_KEY` is blank.
 - Persistent storage (the Convex decision in [`SCRATCHPAD.md`](SCRATCHPAD.md)) is a recorded direction, not implemented. Evidence lives in a local JSONL file.
 - The inherited dependency audit has unresolved advisories. This is not a production or security-cleared deployment.
 
 Live status by lane is in [`STATUS.md`](STATUS.md).
+
+---
 
 ## Run it
 
@@ -230,6 +302,24 @@ npm run channel:status
 npm run dev:slack
 ```
 
+---
+
+## Sponsor technologies
+
+### CopilotKit Channels
+
+CopilotKit Channels hosts the Slack connection without requiring a public tunnel or a Socket Mode app token. It delivers thread history to `read_thread`, routes approval button clicks back to `propose_edit`, and renders the finding card as native Block Kit from one component tree in [`finding-card.tsx`](apps/channel/src/finding-card.tsx). The managed gateway handles per-delivery timeouts, reconnection, and the `BuiltInAgent` loop that lets the reviewer call its six tools in sequence. Without Channels, a self-hosted Slack adapter would require managing OAuth installation, event subscriptions, signing secret verification, and Block Kit delivery separately. The reviewer is the application layer; Channels is the Slack integration layer.
+
+Key files: [`apps/channel/src/channel.tsx`](apps/channel/src/channel.tsx), [`agent.ts`](apps/channel/src/agent.ts), [`finding-card.tsx`](apps/channel/src/finding-card.tsx).
+
+### OpenAI (or OpenRouter)
+
+OpenAI runs the reviewer agent: it decides which tools to call, in what order, and what to extract from the document and thread text. The model is explicitly not trusted with arithmetic: it reads values from text and passes them to a checker; `publish_result` refuses to post unless the numbers came from a checker run. In Scenario A, `gpt-5.6-sol` made 12 tool calls and produced Card 1 as designed. OpenRouter can be substituted with any catalog model that supports tool use.
+
+Key file: [`packages/agent-core/src/model.ts`](packages/agent-core/src/model.ts).
+
+---
+
 ## What we built and what we inherited
 
 Baseline commit is `9ed46e0`. `git diff --name-only 9ed46e0..HEAD` is the authoritative list.
@@ -255,7 +345,10 @@ Baseline commit is `9ed46e0`. `git diff --name-only 9ed46e0..HEAD` is the author
 
 The CopilotKit Channels runtime wiring, the `BuiltInAgent` loop, the managed-gateway test harness pattern, the shared model configuration, the Exa search capability, the incident-response tools and cards in `apps/channel/src/tools.tsx` and `components.tsx` (no longer registered on the channel, kept for their tests), the web app shell and its follow-up workflow, the mobile app, the developer docs, and the bundled skills under `.agents/`.
 
-## Repo map
+---
+
+<details>
+<summary>Repo map</summary>
 
 ```
 apps/channel/          Slack agent: reviewer tools, card, gate, replay harness
@@ -273,15 +366,18 @@ SETUP.md               Environment setup record and verification history
 SUBMISSION.md          Hackathon submission checklist
 ```
 
-## Team and working rules
+</details>
+
+<details>
+<summary>Team and working rules</summary>
 
 Five lanes work on this repo in parallel: backend, web console, demo and submission, Slack environment, and eval / red team. [`AGENTS.md`](AGENTS.md) has the lane table (who owns which directories), the workspace rules (one checkout per agent, stage by explicit path, `main` must always verify, pull-rebase before push), and the Channels API conventions. [`STATUS.md`](STATUS.md) is the board everyone updates after each push. [`CLAUDE.md`](CLAUDE.md) points Claude Code at both.
 
-## Sponsor technologies
+</details>
 
-- **CopilotKit Channels** hosts the Slack connection, delivers thread history, and renders the finding card as native Block Kit from one component tree.
-- **OpenAI** (or OpenRouter) runs the reviewer agent that decides what to read, which checker to run, and what to ask.
-
-## Research
+<details>
+<summary>Research</summary>
 
 The reasoning behind the scope, the harness choice, the fixture design, and the competitive audit is in [`RESEARCH.md`](RESEARCH.md) and [`research/`](research/). Start with [`research/hackathon-design.md`](research/hackathon-design.md), [`research/synthetic-fixture-spec.md`](research/synthetic-fixture-spec.md), and [`research/change-agent-novelty-audit.md`](research/change-agent-novelty-audit.md), which names the direct competitors and why we do not claim a market gap.
+
+</details>
