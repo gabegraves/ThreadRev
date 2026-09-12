@@ -28,7 +28,6 @@ import { guardPublish, markStale } from "./replay/publish-guard";
 import { CHANGE_PATTERN, latestRevision, tsNum } from "./revision";
 import { record, runContext, threadKey } from "./evidence";
 import { editProposalBody, renderFindingCard, type EditProposalView } from "./finding-card";
-import { slackEvidenceLinks } from "./slack-evidence";
 import { queryIndex, workspaceIndex } from "./workspace";
 
 export const REPO_ROOT = resolve(import.meta.dirname, "../../..");
@@ -82,7 +81,6 @@ export const readThread = defineChannelTool({
       return "No conversation history is available on this surface. Say so and ask for the document name and the values to check.";
     }
     const ctx = runContext(threadKey(thread));
-    if (thread.platform === "slack") Object.assign(ctx.messageUrls, await slackEvidenceLinks(messages));
     const humans = messages.filter((m) => !m.isBot && m.ts);
     ctx.trigger_ts = humans.at(-1)?.ts ?? ctx.trigger_ts;
     ctx.changes = humans.filter((m) => CHANGE_PATTERN.test(m.text)).map((m) => m.ts!);
@@ -101,7 +99,6 @@ export const readThread = defineChannelTool({
     }
     return messages.map((m) => ({
       ts: m.ts,
-      url: m.ts ? ctx.messageUrls[m.ts] : undefined,
       from: m.user?.name ?? m.user?.handle ?? (m.isBot ? "bot" : "unknown"),
       bot: Boolean(m.isBot),
       text: m.text,
@@ -306,7 +303,7 @@ export const runCheck = defineChannelTool({
 /* -------------------------------------------------------- publish_result */
 
 interface ReviewState {
-  cards: Array<{ finding: Finding; ref: MessageRef; messageUrls?: Record<string, string> }>;
+  cards: Array<{ finding: Finding; ref: MessageRef }>;
   staleRuns: Array<{ run_id: string; bound: string; current: string }>;
 }
 
@@ -477,7 +474,7 @@ export const publishResult = defineChannelTool({
 
     for (const prior of priors) {
       prior.finding = markStale(prior.finding);
-      await thread.update(prior.ref, renderFindingCard(prior.finding, prior.messageUrls));
+      await thread.update(prior.ref, renderFindingCard(prior.finding));
       record({
         kind: "finding_superseded",
         thread: threadKey(thread),
@@ -488,9 +485,8 @@ export const publishResult = defineChannelTool({
       });
     }
 
-    const messageUrls = { ...runContext(threadKey(thread)).messageUrls };
-    const ref = await thread.post(renderFindingCard(f, messageUrls));
-    state.cards.push({ finding: f, ref, messageUrls });
+    const ref = await thread.post(renderFindingCard(f));
+    state.cards.push({ finding: f, ref });
     await thread.setState(state);
     record({
       kind: "finding_published",
