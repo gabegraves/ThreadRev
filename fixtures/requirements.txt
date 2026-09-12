@@ -1,0 +1,16 @@
+# Regenerating the fixture documents needs these two; everything else in
+# fixtures/ and checkers/ is standard library on purpose.
+#
+#   python3 -m pip install -r fixtures/requirements.txt
+#   python3 fixtures/generate.py
+#
+# Versions are deliberately unpinned. The committed documents were produced by
+# whichever versions the author had, and pinning a guess here would claim a
+# reproducibility that has not been verified. generate.py pins what it can
+# control — zip entry order, entry timestamps, document metadata — so the
+# output is stable across runs on one machine; whether a different python-docx
+# emits byte-identical XML is untested. If a regeneration changes a sha256
+# without any content change, that is the reason, and the fix is to pin the
+# versions that produced the committed files rather than to accept the churn.
+python-docx
+openpyxl
