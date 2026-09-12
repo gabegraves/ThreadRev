@@ -243,3 +243,18 @@ test("the work trail is built from recorded events, including unflattering ones"
 test("an empty trail says so rather than inventing one", () => {
   assert.match(JSON.stringify(renderWorkTrail([])), /no trail to show/);
 });
+
+import { isWorkplaceConfigured } from "agent-core";
+
+test("the workplace stays inert until a key exists", () => {
+  const saved = process.env.AMBIGUOUS_API_KEY;
+  try {
+    delete process.env.AMBIGUOUS_API_KEY;
+    assert.equal(isWorkplaceConfigured(), false);
+    process.env.AMBIGUOUS_API_KEY = "test-key";
+    assert.equal(isWorkplaceConfigured(), true);
+  } finally {
+    if (saved === undefined) delete process.env.AMBIGUOUS_API_KEY;
+    else process.env.AMBIGUOUS_API_KEY = saved;
+  }
+});
