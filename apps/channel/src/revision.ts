@@ -15,11 +15,15 @@ export interface RevisionMessage {
 
 /** Phrases that mark a message as changing an input or requirement. */
 export const CHANGE_PATTERN =
-  /\b(correction|corrected|instead of|is now|are now|now \d|changed?|changing|updated?|revis(?:ed|ion)|supersed\w*|scratch that|actually|not \d|bump(?:ed)? to|moving to|will be r\d)\b/i;
+  /\b(?:correction|corrected|instead of|is now|are now|changed?|changing|updated?|revis(?:ed|ion)|supersed\w*|scratch that|actually|bump(?:ed)? to|moving to|allows?\b|now,? not|not \d|now \d|will be r\d)/i;
 
-function tsNum(ts: string | undefined) {
+/** Slack ts ("seconds.seq") or an ISO date (managed transcripts use occurredAt). */
+export function tsNum(ts: string | undefined) {
+  if (!ts) return -1;
   const n = Number(ts);
-  return Number.isFinite(n) ? n : -1;
+  if (Number.isFinite(n)) return n;
+  const ms = Date.parse(ts);
+  return Number.isFinite(ms) ? ms / 1000 : -1;
 }
 
 /**

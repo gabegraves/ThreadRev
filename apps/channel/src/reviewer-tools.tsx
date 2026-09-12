@@ -137,6 +137,7 @@ const rcInputs = z.object({
         label: z.string().min(1),
         value_s: z.number(),
         against: z.array(z.string().min(1)).min(1).describe("Capacitance labels this printed value might have been computed from."),
+        tolerance_s: z.number().positive().optional().describe("Per-entry override, e.g. 0.005 for a value printed to two decimals."),
       }),
     )
     .default([]),
@@ -198,6 +199,14 @@ export function reproducedFrom(run: CheckerResponse): ReproducedValue[] {
         computed: c.actual,
         unit: "ratio",
       });
+    }
+  }
+  const cases = run.outputs.cases;
+  if (cases && typeof cases === "object") {
+    for (const [label, v] of Object.entries(cases as Record<string, { energy_kWh?: unknown; budget_kWh?: unknown }>)) {
+      if (typeof v?.energy_kWh !== "number") continue;
+      const budget = typeof v.budget_kWh === "number" ? ` (budget ${v.budget_kWh})` : "";
+      out.push({ label: `energy at ${capLabel(label, /$/)}${budget}`, computed: v.energy_kWh, unit: "kWh" });
     }
   }
   const per = run.outputs.per_capacitance;
@@ -279,7 +288,7 @@ export const publishResult = defineChannelTool({
       return { published: false, reason: `Already posted as ${duplicate.finding.finding_id}. Do not repeat it.` };
     }
 
-    const f = finding.parse({
+    const built = finding.safeParse({
       finding_id: newFindingId(),
       status: "live",
       supersedes: args.supersedes,
@@ -293,6 +302,11 @@ export const publishResult = defineChannelTool({
       question: args.question,
       checker_run: { checker: run.checker, version: run.version, run_id: run.run_id },
     });
+    if (!built.success) {
+      const issues = built.error.issues.map((i) => `${i.path.join(".")}: ${i.message}`).join("; ");
+      return { published: false, reason: `Finding rejected: ${issues}. Fix the fields and call publish_result again.` };
+    }
+    const f = built.data;
 
     if (args.supersedes) {
       const prior = state.cards.find((c) => c.finding.finding_id === args.supersedes);

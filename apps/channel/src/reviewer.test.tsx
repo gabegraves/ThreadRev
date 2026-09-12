@@ -59,3 +59,11 @@ test("NO_FINDING text is dropped, other text passes through in order", () => {
     EventType.TEXT_MESSAGE_END,
   ]);
 });
+
+import { tsNum } from "./revision";
+
+test("tsNum orders Slack ts and ISO occurredAt on one scale", () => {
+  assert.equal(tsNum("1787062320.000100") > 0, true);
+  assert.equal(tsNum("2026-08-19T20:30:00.000Z") > tsNum("2026-08-18T14:12:00.000Z"), true);
+  assert.equal(tsNum("seven fifty"), -1);
+});

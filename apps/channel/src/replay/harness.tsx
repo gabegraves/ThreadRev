@@ -1,41 +1,29 @@
 /**
- * Offline replay harness: a fixture Slack script replayed into real channel
- * handlers with a scripted agent standing in for the model.
+ * Offline replay harness: a fixture Slack script replayed into the real
+ * reviewer tools with a scripted agent standing in for the model.
  *
  * Follows delivery.test.tsx. The ManagedGateway captures every packet the
  * channel would send to Slack; the `/transcript` route serves the fixture's
- * visible messages so `read_thread` returns them verbatim.
+ * visible messages so the real `read_thread` and `publish_result` see them.
  */
 import assert from "node:assert/strict";
 import { AbstractAgent } from "@ag-ui/client";
 import { EventType, type BaseEvent, type RunAgentInput } from "@ag-ui/core";
 import { from, type Observable } from "rxjs";
-import {
-  createChannel,
-  defineChannelTool,
-  Message,
-  Header,
-  Section,
-  Markdown,
-  Context,
-} from "@copilotkit/channels";
+import { createChannel, defineChannelTool } from "@copilotkit/channels";
 import { startChannelsWithGatewayControl } from "@copilotkit/channels-intelligence";
 import { z } from "zod";
+import { type CheckerResponse } from "agent-core";
 import {
-  checkerRequest,
-  finding,
-  type CheckerResponse,
-  type Finding,
-} from "agent-core";
-import { readThread } from "../tools";
+  publishResult,
+  readEvidence,
+  readThread,
+  rememberRun,
+  runCheck,
+} from "../reviewer-tools";
 import { ManagedGateway, preparedDelivery } from "../testing/managed-gateway";
-import {
-  splitAtCutoff,
-  toTranscript,
-  type FixtureMessage,
-} from "./fixture-loader";
+import { splitAtCutoff, toTranscript, type FixtureMessage } from "./fixture-loader";
 import { runChecker } from "./run-checker";
-import { guardPublish, markStale } from "./publish-guard";
 
 export interface ToolCall {
   name: string;
@@ -45,44 +33,44 @@ export interface ToolCall {
 /** Tool results the scripted reviewer has received so far, in order. */
 export interface ScriptContext {
   results: unknown[];
-  /** The last checker response, parsed, if any run_checker call completed. */
+  /** The last checker response, if any checker call completed. */
   checker?: CheckerResponse;
-  /** Every checker response so far. */
   checkers: CheckerResponse[];
   /** Every publish_result return so far. */
   publishes: PublishOutcome[];
+  /** Every read_evidence return so far. */
+  evidence: EvidenceResult[];
 }
 
 /** One step: returns the tool call to make, or undefined to finish the run. */
 export type ScriptStep = (ctx: ScriptContext) => ToolCall | undefined;
 
 export type PublishOutcome =
-  | { published: true; finding_id: string; revision: string }
-  | {
-      published: false;
-      reason: "stale_revision";
-      finding_id: string;
-      run_id: string;
-      card_revision: string;
-      current_revision: string;
-      instruction: string;
-    };
+  | { published: true; finding_id: string; requirements_revision: string }
+  | { published: false; reason: string; current_revision?: string };
 
-/** A finding the harness stored, live or stale, with its checker run. */
-export interface FindingRecord {
-  finding: Finding;
-  checker: CheckerResponse | undefined;
+export interface EvidenceResult {
+  document: string;
+  revision?: string;
+  sha256: string;
+  lines: Array<{ n: number; text: string }>;
 }
 
-/** Thread state the harness owns on behalf of the integration owner. */
+/** Thread state the real publish_result keeps (see reviewer-tools.tsx). */
+export interface ReviewThreadState {
+  cards: Array<{ finding: { finding_id: string; status: string; requirements_revision: string; checker_run: { run_id: string } } }>;
+  staleRuns: Array<{ run_id: string; bound: string; current: string }>;
+}
+
+/** Thread state the harness owns. */
 export interface ReplayState {
-  currentRequirementsRevision: string;
   visible: FixtureMessage[];
-  records: FindingRecord[];
   checkerRuns: CheckerResponse[];
 }
 
-const checkerResponseIsh = z.object({ run_id: z.string(), checker: z.string() });
+const checkerResponseIsh = z.object({ run_id: z.string(), checker: z.string(), outputs: z.record(z.string(), z.unknown()) });
+const publishIsh = z.object({ published: z.boolean() });
+const evidenceIsh = z.object({ document: z.string(), sha256: z.string(), lines: z.array(z.object({ n: z.number(), text: z.string() })) });
 
 /** Real AG-UI events so the SDK tool loop and Slack renderer both run. */
 class ScriptedReviewer extends AbstractAgent {
@@ -108,21 +96,16 @@ class ScriptedReviewer extends AbstractAgent {
           return m.content;
         }
       });
-    const checkers = results.flatMap((r) => {
-      const parsed = checkerResponseIsh.safeParse(r);
-      return parsed.success ? [r as CheckerResponse] : [];
-    });
-    const publishes = results.flatMap((r) =>
-      typeof r === "object" && r !== null && "published" in r
-        ? [r as PublishOutcome]
-        : [],
-    );
+    const pick = <T,>(schema: z.ZodType<T>) =>
+      results.flatMap((r) => (schema.safeParse(r).success ? [r as T] : []));
+    const checkers = pick(checkerResponseIsh) as unknown as CheckerResponse[];
     const step = this.steps[this.iteration++];
     const call = step?.({
       results,
       checker: checkers.at(-1),
       checkers,
-      publishes,
+      publishes: pick(publishIsh) as PublishOutcome[],
+      evidence: pick(evidenceIsh) as EvidenceResult[],
     });
     const events: BaseEvent[] = [
       { type: EventType.RUN_STARTED, threadId: input.threadId, runId: input.runId },
@@ -135,11 +118,7 @@ class ScriptedReviewer extends AbstractAgent {
         { type: EventType.TOOL_CALL_END, toolCallId },
       );
     }
-    events.push({
-      type: EventType.RUN_FINISHED,
-      threadId: input.threadId,
-      runId: input.runId,
-    });
+    events.push({ type: EventType.RUN_FINISHED, threadId: input.threadId, runId: input.runId });
     return from(events);
   }
 }
@@ -151,75 +130,87 @@ export interface ReplayOptions {
   cutoff?: string;
   /**
    * RC3 hook: runs after each checker completes and before the agent can
-   * publish. Return a message to inject it into the thread as the new
-   * requirements revision.
+   * publish. Return a fixture message to make it arrive in the thread now.
    */
-  afterChecker?: (
-    response: CheckerResponse,
-    state: ReplayState,
-  ) => FixtureMessage | undefined;
+  afterChecker?: (response: CheckerResponse, state: ReplayState) => FixtureMessage | undefined;
 }
 
-export function createRunCheckerTool(state: ReplayState, options: ReplayOptions) {
+/**
+ * The SDK fetches the transcript once per delivery and caches the promise on
+ * the claimed delivery. A message that lands mid-run is invisible to
+ * `thread.getMessages()` until that cache is dropped. This reaches into the
+ * Thread's private deps to drop it; only the replay harness does this.
+ */
+function dropTranscriptCache(thread: unknown) {
+  const deps = (thread as { deps?: { replyTarget?: { claimedDelivery?: { transcriptPromise?: unknown } } } }).deps;
+  const claimed = deps?.replyTarget?.claimedDelivery;
+  assert.ok(claimed && "transcriptPromise" in claimed, "SDK layout changed: cannot drop the transcript cache");
+  claimed.transcriptPromise = undefined;
+}
+
+/**
+ * Scenario B checker. The real `run_check` is rc-only, so route runs go
+ * through this test-local tool and are remembered the same way, which is what
+ * the real `publish_result` looks up by run_id.
+ */
+export function createRouteCheckTool(state: ReplayState, options: ReplayOptions) {
   return defineChannelTool({
-    name: "run_checker",
-    description:
-      "Run a trusted stdlib checker on explicit inputs. Every number a card shows must come from this result, never from your own arithmetic.",
-    parameters: checkerRequest,
-    async handler(args) {
-      const response = await runChecker(args);
+    name: "run_route_check",
+    description: "Run the trusted route energy checker (Scenario B).",
+    parameters: z.object({ inputs: z.record(z.string(), z.unknown()) }),
+    async handler({ inputs }, { thread }) {
+      const response = await runChecker({ checker: "route", version: "1", inputs });
+      rememberRun(response);
       state.checkerRuns.push(response);
       const injected = options.afterChecker?.(response, state);
       if (injected) {
         state.visible.push(injected);
-        state.currentRequirementsRevision = injected.ts;
+        dropTranscriptCache(thread);
+        // Harness self-check: the thread now serves the injected message.
+        const seen = await thread.getMessages();
+        assert.ok(seen.some((m) => m.text === injected.text), "injected message not visible after cache drop");
       }
       return response;
     },
   });
 }
 
-export function createPublishResultTool(state: ReplayState) {
+/** Wraps the real rc tool so the harness records the run too. */
+function recordingRunCheck(state: ReplayState, options: ReplayOptions) {
   return defineChannelTool({
-    name: "publish_result",
-    description:
-      "Publish a finding card bound to the requirements revision it was computed against. Refused when the thread has moved on; the refused card is kept as a stale record and you must rerun the checker against the current revision.",
-    parameters: finding,
-    async handler(card, { thread }): Promise<PublishOutcome> {
-      const checker = state.checkerRuns.find(
-        (run) => run.run_id === card.checker_run.run_id,
-      );
-      const decision = guardPublish(card, state.currentRequirementsRevision);
-      if (!decision.ok) {
-        state.records.push({ finding: markStale(card), checker });
-        return {
-          published: false,
-          reason: decision.reason,
-          finding_id: card.finding_id,
-          run_id: card.checker_run.run_id,
-          card_revision: decision.cardRevision,
-          current_revision: decision.currentRevision,
-          instruction:
-            "The thread's requirements changed after this checker run started. The run is recorded as stale. Read the thread again, rerun the checker against the current revision, and publish a card bound to it.",
-        };
+    name: runCheck.name,
+    description: runCheck.description,
+    parameters: runCheck.parameters,
+    async handler(args, ctx) {
+      const result = await runCheck.handler(args, ctx);
+      if (checkerResponseIsh.safeParse(result).success) {
+        const response = result as CheckerResponse;
+        state.checkerRuns.push(response);
+        const injected = options.afterChecker?.(response, state);
+        if (injected) {
+          state.visible.push(injected);
+          dropTranscriptCache(ctx.thread);
+        }
       }
-      const live: Finding = { ...card, status: "live" };
-      state.records.push({ finding: live, checker });
-      // TODO(integration owner): swap for <FindingCard> from ../components
-      // once it lands. Until then the card is the finding JSON in a Markdown
-      // block so the replay test can parse it back.
-      await thread.post(
-        <Message accent={live.discrepancy === "none" ? "#2E7D5B" : "#8A5C10"}>
-          <Header>{live.discrepancy === "none" ? "No discrepancy" : "Finding"}</Header>
-          <Section>
-            <Markdown>{JSON.stringify(live)}</Markdown>
-          </Section>
-          <Context>{`checker ${live.checker_run.checker} run ${live.checker_run.run_id}`}</Context>
-        </Message>,
-      );
-      return { published: true, finding_id: live.finding_id, revision: decision.revision };
+      return result;
     },
   });
+}
+
+/** A finding card as parsed back from the delivered Block Kit text. */
+export interface PostedCard {
+  kind: "create" | "replace";
+  text: string;
+  headline: string;
+  stale: boolean;
+  revision: string;
+  runId: string;
+  findingId: string;
+  supersedes?: string;
+  checker: string;
+  /** Per reproduced line: true "reproduces", false "does not reproduce", undefined when nothing was printed. */
+  matches: Array<boolean | undefined>;
+  question?: string;
 }
 
 export interface ReplayResult {
@@ -229,20 +220,39 @@ export interface ReplayResult {
   agentMessages: AbstractAgent["messages"];
   state: ReplayState;
   heldBack: FixtureMessage[];
-  /** Findings posted to the thread, parsed back out of the Slack payloads. */
-  postedCards: Finding[];
+  /** Cards posted to the thread, in order, parsed from the Slack payloads. */
+  postedCards: PostedCard[];
+  /** Cards updated in place (a superseded card marked stale). */
+  replacedCards: PostedCard[];
+  /** The thread state publish_result left behind. */
+  threadState: ReviewThreadState | undefined;
+}
+
+/** In-memory stand-in for Intelligence's durable KV, which `thread.state()` uses. */
+function withOfflineKv<T>(baseUrl: string, body: () => Promise<T>): Promise<T> {
+  const kv = new Map<string, unknown>();
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = (async (input: Parameters<typeof fetch>[0], init?: RequestInit) => {
+    const url = String(input instanceof Request ? input.url : input);
+    if (!url.startsWith(`${baseUrl}/api/channels/kv/`)) return realFetch(input, init);
+    const op = url.slice(url.lastIndexOf("/") + 1);
+    const { key, value } = JSON.parse(String(init?.body ?? "{}")) as { key: string; value?: unknown };
+    if (op === "set") kv.set(key, value);
+    if (op === "delete") kv.delete(key);
+    const got = kv.get(key);
+    if (op === "consume") kv.delete(key);
+    return Response.json({ value: got === undefined ? null : got });
+  }) as typeof fetch;
+  return body().finally(() => {
+    globalThis.fetch = realFetch;
+  });
 }
 
 export async function runReplay(options: ReplayOptions): Promise<ReplayResult> {
   const split = splitAtCutoff(options.messages, options.cutoff);
   const trigger = split.visible.find((m) => m.role === "trigger");
   assert.ok(trigger, "fixture must contain a trigger message at or before the cutoff");
-  const state: ReplayState = {
-    currentRequirementsRevision: split.cutoff,
-    visible: [...split.visible],
-    records: [],
-    checkerRuns: [],
-  };
+  const state: ReplayState = { visible: [...split.visible], checkerRuns: [] };
   const gateway = new ManagedGateway();
   const channel = createChannel({
     name: "support",
@@ -251,83 +261,105 @@ export async function runReplay(options: ReplayOptions): Promise<ReplayResult> {
     agent: () => new ScriptedReviewer(options.steps),
     tools: [
       readThread,
-      createRunCheckerTool(state, options),
-      createPublishResultTool(state),
+      readEvidence,
+      recordingRunCheck(state, options),
+      publishResult,
+      createRouteCheckTool(state, options),
     ],
   });
   let failure: unknown;
+  let threadState: ReviewThreadState | undefined;
   channel.onMessage(async ({ thread }) => {
     try {
       await thread.runAgent();
+      threadState = (await thread.state()) as ReviewThreadState | undefined;
     } catch (error) {
       failure = error;
       throw error;
     }
   });
   let agentMessages: AbstractAgent["messages"] = [];
-  const handle = await startChannelsWithGatewayControl([channel], {
-    session: gateway,
-    scope: { projectId: 1, channelName: "support" },
-    runtimeInstanceId: "rti_replay",
-    loadHistory: async () => [],
-    appApiBaseUrl: "https://api.example",
-    apiKey: "cpk-offline-test",
-    appApiFetch: async (input) => {
-      if (String(input).endsWith("/charge")) return Response.json({ charged: true });
-      assert.ok(String(input).endsWith("/transcript"), `Unexpected request: ${input}`);
-      return Response.json(toTranscript(state.visible, trigger.ts));
-    },
-    runCanonical: async (args) => {
-      const result = await args.execute({}, { threadId: args.threadId, runId: args.runId });
-      agentMessages = args.agent.messages;
-      return result;
-    },
+  const appApiBaseUrl = "https://api.example";
+  return withOfflineKv(appApiBaseUrl, async () => {
+    const handle = await startChannelsWithGatewayControl([channel], {
+      session: gateway,
+      scope: { projectId: 1, channelName: "support" },
+      runtimeInstanceId: "rti_replay",
+      loadHistory: async () => [],
+      appApiBaseUrl,
+      apiKey: "cpk-offline-test",
+      appApiFetch: async (input) => {
+        if (String(input).endsWith("/charge")) return Response.json({ charged: true });
+        assert.ok(String(input).endsWith("/transcript"), `Unexpected request: ${input}`);
+        return Response.json(toTranscript(state.visible, trigger.ts));
+      },
+      runCanonical: async (args) => {
+        const result = await args.execute({}, { threadId: args.threadId, runId: args.runId });
+        agentMessages = args.agent.messages;
+        return result;
+      },
+    });
+    try {
+      await gateway.deliver(
+        preparedDelivery("replay_fixture", "slack", { kind: "text", text: trigger.text }),
+      );
+      const payloads = gateway.packets.map(({ payload }) => payload as Record<string, unknown>);
+      return {
+        gateway,
+        payloads,
+        failure,
+        agentMessages,
+        state,
+        heldBack: split.heldBack,
+        postedCards: parseCards(payloads, "slack.message.create"),
+        replacedCards: parseCards(payloads, "slack.message.replace"),
+        threadState,
+      };
+    } finally {
+      await handle.stop();
+    }
   });
-  try {
-    await gateway.deliver(
-      preparedDelivery("replay_fixture", "slack", { kind: "text", text: trigger.text }),
-    );
-    const payloads = gateway.packets.map(({ payload }) => payload as Record<string, unknown>);
-    return {
-      gateway,
-      payloads,
-      failure,
-      agentMessages,
-      state,
-      heldBack: split.heldBack,
-      postedCards: postedFindings(payloads),
-    };
-  } finally {
-    await handle.stop();
-  }
 }
 
-/** Walk every string in the Slack payloads and parse back any finding JSON. */
-export function postedFindings(payloads: unknown[]): Finding[] {
-  const found: Finding[] = [];
-  const visit = (value: unknown) => {
-    if (typeof value === "string") {
-      if (!value.includes('"finding_id"')) return;
-      const start = value.indexOf("{");
-      const end = value.lastIndexOf("}");
-      if (start < 0 || end <= start) return;
-      const text = value
-        .slice(start, end + 1)
-        .replace(/&amp;/g, "&")
-        .replace(/&lt;/g, "<")
-        .replace(/&gt;/g, ">");
-      try {
-        found.push(finding.parse(JSON.parse(text)));
-      } catch {
-        // not a finding
-      }
-      return;
-    }
-    if (Array.isArray(value)) value.forEach(visit);
-    else if (value && typeof value === "object") Object.values(value).forEach(visit);
-  };
+function stringsIn(value: unknown, out: string[] = []): string[] {
+  if (typeof value === "string") out.push(value);
+  else if (Array.isArray(value)) value.forEach((v) => stringsIn(v, out));
+  else if (value && typeof value === "object") Object.values(value).forEach((v) => stringsIn(v, out));
+  return out;
+}
+
+/** Parse the finding cards out of delivered Block Kit payloads of one kind. */
+export function parseCards(payloads: unknown[], kind: "slack.message.create" | "slack.message.replace"): PostedCard[] {
+  const cards: PostedCard[] = [];
   for (const payload of payloads) {
-    if ((payload as { kind?: string }).kind === "slack.message.create") visit(payload);
+    const p = payload as { kind?: string; blocks?: unknown };
+    if (p.kind !== kind || !p.blocks) continue;
+    const text = stringsIn(p.blocks).join("\n");
+    const tail = /(\S+) v(\S+) · run (\S+) · (\S+)(?: · supersedes (\S+))?/.exec(text);
+    if (!tail) continue;
+    const revision = /Bound to revision\*?\s*\n?\s*(\S+)/.exec(text)?.[1];
+    assert.ok(revision, `card without a bound revision: ${text}`);
+    const headline = /Review check: [^\n]+|Superseded finding/.exec(text)?.[0] ?? "";
+    const matches: Array<boolean | undefined> = [];
+    for (const line of text.match(/^• .*$/gm) ?? []) {
+      if (/does not reproduce\)/.test(line)) matches.push(false);
+      else if (/, reproduces\)/.test(line)) matches.push(true);
+      else if (/^• t_99\.9|^• fraction|^• energy|^• budget/.test(line)) matches.push(undefined);
+    }
+    cards.push({
+      kind: kind === "slack.message.create" ? "create" : "replace",
+      text,
+      headline,
+      stale: /Superseded finding/.test(text),
+      revision,
+      checker: tail[1]!,
+      runId: tail[3]!,
+      findingId: tail[4]!,
+      supersedes: tail[5],
+      matches,
+      // The Slack renderer emits emphasis as _x_ or *x*; accept either.
+      question: /[*_]Question for ([^*_\n]+)[*_]/.exec(text)?.[1],
+    });
   }
-  return found;
+  return cards;
 }
