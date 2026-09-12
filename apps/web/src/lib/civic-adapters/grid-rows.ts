@@ -30,7 +30,7 @@ export function cardKindOf(f: Finding): CardKind {
 }
 
 /** 0 fails → 1 (Minor), 1 → 3 (Moderate), 2 → 4 (High), 3+ or a run error → 5. */
-function severityFromChecks(fails: number, errored: boolean): number {
+export function severityFromChecks(fails: number, errored: boolean): number {
   if (errored || fails >= 3) return 5;
   return [1, 3, 4][fails] ?? 5;
 }
@@ -38,7 +38,7 @@ function severityFromChecks(fails: number, errored: boolean): number {
 // Chromatic teams only — "all" and "general_admin" are the neutral pair.
 const CHROMATIC: TeamId[] = TEAM_LIST.filter((t) => t.id !== "all" && t.id !== "general_admin").map((t) => t.id);
 
-function teamForChannel(channel: string): TeamId {
+export function teamForChannel(channel: string): TeamId {
   let h = 0;
   for (const ch of channel) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
   return CHROMATIC[h % CHROMATIC.length] ?? "general_admin";

@@ -6,9 +6,9 @@
  * versioned inputs vs rc2 cases), so nothing here keys on checker name: the
  * value's shape decides the table.
  */
-import type { ReactNode } from "react";
+import Link from "next/link";
 import type { EvidenceEvent } from "agent-core/shared";
-import { StatusPill } from "@/civic-ui/components/StatusPill";
+import { LINK_CLASS, hrefs } from "@/lib/demo/links";
 
 export type Rec = Record<string, unknown>;
 export type Check = Extract<EvidenceEvent, { kind: "check_run" }>["checks"][number];
@@ -21,7 +21,6 @@ export const asArr = (v: unknown): unknown[] => (Array.isArray(v) ? v : []);
 export const asChecks = (v: unknown): Check[] =>
   asArr(v).filter((c): c is Check => isRec(c) && typeof c.name === "string" && typeof c.pass === "boolean");
 
-const isRecOfRecs = (v: unknown): v is Record<string, Rec> => isRec(v) && Object.keys(v).length > 0 && Object.values(v).every(isRec);
 const isArrOfRecs = (v: unknown): v is Rec[] => Array.isArray(v) && v.length > 0 && v.every(isRec);
 
 export function fmtVal(v: unknown): string {
@@ -33,93 +32,66 @@ export function fmtVal(v: unknown): string {
   return JSON.stringify(v);
 }
 
-const TH = "h-8 whitespace-nowrap px-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.07em] text-faint";
-const TD = "px-2.5 py-1.5 align-top text-[12.5px] text-foreground";
-const TD_NUM = `${TD} font-mono text-[12px] tabular-nums`;
-
-function Table({ head, rows, caption }: { head: ReactNode[]; rows: ReactNode[][]; caption?: string }) {
-  return (
-    <div className="overflow-x-auto rounded-[var(--radius-md)] border border-hairline">
-      {caption && (
-        <p className="border-b border-hairline bg-overlay px-2.5 py-1 font-mono text-[10.5px] uppercase tracking-[0.1em] text-faint">{caption}</p>
-      )}
-      <table className="w-full min-w-max border-collapse">
-        <thead>
-          <tr className="border-b border-hairline">
-            {head.map((h, i) => (
-              <th key={i} scope="col" className={TH}>{h}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r, i) => (
-            <tr key={i} className="border-b border-hairline last:border-0">
-              {r.map((c, j) => (
-                <td key={j} className={j === 0 ? `${TD} font-medium` : TD_NUM}>{c}</td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
+/** One level of nesting is flattened into dotted keys; deeper values print as JSON. */
+function flatten(rec: Rec, prefix = ""): [string, string][] {
+  return Object.entries(rec).flatMap(([k, v]): [string, string][] => {
+    const key = prefix ? `${prefix}.${k}` : k;
+    if (isRec(v)) return flatten(v, key);
+    // One line per record, so a list of cases does not explode into a row per field.
+    if (isArrOfRecs(v)) return v.map((r, i): [string, string] => [`${key}[${i}]`, Object.entries(r).map(([rk, rv]) => `${rk} ${fmtVal(rv)}`).join(" · ")]);
+    return [[key, fmtVal(v)]];
+  });
 }
 
-/** Rows = keys, columns = union of inner keys. */
-function RecOfRecsTable({ rec, caption, rowHeader }: { rec: Record<string, Rec>; caption?: string; rowHeader: string }) {
-  const cols = [...new Set(Object.values(rec).flatMap((r) => Object.keys(r)))];
-  return (
-    <Table
-      caption={caption}
-      head={[rowHeader, ...cols]}
-      rows={Object.entries(rec).map(([k, r]) => [k, ...cols.map((c) => fmtVal(r[c]))])}
-    />
-  );
-}
-
-function ArrOfRecsTable({ arr, caption }: { arr: Rec[]; caption?: string }) {
-  const cols = [...new Set(arr.flatMap((r) => Object.keys(r)))];
-  const labelFirst = cols.includes("label") ? ["label", ...cols.filter((c) => c !== "label")] : cols;
-  return <Table caption={caption} head={labelFirst} rows={arr.map((r) => labelFirst.map((c) => fmtVal(r[c])))} />;
-}
-
-/**
- * Renders any record. Keys whose values are flat records are grouped into one
- * table; a record-of-records or an array of records gets its own captioned
- * table; everything else lands in a key/value table.
- */
+/** Flat two-column key/value list. Nested records become dotted keys; no nested cards. */
 export function KvTable({ data, emptyMessage = "Nothing recorded." }: { data: Rec | undefined; emptyMessage?: string }) {
-  if (!data || Object.keys(data).length === 0) return <p className="text-[12.5px] text-faint">{emptyMessage}</p>;
-  const scalars: [string, unknown][] = [];
-  const flatRecs: Record<string, Rec> = {};
-  const blocks: ReactNode[] = [];
-  for (const [k, v] of Object.entries(data)) {
-    if (isRecOfRecs(v)) blocks.push(<RecOfRecsTable key={k} rec={v} caption={k} rowHeader="label" />);
-    else if (isArrOfRecs(v)) blocks.push(<ArrOfRecsTable key={k} arr={v} caption={k} />);
-    else if (isRec(v)) flatRecs[k] = v;
-    else scalars.push([k, v]);
-  }
+  const rows = data ? flatten(data) : [];
+  if (rows.length === 0) return <p className="text-[12px] text-faint">{emptyMessage}</p>;
   return (
-    <div className="flex flex-col gap-3">
-      {scalars.length > 0 && <Table head={["key", "value"]} rows={scalars.map(([k, v]) => [k, fmtVal(v)])} />}
-      {Object.keys(flatRecs).length > 0 && <RecOfRecsTable rec={flatRecs} rowHeader="label" />}
-      {blocks}
-    </div>
+    <dl className="flex flex-col">
+      {rows.map(([k, v]) => (
+        <div key={k} className="flex items-baseline justify-between gap-3 border-b border-hairline py-1 last:border-0">
+          <dt className="min-w-0 shrink-0 max-w-[55%] truncate font-mono text-[11px] uppercase tracking-[0.06em] text-faint" title={k}>
+            {k}
+          </dt>
+          <dd className="min-w-0 truncate font-mono text-[12px] tabular-nums text-foreground" title={v}>
+            {v}
+          </dd>
+        </div>
+      ))}
+    </dl>
   );
 }
 
+/** Checks as one row each: pass/fail dot, truncated name, actual / expected. */
 export function ChecksTable({ checks }: { checks: Check[] }) {
-  if (checks.length === 0) return <p className="text-[12.5px] text-faint">No checks.</p>;
+  if (checks.length === 0) return <p className="text-[12px] text-faint">No checks.</p>;
   return (
-    <Table
-      head={["check", "result", "expected", "actual"]}
-      rows={checks.map((c) => [
-        <span key="n" className="font-mono text-[12px] font-normal">{c.name}</span>,
-        <StatusPill key="p" tone={c.pass ? "success" : "danger"}>{c.pass ? "pass" : "fail"}</StatusPill>,
-        fmtVal(c.expected),
-        fmtVal(c.actual),
-      ])}
-    />
+    <table className="w-full table-fixed border-collapse">
+      <tbody>
+        {checks.map((c, i) => (
+          <tr key={`${c.name}|${i}`} className="border-b border-hairline last:border-0">
+            <td className="w-4 py-1.5 align-middle">
+              <span
+                aria-label={c.pass ? "pass" : "fail"}
+                title={c.pass ? "pass" : "fail"}
+                className="inline-block size-1.5 rounded-full"
+                style={{ background: c.pass ? "var(--color-success)" : "var(--color-danger)" }}
+              />
+            </td>
+            <td className="truncate py-1.5 pr-2 font-mono text-[12px] text-foreground" title={c.name}>
+              {c.name}
+            </td>
+            <td
+              className="w-[40%] truncate py-1.5 text-right font-mono text-[11px] tabular-nums text-subtle"
+              title={`actual ${fmtVal(c.actual)} · expected ${fmtVal(c.expected)}`}
+            >
+              {fmtVal(c.actual)} <span className="text-faint">/ {fmtVal(c.expected)}</span>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }
 
@@ -157,7 +129,7 @@ export function asRefs(v: unknown): EvidenceRefLike[] {
   });
 }
 
-/** Evidence refs as chips: document → sha12, message → ts. */
+/** Evidence refs as chips: document → sha12, message → ts. Without onPick each chip deep-links to its page. */
 export function RefChips({ refs, onPick }: { refs: EvidenceRefLike[]; onPick?: (id: string) => void }) {
   if (refs.length === 0) return <p className="text-[12.5px] text-faint">No evidence refs.</p>;
   const cls = "inline-flex items-center gap-1.5 rounded-[var(--radius-sm)] border border-hairline bg-overlay px-2 py-0.5 font-mono text-[11px] text-foreground";
@@ -174,7 +146,9 @@ export function RefChips({ refs, onPick }: { refs: EvidenceRefLike[]; onPick?: (
         return onPick ? (
           <button key={key} type="button" onClick={() => onPick(r.id)} className={`${cls} hover:border-hairline-strong`}>{body}</button>
         ) : (
-          <span key={key} className={cls}>{body}</span>
+          <Link key={key} href={r.kind === "document" ? hrefs.document(r.id) : hrefs.thread(r.id)} className={`${cls} ${LINK_CLASS} hover:border-hairline-strong`}>
+            {body}
+          </Link>
         );
       })}
     </div>

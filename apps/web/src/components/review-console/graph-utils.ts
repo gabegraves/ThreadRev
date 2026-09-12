@@ -28,7 +28,7 @@ export function fmtTime(ts: string): string {
   const d = tsToDate(ts);
   return Number.isNaN(d.getTime())
     ? ts
-    : d.toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+    : d.toLocaleString("en-US", { timeZone: "America/New_York",  month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
 export function findingById(graph: EvidenceGraph, id: string): Finding | undefined {

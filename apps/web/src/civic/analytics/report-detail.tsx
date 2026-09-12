@@ -59,7 +59,7 @@ function formatDays(n: number): string {
 
 function absoluteDate(iso: string): string {
   const d = new Date(iso);
-  return d.toLocaleString(undefined, {
+  return d.toLocaleString("en-US", { timeZone: "America/New_York", 
     month: "short",
     day: "numeric",
     hour: "numeric",

@@ -4,7 +4,8 @@
  */
 import type { EvidenceEvent, EvidenceGraph } from "agent-core/shared";
 import type { StatusTone } from "@/civic-ui/lib/status";
-import { STATUS_TONE } from "@/lib/demo/status";
+import { hrefs } from "@/lib/demo/links";
+import { STATUS_TONE, cardKind } from "@/lib/demo/status";
 import { threadMessages } from "@/components/review-console/graph-utils";
 
 export type EventKind = EvidenceEvent["kind"];
@@ -99,12 +100,44 @@ export function messagesPerEngineer(events: EvidenceEvent[]): { from: string; co
 }
 
 /** Findings by current state (graph carries post-supersession status) plus refused runs. */
-export function findingStates(graph: EvidenceGraph, events: EvidenceEvent[]): { live: number; stale: number; refused: number } {
+export function findingStates(graph: EvidenceGraph, events: EvidenceEvent[]): { live: number; stale: number; needsDecision: number; refused: number } {
   return {
     live: graph.findings.filter((f) => f.status === "live").length,
     stale: graph.findings.filter((f) => f.status === "stale").length,
+    needsDecision: graph.findings.filter((f) => f.status === "live" && cardKind(f) === "question").length,
     refused: events.filter((e) => e.kind === "publish_refused").length,
   };
+}
+
+/** ISO time a card went live: the finding_published event that carries it. */
+export function publishedAt(events: EvidenceEvent[], findingId: string): string | undefined {
+  return events.find((e) => e.kind === "finding_published" && e.finding.finding_id === findingId)?.at;
+}
+
+/** Deep link for the entity an event row is about; null when there is none (silence). */
+export function eventHref(ev: EvidenceEvent): string | null {
+  switch (ev.kind) {
+    case "message_read":
+      return hrefs.thread(ev.ts);
+    case "document_read":
+      return hrefs.document(ev.sha256);
+    case "check_run":
+    case "publish_refused":
+      return hrefs.run(ev.run_id);
+    case "finding_published":
+      return hrefs.finding(ev.finding.finding_id);
+    case "finding_superseded":
+      return hrefs.finding(ev.finding_id);
+    case "workspace_search":
+      return "/workspace";
+    case "edit_proposed":
+      return hrefs.run(ev.run_id);
+    case "edit_decided":
+    case "edit_applied":
+      return "/runs";
+    case "silence":
+      return null;
+  }
 }
 
 /** Findings are in publish order, latest last; the newest live card leads. */
@@ -118,7 +151,7 @@ export function pct(n: number, d: number): string {
 
 export function fmtAt(iso: string): string {
   const d = new Date(iso);
-  return Number.isNaN(d.getTime()) ? iso : d.toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+  return Number.isNaN(d.getTime()) ? iso : d.toLocaleString("en-US", { timeZone: "America/New_York",  month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 }
 
 /** One-line subject for an event row: who or what it touched. */

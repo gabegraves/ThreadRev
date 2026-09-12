@@ -24,6 +24,10 @@ export type DocRow = {
   named_by?: string;
   /** True when at least one document_read event carries this sha. */
   read: boolean;
+  /** `at` of the first document_read event for this sha. */
+  read_at?: string;
+  /** `from` of the message that triggered that first read (the reviewer's run). */
+  reader?: string;
   /** Distinct reviewer runs (trigger_ts) that read it. */
   run_count: number;
   citations: DocCitation[];
@@ -51,6 +55,8 @@ export function buildDocumentRows(events: EvidenceEvent[], graph: EvidenceGraph)
       named_in_ts: ev.named_in_ts,
       named_by: ev.named_in_ts ? fromByTs.get(ev.named_in_ts) : undefined,
       read: true,
+      read_at: ev.at,
+      reader: ev.trigger_ts ? fromByTs.get(ev.trigger_ts) : undefined,
       run_count: 0,
       citations: [],
       run_refs: [],

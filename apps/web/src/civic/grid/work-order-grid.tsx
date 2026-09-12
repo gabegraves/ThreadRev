@@ -625,7 +625,7 @@ function LabelPillCell({
 
 const dateFmt = (p: ValueFormatterParams<GridReportRow, string>) =>
   p.value
-    ? new Date(p.value).toLocaleDateString("en-US", {
+    ? new Date(p.value).toLocaleDateString("en-US", { timeZone: "America/New_York", 
         month: "short",
         day: "numeric",
         hour: "2-digit",

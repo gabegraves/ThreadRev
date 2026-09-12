@@ -15,11 +15,11 @@ function counts(s: DemoScenario) {
   return { findings, runs };
 }
 
-/** All demo scenarios as selectable cards; counts derive from each scenario's own events. */
-export function ScenarioGrid() {
+/** All demo scenarios as selectable cards; counts derive from each scenario's own events. `compact` drops the summary and tightens the grid. */
+export function ScenarioGrid({ compact = false }: { compact?: boolean }) {
   const active = useScenarioId();
   return (
-    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+    <div className={cn("grid gap-3 sm:grid-cols-2", compact ? "lg:grid-cols-3 xl:grid-cols-6" : "xl:grid-cols-3")}>
       {SCENARIOS.map((s) => {
         const c = counts(s);
         const selected = s.id === active;
@@ -30,7 +30,8 @@ export function ScenarioGrid() {
             onClick={() => setScenario(s.id)}
             aria-pressed={selected}
             className={cn(
-              "flex flex-col gap-2 rounded-[var(--radius-lg)] border bg-surface p-4 text-left shadow-[var(--shadow-card)] transition-colors",
+              "flex flex-col gap-2 rounded-[var(--radius-lg)] border bg-surface text-left shadow-[var(--shadow-card)] transition-colors",
+              compact ? "p-3" : "p-4",
               "hover:border-hairline-strong focus-visible:outline-2 focus-visible:outline-accent",
               selected ? "border-hairline-strong bg-accent-soft" : "border-hairline",
             )}
@@ -39,8 +40,8 @@ export function ScenarioGrid() {
               <p className="font-mono text-[10.5px] font-medium uppercase tracking-[0.12em] text-faint">{s.channel}</p>
               <Badge>{s.kind}</Badge>
             </div>
-            <h3 className="text-[13.5px] font-semibold leading-snug text-foreground">{s.title}</h3>
-            <p className="line-clamp-3 text-[12.5px] leading-relaxed text-subtle">{s.summary}</p>
+            <h3 className={cn("font-semibold leading-snug text-foreground", compact ? "line-clamp-2 text-[12.5px]" : "text-[13.5px]")}>{s.title}</h3>
+            {!compact && <p className="line-clamp-3 text-[12.5px] leading-relaxed text-subtle">{s.summary}</p>}
             <p className="mt-auto pt-1 font-mono text-[11px] tabular-nums text-faint">
               {c.findings} finding{c.findings === 1 ? "" : "s"} · {c.runs} run{c.runs === 1 ? "" : "s"} · {s.events.length} events
             </p>
