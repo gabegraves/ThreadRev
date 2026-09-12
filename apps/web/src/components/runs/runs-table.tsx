@@ -1,9 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo } from "react";
 import type { EvidenceEvent } from "agent-core/shared";
 import { DataTable, type Column } from "@/civic-ui/components/DataTable";
 import { StatusPill } from "@/civic-ui/components/StatusPill";
+import { LINK_CLASS, hrefs } from "@/lib/demo/links";
 import { CheckBar, checkSummary } from "./kv-table";
 
 export type CheckRunEvent = Extract<EvidenceEvent, { kind: "check_run" }>;
@@ -33,19 +35,63 @@ export function Outcome({ row }: { row: RunRow }) {
   return (
     <span className="inline-flex flex-wrap gap-1">
       {row.published.map((id) => (
-        <StatusPill key={id} tone="success">published · <span className="font-mono">{id}</span></StatusPill>
+        <StatusPill key={id} tone="success">
+          published ·{" "}
+          <Link href={hrefs.finding(id)} onClick={(e) => e.stopPropagation()} className={`font-mono ${LINK_CLASS}`}>
+            {id}
+          </Link>
+        </StatusPill>
       ))}
       {row.refused && <StatusPill tone="danger">refused</StatusPill>}
     </span>
   );
 }
 
-export function RunsTable({ rows, selected, onSelect }: { rows: RunRow[]; selected: string | null; onSelect: (id: string) => void }) {
+export const LINK = "font-mono text-[12px] text-accent-text underline-offset-2 hover:underline";
+
+/** Table cell: what the run produced, readable without opening the detail. */
+function Result({ row }: { row: RunRow }) {
+  if (row.refused) {
+    return (
+      <span className="block max-w-[44ch] truncate text-[var(--status-danger-fg)]" title={row.refused.reason}>
+        refused: {row.refused.reason}
+      </span>
+    );
+  }
+  if (row.published.length === 0) return <span className="text-faint">—</span>;
+  return (
+    <span className="inline-flex flex-wrap gap-x-2">
+      {row.published.map((id) => (
+        <span key={id}>
+          published{" "}
+          <Link href={`/findings?id=${encodeURIComponent(id)}`} onClick={(e) => e.stopPropagation()} className={LINK}>
+            {id}
+          </Link>
+        </span>
+      ))}
+    </span>
+  );
+}
+
+export function RunsTable({ rows, selected, onSelect, loading }: { rows: RunRow[]; selected: string | null; onSelect: (id: string) => void; loading?: boolean }) {
   const columns = useMemo<Column<RunRow>[]>(
     () => [
       { key: "run_id", header: "run id", mono: true, cell: (r) => r.run.run_id },
       { key: "checker", header: "checker", cell: (r) => <span>{r.run.checker} <span className="font-mono text-[11px] text-faint">v{r.run.version}</span></span> },
-      { key: "trigger", header: "trigger", cell: (r) => <span>{r.triggerFrom} <span className="font-mono text-[11px] text-faint">{r.run.trigger_ts ?? ""}</span></span> },
+      {
+        key: "trigger",
+        header: "trigger",
+        cell: (r) => (
+          <span>
+            {r.triggerFrom}{" "}
+            {r.run.trigger_ts && (
+              <Link href={hrefs.thread(r.run.trigger_ts)} onClick={(e) => e.stopPropagation()} className={`font-mono text-[11px] ${LINK_CLASS}`}>
+                {r.run.trigger_ts}
+              </Link>
+            )}
+          </span>
+        ),
+      },
       {
         key: "checks",
         header: "checks",
@@ -55,7 +101,7 @@ export function RunsTable({ rows, selected, onSelect }: { rows: RunRow[]; select
         },
       },
       { key: "error", header: "error", cell: (r) => (r.run.error ? <span className="text-[var(--status-danger-fg)]">{r.run.error}</span> : <span className="text-faint">—</span>) },
-      { key: "outcome", header: "outcome", cell: (r) => <Outcome row={r} /> },
+      { key: "result", header: "result", cell: (r) => <Result row={r} /> },
     ],
     [],
   );
@@ -66,6 +112,8 @@ export function RunsTable({ rows, selected, onSelect }: { rows: RunRow[]; select
       getRowId={(r) => r.run.run_id}
       focusedId={selected}
       onRowClick={(r) => onSelect(r.run.run_id)}
+      loading={loading}
+      loadingRows={4}
       emptyMessage="No checker runs in this log."
     />
   );

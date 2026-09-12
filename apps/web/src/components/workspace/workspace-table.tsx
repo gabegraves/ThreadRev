@@ -72,7 +72,6 @@ const BASE: Column<WorkspaceRow>[] = [
         </span>
       ),
   },
-  { key: "change", header: "Change", cell: (r) => (r.is_change ? <StatusPill tone="info">change</StatusPill> : <span className="text-faint">—</span>) },
 ];
 
 const MARK: Column<WorkspaceRow> = { key: "search", header: "Reviewer's search", cell: (r) => (r.mark ? <MarkPill mark={r.mark} /> : <span className="text-faint">—</span>) };
@@ -97,7 +96,7 @@ export function WorkspaceTable({
       onRowClick={onSelect}
       focusedId={selectedTs}
       emptyMessage="No indexed message matches every set field. The reviewer would have seen nothing."
-      className="min-w-0 self-start"
+      className="min-w-0 self-start rounded-t-none"
     />
   );
 }

@@ -5,10 +5,18 @@
  * stale→live "What changed" diff when the card supersedes another, and the
  * finding_superseded / publish_refused events that touch it.
  */
+import Link from "next/link";
 import type { EvidenceEvent, EvidenceGraph, Finding } from "agent-core/shared";
 import { cn } from "@/civic-ui/lib/cn";
 import { findingById, fmtTime } from "@/components/review-console/graph-utils";
+import { LINK_CLASS, hrefs } from "@/lib/demo/links";
 import { FindingCard, fmt } from "./finding-card";
+
+const Id = ({ href, children }: { href: string; children: string }) => (
+  <Link href={href} className={cn("font-mono normal-case tracking-normal", LINK_CLASS)}>
+    {children}
+  </Link>
+);
 
 type DiffRow = { label: string; before: string; after: string };
 
@@ -34,7 +42,7 @@ function WhatChanged({ before, after }: { before: Finding; after: Finding }) {
   return (
     <section className="flex flex-col gap-2">
       <SectionTitle>
-        What changed · <code className="font-mono normal-case tracking-normal">{before.finding_id}</code> → <code className="font-mono normal-case tracking-normal">{after.finding_id}</code>
+        What changed · <Id href={hrefs.finding(before.finding_id)}>{before.finding_id}</Id> → <Id href={hrefs.finding(after.finding_id)}>{after.finding_id}</Id>
       </SectionTitle>
       <div className="overflow-x-auto rounded-[var(--radius-md)] border border-hairline">
         <table className="w-full min-w-[420px] border-collapse text-[12px]">
@@ -81,11 +89,11 @@ function historyOf(f: Finding, events: EvidenceEvent[]): HistoryItem[] {
         at: ev.at,
         text: (
           <>
-            Marked stale, superseded by <code className="font-mono text-foreground">{ev.superseded_by}</code>
+            Marked stale, superseded by <Id href={hrefs.finding(ev.superseded_by)}>{ev.superseded_by}</Id>
             {ev.cause_ts && (
               <>
                 {" "}
-                · cause <code className="font-mono text-foreground">{ev.cause_ts}</code> ({fmtTime(ev.cause_ts)})
+                · cause <Id href={hrefs.thread(ev.cause_ts)}>{ev.cause_ts}</Id> ({fmtTime(ev.cause_ts)})
               </>
             )}
           </>
@@ -97,8 +105,8 @@ function historyOf(f: Finding, events: EvidenceEvent[]): HistoryItem[] {
         at: ev.at,
         text: (
           <>
-            Publish refused for run <code className="font-mono text-foreground">{ev.run_id}</code>: bound{" "}
-            <code className="font-mono text-foreground">{ev.bound_revision}</code> vs current <code className="font-mono text-foreground">{ev.current_revision}</code>
+            Publish refused for run <Id href={hrefs.run(ev.run_id)}>{ev.run_id}</Id>: bound{" "}
+            <Id href={hrefs.thread(ev.bound_revision)}>{ev.bound_revision}</Id> vs current <Id href={hrefs.thread(ev.current_revision)}>{ev.current_revision}</Id>
             {ev.reason && <> · {ev.reason}</>}
           </>
         ),
@@ -111,9 +119,10 @@ function historyOf(f: Finding, events: EvidenceEvent[]): HistoryItem[] {
 export function FindingDetail({ finding, graph, events }: { finding: Finding; graph: EvidenceGraph; events: EvidenceEvent[] }) {
   const before = finding.supersedes ? findingById(graph, finding.supersedes) : undefined;
   const history = historyOf(finding, events);
+  const graphNodeIds = new Set(graph.nodes.map((n) => n.id));
   return (
     <div className="flex flex-col gap-5">
-      <FindingCard finding={finding} />
+      <FindingCard finding={finding} graphNodeIds={graphNodeIds} />
       {before && <WhatChanged before={before} after={finding} />}
       {history.length > 0 && (
         <section className="flex flex-col gap-2">

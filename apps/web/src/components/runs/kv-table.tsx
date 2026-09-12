@@ -6,9 +6,11 @@
  * versioned inputs vs rc2 cases), so nothing here keys on checker name: the
  * value's shape decides the table.
  */
+import Link from "next/link";
 import type { ReactNode } from "react";
 import type { EvidenceEvent } from "agent-core/shared";
 import { StatusPill } from "@/civic-ui/components/StatusPill";
+import { LINK_CLASS, hrefs } from "@/lib/demo/links";
 
 export type Rec = Record<string, unknown>;
 export type Check = Extract<EvidenceEvent, { kind: "check_run" }>["checks"][number];
@@ -157,7 +159,7 @@ export function asRefs(v: unknown): EvidenceRefLike[] {
   });
 }
 
-/** Evidence refs as chips: document → sha12, message → ts. */
+/** Evidence refs as chips: document → sha12, message → ts. Without onPick each chip deep-links to its page. */
 export function RefChips({ refs, onPick }: { refs: EvidenceRefLike[]; onPick?: (id: string) => void }) {
   if (refs.length === 0) return <p className="text-[12.5px] text-faint">No evidence refs.</p>;
   const cls = "inline-flex items-center gap-1.5 rounded-[var(--radius-sm)] border border-hairline bg-overlay px-2 py-0.5 font-mono text-[11px] text-foreground";
@@ -174,7 +176,9 @@ export function RefChips({ refs, onPick }: { refs: EvidenceRefLike[]; onPick?: (
         return onPick ? (
           <button key={key} type="button" onClick={() => onPick(r.id)} className={`${cls} hover:border-hairline-strong`}>{body}</button>
         ) : (
-          <span key={key} className={cls}>{body}</span>
+          <Link key={key} href={r.kind === "document" ? hrefs.document(r.id) : hrefs.thread(r.id)} className={`${cls} ${LINK_CLASS} hover:border-hairline-strong`}>
+            {body}
+          </Link>
         );
       })}
     </div>

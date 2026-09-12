@@ -9,9 +9,11 @@
  * `reproduced` and `inferred` are visually separate blocks: that split is the
  * product claim. Never compute or reformat a number beyond display precision.
  */
+import Link from "next/link";
 import type { Finding, ReproducedValue } from "agent-core/shared";
 import { StatusPill } from "@/civic-ui/components/StatusPill";
 import { cn } from "@/civic-ui/lib/cn";
+import { LINK_CLASS, hrefs } from "@/lib/demo/links";
 import { STATUS_LABEL, STATUS_TONE, cardKind } from "@/lib/demo/status";
 
 export type FindingCardProps = {
@@ -20,6 +22,8 @@ export type FindingCardProps = {
   compact?: boolean;
   /** Called when the reader wants the full card (Findings page detail). */
   onOpen?: (findingId: string) => void;
+  /** Node ids of the graph on screen; gates "Open in graph". Omitted = the card's own graph, where it is always a node. */
+  graphNodeIds?: Set<string>;
   className?: string;
 };
 
@@ -61,10 +65,11 @@ function ReproducedRow({ r }: { r: ReproducedValue }) {
   );
 }
 
-export function FindingCard({ finding: f, compact = false, onOpen, className }: FindingCardProps) {
+export function FindingCard({ finding: f, compact = false, onOpen, graphNodeIds, className }: FindingCardProps) {
   const kind = cardKind(f);
   const toneKey = kind === "finding" ? "live" : kind;
   const stale = f.status === "stale";
+  const inGraph = graphNodeIds ? graphNodeIds.has(f.finding_id) : true;
   return (
     <article
       aria-label="Reviewer finding"
@@ -76,12 +81,25 @@ export function FindingCard({ finding: f, compact = false, onOpen, className }: 
           <StatusPill tone={STATUS_TONE[toneKey]}>{STATUS_LABEL[toneKey]}</StatusPill>
           {!compact && <span className="text-[12px] font-medium text-subtle">{headline(f)}</span>}
         </div>
-        <code className="font-mono text-[11px] text-faint">{f.finding_id}</code>
+        <span className="inline-flex items-center gap-2 font-mono text-[11px]">
+          <Link href={hrefs.finding(f.finding_id)} className={cn("text-faint", LINK_CLASS)}>
+            {f.finding_id}
+          </Link>
+          {!compact && inGraph && (
+            <Link href={hrefs.graph(f.finding_id)} className={cn("font-sans", LINK_CLASS)}>
+              Open in graph
+            </Link>
+          )}
+        </span>
       </header>
 
       {stale && !compact && (
         <p className="mt-3 rounded-[var(--radius-md)] border border-hairline bg-overlay px-3 py-2 text-[12px] text-subtle">
-          This card was computed against revision <code className="font-mono">{f.requirements_revision}</code> and has been superseded. Kept for the record; do not act on it.
+          This card was computed against revision{" "}
+          <Link href={hrefs.thread(f.requirements_revision)} className={cn("font-mono", LINK_CLASS)}>
+            {f.requirements_revision}
+          </Link>{" "}
+          and has been superseded. Kept for the record; do not act on it.
         </p>
       )}
 
@@ -126,12 +144,22 @@ export function FindingCard({ finding: f, compact = false, onOpen, className }: 
                   <span className="rounded-[var(--radius-sm)] border border-hairline bg-overlay px-1.5 py-0.5 font-mono text-[10.5px] uppercase tracking-[0.08em] text-subtle">
                     {s.kind}
                   </span>
-                  <code className="font-mono text-foreground">{s.id}</code>
+                  {s.kind === "message" ? (
+                    <Link href={hrefs.thread(s.id)} className={cn("font-mono", LINK_CLASS)}>
+                      {s.id}
+                    </Link>
+                  ) : s.sha256 ? (
+                    <Link href={hrefs.document(s.sha256)} className={cn("font-mono", LINK_CLASS)}>
+                      {s.id}
+                    </Link>
+                  ) : (
+                    <code className="font-mono text-foreground">{s.id}</code>
+                  )}
                   {s.revision && <code className="font-mono text-subtle">{s.revision}</code>}
                   {s.sha256 && (
-                    <code className="font-mono text-faint" title={s.sha256}>
+                    <Link href={hrefs.document(s.sha256)} className={cn("font-mono text-faint", LINK_CLASS)} title={s.sha256}>
                       {s.sha256.slice(0, 12)}
-                    </code>
+                    </Link>
                   )}
                   {s.locator && <span className="text-subtle">· {s.locator}</span>}
                 </div>
@@ -159,7 +187,9 @@ export function FindingCard({ finding: f, compact = false, onOpen, className }: 
           </div>
           <div className="min-w-0">
             <MicroLabel>Bound to revision</MicroLabel>
-            <code className="mt-1 block break-all font-mono text-[12.5px] tabular-nums text-foreground">{f.requirements_revision}</code>
+            <Link href={hrefs.thread(f.requirements_revision)} className={cn("mt-1 block break-all font-mono text-[12.5px] tabular-nums", LINK_CLASS)}>
+              {f.requirements_revision}
+            </Link>
           </div>
         </section>
       )}
@@ -167,8 +197,23 @@ export function FindingCard({ finding: f, compact = false, onOpen, className }: 
       {!compact && (
         <footer className="mt-3 border-t border-hairline pt-2.5 font-mono text-[10.5px] leading-relaxed text-faint">
           <span>
-            {f.checker_run.checker} v{f.checker_run.version} · run {f.checker_run.run_id} · {f.finding_id}
-            {f.supersedes && <> · supersedes {f.supersedes}</>}
+            {f.checker_run.checker} v{f.checker_run.version} · run{" "}
+            <Link href={hrefs.run(f.checker_run.run_id)} className={LINK_CLASS}>
+              {f.checker_run.run_id}
+            </Link>{" "}
+            ·{" "}
+            <Link href={hrefs.finding(f.finding_id)} className={LINK_CLASS}>
+              {f.finding_id}
+            </Link>
+            {f.supersedes && (
+              <>
+                {" "}
+                · supersedes{" "}
+                <Link href={hrefs.finding(f.supersedes)} className={LINK_CLASS}>
+                  {f.supersedes}
+                </Link>
+              </>
+            )}
           </span>
           <span className="block">checks passed against stated inputs, not a design sign-off</span>
         </footer>
