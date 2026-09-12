@@ -1,68 +1,48 @@
 import { createChannel } from "@copilotkit/channels";
-import { isSearchConfigured, isWorkplaceConfigured, WORKPLACE_CONTEXT } from "agent-core";
 import { makeChannelAgent } from "./agent";
 import { required } from "./env";
-import { IncidentCard, Timeline, welcomeMessage } from "./components";
-import { proposeAction, readThread, searchTheWeb } from "./tools";
-
-// Tools are registered only when their credential is present, so the agent is
-// never handed a tool that will fail when it calls it.
-const tools = [
-  readThread,
-  proposeAction,
-  ...(isSearchConfigured() ? [searchTheWeb] : []),
-];
+import { reviewerWelcome } from "./finding-card";
+import { publishResult, readEvidence, readThread, runCheck } from "./reviewer-tools";
+import { isReviewMoment } from "./review-moment";
 
 export const channel = createChannel({
-  // Must equal the Channel Code in Intelligence, character for character. A
-  // mismatch leaves the Channel at "Waiting for runtime" and is validated at
-  // startup, not here.
+  // Must equal the Channel Code in Intelligence, character for character.
   name: required("CHANNEL_CODE"),
-
-  // Required. "platform" derives the canonical user from provider + workspace +
-  // platform user id. Do NOT move this onto CopilotRuntime — that one is for
-  // web requests and must be absent on a Channels-only runtime.
   identifyUser: "platform",
-
   agent: makeChannelAgent,
-  tools,
-  components: [IncidentCard, Timeline],
-
-  // Injected into the agent's prompt on every run.
+  tools: [readThread, readEvidence, runCheck, publishResult],
+  components: [],
   context: [
-    
-    {
-      description: "Rendering",
-      value:
-        "You can draw native UI by calling incident_card or timeline. Prefer them over prose whenever the answer has structure.",
-    },
-    ...(isWorkplaceConfigured()
-      ? [{ description: "Workplace", value: WORKPLACE_CONTEXT }]
-      : []),
     {
       description: "Surface",
       value:
-        "This is a chat thread in a channel people are actively working in. Assume others are reading and that some joined late.",
+        "This is a thread in an engineering team's Slack channel. Others are reading. You were not necessarily addressed; you are here because you read every message in channels you are invited to.",
+    },
+    {
+      description: "Silence",
+      value:
+        "If this message is not a review moment, or you find nothing worth a card, reply with exactly NO_FINDING and nothing else. That reply is suppressed and nobody sees it.",
     },
   ],
-
 });
 
-// A mention subscribes the conversation, so the agent then follows along instead
-// of needing to be @-mentioned every single turn.
+// An @-mention is always a review request.
 channel.onMention(async ({ thread }) => {
-  await thread.subscribe();
   await thread.runAgent();
 });
 
-// Non-mentioned turns only ever reach onMessage — gate them on the flag or the
-// agent will answer every message in every channel it has been invited to.
-channel.onMessage(async ({ thread }) => {
-  if (await thread.isSubscribed()) {
-    await thread.runAgent();
-  }
+// Every other message in an invited channel passes through the cheap gate
+// first. The model only runs on review moments; it can still decide NO_FINDING.
+channel.onMessage(async ({ thread, message }) => {
+  const moment = isReviewMoment({
+    text: message.text,
+    hasFiles: (message.contentParts?.length ?? 0) > 0,
+    isBot: message.actor.kind !== "human",
+  });
+  if (!moment) return;
+  await thread.runAgent();
 });
 
 channel.onWelcome(async ({ thread, platform }) => {
-  await thread.post(welcomeMessage(platform));
+  await thread.post(reviewerWelcome(platform));
 });

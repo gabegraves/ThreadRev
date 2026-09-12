@@ -1,0 +1,60 @@
+{
+  "checker": "route",
+  "version": "1",
+  "run_id": "route-20260912T153008Z-7983",
+  "inputs": {
+    "mass_kg": 318,
+    "Crr": 0.0048,
+    "CdA": 0.12,
+    "rho": 1.2,
+    "v_mps": 22,
+    "d_m": 220000,
+    "pack_kWh": 5.2,
+    "soc_start": 0.96,
+    "soc_end": 0.4,
+    "alternative_mass_kg": [
+      310
+    ]
+  },
+  "outputs": {
+    "budget_kWh": 2.912,
+    "primary": "mass_318kg",
+    "cases": {
+      "mass_318kg": {
+        "mass_kg": 318.0,
+        "rolling_N": 14.974,
+        "aero_N": 34.848,
+        "total_N": 49.822,
+        "energy_kWh": 3.0447,
+        "budget_kWh": 2.912,
+        "feasible": false,
+        "v_max_mps": 21.3037
+      },
+      "mass_310kg": {
+        "mass_kg": 310.0,
+        "rolling_N": 14.5973,
+        "aero_N": 34.848,
+        "total_N": 49.4453,
+        "energy_kWh": 3.0217,
+        "budget_kWh": 2.912,
+        "feasible": false,
+        "v_max_mps": 21.4261
+      }
+    }
+  },
+  "checks": [
+    {
+      "name": "mass_318kg_feasible",
+      "pass": false,
+      "expected": 2.912,
+      "actual": 3.0447
+    },
+    {
+      "name": "mass_310kg_feasible",
+      "pass": false,
+      "expected": 2.912,
+      "actual": 3.0217
+    }
+  ],
+  "error": null
+}

@@ -88,6 +88,10 @@ Outputs:
 }
 ```
 
+A `printed` entry may carry its own `tolerance_s`, which overrides the
+request-level `tolerance_s` for that entry only (RC1 prints 6.49 s to two
+decimals, so it is checked at 0.005 s).
+
 Checks, one per `(printed, against)` pair, named `<printed.label>_matches_<cap.label>`:
 
 | name | pass |
@@ -106,9 +110,48 @@ the checker's own tests. Print with at least 4 decimal places.
 ## Checker `route` (Scenario B, stretch)
 
 Model: `E_kWh = (m * g * Crr + 0.5 * rho * CdA * v^2) * d / 3.6e6` with
-`g = 9.81`, `rho = 1.20`. Inputs: `mass_kg`, `Crr`, `CdA`, `v_mps`, `d_m`,
-`pack_kWh`, `soc_start`, `soc_end`, optional list of alternative `mass_kg`
-values for RC2. Outputs per input set: rolling N, aero N, total N, energy kWh,
-budget kWh, `feasible`. Acceptance values are in
-`research/synthetic-fixture-spec.md`, Scenario B table (2.825 and 3.045 kWh
-against a 2.912 kWh budget).
+`g = 9.81`, `rho = 1.20` (both overridable). `budget_kWh = (soc_start - soc_end) * pack_kWh`.
+`feasible = E_kWh <= budget_kWh`. `v_max_mps` is the largest constant speed
+that fits the budget (bisection, 80 iterations).
+
+Inputs (`contracts/examples/checker-route-request.json`):
+
+```json
+{
+  "mass_kg": 318,
+  "Crr": 0.0048,
+  "CdA": 0.12,
+  "rho": 1.2,
+  "v_mps": 22,
+  "d_m": 220000,
+  "pack_kWh": 5.2,
+  "soc_start": 0.96,
+  "soc_end": 0.40,
+  "alternative_mass_kg": [310]
+}
+```
+
+`alternative_mass_kg` is optional. Each entry is evaluated as its own case in
+the same run, so RC2 gets both masses from one execution. Cases are keyed
+`mass_<m>kg`; `outputs.primary` names the case built from `mass_kg`.
+
+Outputs (`contracts/examples/checker-route-response.json`):
+
+```json
+{
+  "budget_kWh": 2.912,
+  "primary": "mass_318kg",
+  "cases": {
+    "mass_318kg": { "mass_kg": 318, "rolling_N": 14.974, "aero_N": 34.848, "total_N": 49.822, "energy_kWh": 3.0447, "budget_kWh": 2.912, "feasible": false, "v_max_mps": 21.3037 },
+    "mass_310kg": { "mass_kg": 310, "rolling_N": 14.5973, "aero_N": 34.848, "total_N": 49.4453, "energy_kWh": 3.0217, "budget_kWh": 2.912, "feasible": false, "v_max_mps": 21.4261 }
+  }
+}
+```
+
+One check per case named `<case>_feasible` with `pass = feasible`,
+`expected = budget_kWh`, `actual = energy_kWh`.
+
+Acceptance values are in `research/synthetic-fixture-spec.md`, Scenario B
+table: v2-0 (290 kg, Crr 0.0040) gives 2.8250 kWh, feasible at a 2.912 kWh
+budget; v2-1 (318 kg, Crr 0.0048) gives 3.0447 kWh, not feasible; at
+`soc_end = 0.35` the budget is 3.172 kWh and v2-1 is feasible.

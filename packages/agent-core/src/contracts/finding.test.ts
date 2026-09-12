@@ -39,6 +39,17 @@ test("checker request and response examples agree with the schemas", () => {
   assert.equal(byName["820uF_change_reaches_threshold_by_timer"], false);
 });
 
+test("route checker examples agree with the schemas and carry both RC2 masses", () => {
+  const req = checkerRequest.parse(load("checker-route-request.json"));
+  const res = checkerResponse.parse(load("checker-route-response.json"));
+  assert.equal(req.checker, "route");
+  assert.deepEqual(res.inputs, req.inputs);
+  assert.equal(res.error, null);
+  const byName = Object.fromEntries(res.checks.map((c) => [c.name, c.pass]));
+  assert.equal(byName["mass_318kg_feasible"], false);
+  assert.equal(byName["mass_310kg_feasible"], false);
+});
+
 test("a finding without sources is rejected", () => {
   const bad = { ...(load("finding-rc1-clean.json") as object), sources: [] };
   assert.throws(() => finding.parse(bad));

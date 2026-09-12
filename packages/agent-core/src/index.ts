@@ -13,3 +13,4 @@ export {
   WORKPLACE_CONTEXT,
 } from "./capabilities/workplace";
 export * from "./shared";
+export { REVIEWER_ROLE, REVIEWER_PROMPT } from "./reviewer-prompt";

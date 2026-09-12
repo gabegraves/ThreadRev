@@ -1,0 +1,16 @@
+{
+  "checker": "route",
+  "version": "1",
+  "inputs": {
+    "mass_kg": 318,
+    "Crr": 0.0048,
+    "CdA": 0.12,
+    "rho": 1.2,
+    "v_mps": 22,
+    "d_m": 220000,
+    "pack_kWh": 5.2,
+    "soc_start": 0.96,
+    "soc_end": 0.40,
+    "alternative_mass_kg": [310]
+  }
+}
