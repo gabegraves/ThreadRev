@@ -314,16 +314,18 @@ export function EvidenceGraphNetwork({ graph, selected, onSelect, noted }: Props
     nodeSel.call(
       d3
         .drag<SVGGElement, N>()
-        .on("start", (event, d) => {
-          if (!event.active) sim.alphaTarget(0.3).restart();
-          d.fx = d.x;
-          d.fy = d.y;
-        })
+        // A click must not disturb the layout: nothing is pinned and the
+        // simulation is not reheated until the pointer actually moves.
+        .clickDistance(4)
         .on("drag", (event, d) => {
+          if (d.fx == null) {
+            if (!event.active) sim.alphaTarget(0.3).restart();
+          }
           d.fx = event.x;
           d.fy = event.y;
         })
         .on("end", (event, d) => {
+          if (d.fx == null) return;
           if (!event.active) sim.alphaTarget(0);
           d.fx = null;
           d.fy = null;

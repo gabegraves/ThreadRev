@@ -162,10 +162,10 @@ function Connected({ graph, id, onPick }: { graph: EvidenceGraph; id: string; on
     });
   if (rows.length === 0) return <p className="text-[12px] text-faint">No edges.</p>;
   return (
-    <ul className="flex flex-col gap-1">
+    <ul className="grid grid-cols-[128px_1fr] gap-x-4 gap-y-1.5">
       {rows.map((r) => (
-        <li key={r.key} className="flex items-baseline gap-2">
-          <span className={`w-[11ch] shrink-0 ${LABEL}`}>{r.kind}</span>
+        <li key={r.key} className="contents">
+          <span className={`min-w-0 truncate ${LABEL}`}>{r.kind.replace(/_/g, " ")}</span>
           <button type="button" onClick={() => onPick(r.other)} className="min-w-0 truncate text-left text-[13px] leading-relaxed text-foreground hover:underline">
             {r.label}
           </button>
