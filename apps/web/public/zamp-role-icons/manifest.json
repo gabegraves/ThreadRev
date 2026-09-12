@@ -1,0 +1,20 @@
+{
+  "source": "https://www.zamp.ai/",
+  "roles": {
+    "Accountant": "agent_1_v2.svg",
+    "Developer": "agent_2_v2.svg",
+    "GTM Associate": "agent_3.svg",
+    "Recruiter": "agent_4.svg",
+    "Financial Analyst": "agent_5_v2.svg",
+    "Legal Associate": "agent_6_v2.svg",
+    "Customer Success Manager": "agent_7.svg",
+    "Support Specialist": "agent_8_v2.svg",
+    "Data Analyst": "agent_9.svg",
+    "Procurement Analyst": "agent_10.svg",
+    "Compliance Analyst": "agent_2_v2.svg",
+    "Marketing Manager": "agent_5_v2.svg",
+    "Revenue Operations Analyst": "agent_4.svg",
+    "Supply Chain Analyst": "agent_8_v2.svg",
+    "Risk Analyst": "agent.svg"
+  }
+}
