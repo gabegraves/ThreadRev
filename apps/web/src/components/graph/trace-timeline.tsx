@@ -15,6 +15,7 @@ const KIND_LABEL: Record<EvidenceEvent["kind"], string> = {
   finding_superseded: "superseded",
   publish_refused: "refused",
   silence: "silence",
+  workspace_search: "workspace search",
 };
 
 const Mono = ({ children }: { children: ReactNode }) => <span className="font-mono text-[11.5px] tabular-nums text-foreground">{children}</span>;
@@ -110,6 +111,22 @@ function Body({ ev, onPick }: { ev: EvidenceEvent; onPick: (id: string) => void 
           <StatusPill tone="neutral">{ev.reason.replace("_", " ")}</StatusPill>
           <span className="text-faint">{ev.reason === "gate_closed" ? "reviewer not addressed; nothing posted" : "reviewer ran, found nothing to say"}</span>
         </p>
+      );
+    case "workspace_search":
+      return (
+        <div className="text-[12.5px]">
+          <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <span className="text-foreground">
+              {ev.returned} of {ev.total} hits returned
+            </span>
+            {ev.cutoff && <span className="text-faint">· cutoff at {fmtTime(ev.cutoff)}</span>}
+          </p>
+          <p className="mt-1 font-mono text-[11px] text-subtle">
+            {Object.entries(ev.query)
+              .map(([k, v]) => `${k}=${String(v)}`)
+              .join(" · ")}
+          </p>
+        </div>
       );
   }
 }

@@ -17,9 +17,10 @@ export const KIND_LABEL: Record<EventKind, string> = {
   finding_superseded: "finding superseded",
   publish_refused: "publish refused",
   silence: "silence",
+  workspace_search: "workspace search",
 };
 
-export const KIND_ORDER: EventKind[] = ["message_read", "document_read", "check_run", "finding_published", "finding_superseded", "publish_refused", "silence"];
+export const KIND_ORDER: EventKind[] = ["message_read", "workspace_search", "document_read", "check_run", "finding_published", "finding_superseded", "publish_refused", "silence"];
 
 /** Event kind → state tone. Hue is state only. */
 export function kindTone(kind: EventKind): StatusTone {
@@ -134,6 +135,8 @@ export function eventSubject(ev: EvidenceEvent): string {
       return `${ev.run_id} · ${ev.reason}`;
     case "silence":
       return ev.reason;
+    case "workspace_search":
+      return `${ev.returned}/${ev.total} hits · ${Object.entries(ev.query).map(([k, v]) => `${k}=${String(v)}`).join(", ")}`;
   }
 }
 
