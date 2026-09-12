@@ -1,0 +1,46 @@
+{
+  "finding_id": "fnd-b-35-002",
+  "status": "live",
+  "supersedes": "fnd-b-40-001",
+  "requirements_revision": "1786474920.000900",
+  "discrepancy": "With end SoC 35 percent the budget is 3.172 kWh. At 22 m/s over 220 km, v2-1 gives 3.045 kWh and v2-0 gives 2.825 kWh, so the segment is feasible under both input files and the conclusion no longer flips. The request still names the July 3 sheet; v2-1 remains the inputs Milo named for anything after July 24.",
+  "why_it_matters": "The 40 percent card said 22 m/s did not fit under v2-1. That is no longer true at 35 percent, with 0.127 kWh of margin. The max constant speed under v2-1 rises from 21.30 to 22.65 m/s. The input-version choice still changes the margin by 0.22 kWh, so the run stays bound to v2-1.",
+  "sources": [
+    {
+      "kind": "message",
+      "id": "1786474920.000900",
+      "quote": "Race director allows end SoC 35% for this segment now, not 40%."
+    },
+    {
+      "kind": "message",
+      "id": "1786472100.000800",
+      "quote": "Northgate to Ferris segment (220 km, no optional loop), start SoC 96%"
+    },
+    {
+      "kind": "message",
+      "id": "1784929680.000300",
+      "quote": "Use v2-1 for anything after today."
+    },
+    {
+      "kind": "document",
+      "id": "ks4-sim-inputs-v2-1.xlsx",
+      "revision": "v2-1",
+      "sha256": "8e2419c7620047d5b80fa273828bd062fecbe50bd3404aed39dd2301d07e6ab4",
+      "locator": "sheet params, rows 2 to 5",
+      "quote": "mass_kg 318, Crr 0.0048, CdA 0.12, pack_kWh 5.2"
+    }
+  ],
+  "reproduced": [
+    { "label": "budget, SoC 96 to 35 percent", "computed": 3.172, "unit": "kWh" },
+    { "label": "energy at 22 m/s, v2-1 inputs", "computed": 3.0447, "unit": "kWh" },
+    { "label": "max feasible speed, v2-1 inputs", "computed": 22.6481, "unit": "m/s" },
+    { "label": "energy at 22 m/s, v2-0 inputs (run route-20260912T161102Z-c40d)", "computed": 2.825, "unit": "kWh" },
+    { "label": "max feasible speed, v2-0 inputs (run route-20260912T161102Z-c40d)", "computed": 23.7247, "unit": "m/s" }
+  ],
+  "inferred": [
+    "Start SoC 96 percent, 220 km, no optional loop, and two 20-minute swaps are carried from the 13:15 request because the 14:02 message changed only the end SoC.",
+    "Array input is assumed zero."
+  ],
+  "resolution": "Run is feasible at 22 m/s under v2-1 with the 35 percent end SoC. Juno should still confirm v2-1 so the posted margin is the one the team plans against.",
+  "checker_run": { "checker": "route", "version": "1", "run_id": "route-20260912T161102Z-51cc" }
+}

@@ -21,13 +21,31 @@ export const fixtureMessage = z.object({
   text: z.string(),
   files: z.array(z.string()).default([]),
   role: z.enum(["seed", "trigger", "change", "evaluator_only"]),
+  /**
+   * Slack `message_changed`: this entry is an edit of the message with that
+   * ts. The transcript keeps the original's logicalMessageId and gives the
+   * edit its own revisionId, the way Intelligence reports an edited message.
+   */
+  edit_of: z.string().regex(/^\d+\.\d{6}$/).optional(),
 });
 export type FixtureMessage = z.infer<typeof fixtureMessage>;
 
-const fixtureFile = z.union([
-  z.array(fixtureMessage),
-  z.object({ messages: z.array(fixtureMessage) }).transform((f) => f.messages),
-]);
+const fixtureFile = z
+  .union([
+    z.array(fixtureMessage),
+    z.object({ messages: z.array(fixtureMessage) }).transform((f) => f.messages),
+  ])
+  .superRefine((messages, ctx) => {
+    const known = new Set(messages.map((m) => m.ts));
+    for (const m of messages) {
+      if (m.edit_of && !known.has(m.edit_of)) {
+        ctx.addIssue({ code: "custom", message: `edit_of ${m.edit_of} names a ts that is not in the fixture (message ${m.ts})` });
+      }
+      if (m.edit_of && compareTs(m.edit_of, m.ts) >= 0) {
+        ctx.addIssue({ code: "custom", message: `edit_of ${m.edit_of} must be earlier than the edit's own ts ${m.ts}` });
+      }
+    }
+  });
 
 export const FIXTURES_DIR = join(import.meta.dirname, "../../../../fixtures");
 
@@ -85,12 +103,32 @@ export function tsToIso(ts: string): string {
   return new Date(millis).toISOString();
 }
 
-/** The channels-intelligence transcript payload for a set of messages. */
+/**
+ * The channels-intelligence transcript payload for a set of messages.
+ *
+ * An edit (`edit_of`) is emitted as a revision of the original: same
+ * logicalMessageId, new revisionId, new occurredAt. Both entries stay in the
+ * transcript in ts order, which is how a thread reads after `message_changed`:
+ * the original is still there and the edit is the latest revision of it.
+ * Chained edits (an edit of an edit) resolve to the root message.
+ */
 export function toTranscript(messages: FixtureMessage[], triggerTs?: string) {
   const trigger = triggerTs ?? messages.find((m) => m.role === "trigger")?.ts;
+  const byTs = new Map(messages.map((m) => [m.ts, m]));
+  const rootOf = (m: FixtureMessage): string => {
+    let cur = m;
+    const seen = new Set<string>();
+    while (cur.edit_of && !seen.has(cur.ts)) {
+      seen.add(cur.ts);
+      const parent = byTs.get(cur.edit_of);
+      if (!parent) return cur.edit_of;
+      cur = parent;
+    }
+    return cur.ts;
+  };
   return {
     messages: messages.map((m) => ({
-      logicalMessageId: providerMessageId(m.ts),
+      logicalMessageId: providerMessageId(rootOf(m)),
       revisionId: providerMessageId(m.ts),
       occurredAt: tsToIso(m.ts),
       role: "participant" as const,

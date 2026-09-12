@@ -1,0 +1,58 @@
+{
+  "finding_id": "fnd-b-40-001",
+  "status": "live",
+  "requirements_revision": "1786472100.000800",
+  "discrepancy": "The request takes its parameters from the July 3 sheet (v2-0: 290 kg, Crr 0.0040). Milo's July 24 message names v2-1 (318 kg, Crr 0.0048) as the inputs for anything after that date, and Ines confirmed the 318 kg corner weights. At 22 m/s over 220 km with a 96 to 40 percent SoC budget of 2.912 kWh, v2-0 gives 2.825 kWh (feasible) and v2-1 gives 3.045 kWh (not feasible). The conclusion flips between the two input files.",
+  "why_it_matters": "A feasibility answer posted from v2-0 would be wrong by 0.22 kWh, about 4 percent of the pack. Under v2-1 the largest constant speed that fits the budget is 21.30 m/s, not 22.",
+  "sources": [
+    {
+      "kind": "message",
+      "id": "1786472100.000800",
+      "quote": "I grabbed the params from the July 3 sheet."
+    },
+    {
+      "kind": "message",
+      "id": "1784929680.000300",
+      "quote": "v2-1 has the post-suspension values (318 kg, Crr 0.0048). Use v2-1 for anything after today."
+    },
+    {
+      "kind": "message",
+      "id": "1784930520.000400",
+      "quote": "Confirmed, corner weights from Tuesday add up to 318 with driver."
+    },
+    {
+      "kind": "document",
+      "id": "ks4-sim-inputs-v2-0.xlsx",
+      "revision": "v2-0",
+      "sha256": "90b83e645932f0b9a8cc447d3ce86ac30398948d702474016a7e172723cb230f",
+      "locator": "sheet params, rows 2 to 5",
+      "quote": "mass_kg 290, Crr 0.0040, CdA 0.12, pack_kWh 5.2"
+    },
+    {
+      "kind": "document",
+      "id": "ks4-sim-inputs-v2-1.xlsx",
+      "revision": "v2-1",
+      "sha256": "8e2419c7620047d5b80fa273828bd062fecbe50bd3404aed39dd2301d07e6ab4",
+      "locator": "sheet params, rows 2 to 5, and cell A8",
+      "quote": "mass_kg 318, Crr 0.0048, CdA 0.12, pack_kWh 5.2. A8: mass and Crr updated after KS-4 suspension swap, see #ks4-suspension 2026-07-22."
+    }
+  ],
+  "reproduced": [
+    { "label": "budget, SoC 96 to 40 percent", "computed": 2.912, "unit": "kWh" },
+    { "label": "energy at 22 m/s, v2-0 inputs (run route-20260912T161102Z-0665)", "computed": 2.825, "unit": "kWh" },
+    { "label": "energy at 22 m/s, v2-1 inputs", "computed": 3.0447, "unit": "kWh" },
+    { "label": "max feasible speed, v2-0 inputs (run route-20260912T161102Z-0665)", "computed": 22.4448, "unit": "m/s" },
+    { "label": "max feasible speed, v2-1 inputs", "computed": 21.3037, "unit": "m/s" }
+  ],
+  "inferred": [
+    "The optional loop is excluded and the two 20-minute swaps are the full swap budget, both taken from the request text as written.",
+    "Array input is assumed zero. The model is constant-speed rolling plus aero only.",
+    "Driving time at 22 m/s is 2.778 h, plus 40 min of swaps gives 3.44 h wall time. Not recomputed by the checker."
+  ],
+  "resolution": "Juno confirms the run should use v2-1, or Milo states v2-0 is intentionally being used for a KS-3 comparison. The v2-1 result above is posted but the run is blocked on that confirmation, not final.",
+  "question": {
+    "to": "Juno Marsh",
+    "ask": "Should this run use v2-1 (July 24, 318 kg, Crr 0.0048) instead of the July 3 sheet? Milo's July 24 message supersedes v2-0 for anything after that date."
+  },
+  "checker_run": { "checker": "route", "version": "1", "run_id": "route-20260912T161102Z-de45" }
+}

@@ -1,0 +1,277 @@
+{
+  "case": "rc2-conflict",
+  "run": 1,
+  "mode": "scripted",
+  "model": null,
+  "trigger_ts": "1786472100.000800",
+  "current_revision": "1786472100.000800",
+  "tool_calls": [
+    {
+      "name": "read_thread",
+      "args": {},
+      "result": [
+        {
+          "ts": "2026-07-03T15:20:00.000Z",
+          "from": "Milo Trent",
+          "bot": false,
+          "text": "Sim inputs v2-0 posted for the summer runs.",
+          "files": [
+            "ks4-sim-inputs-v2-0.xlsx"
+          ]
+        },
+        {
+          "ts": "2026-07-24T21:48:00.000Z",
+          "from": "Milo Trent",
+          "bot": false,
+          "text": "Found why last week's numbers looked optimistic: we were still on KS-3 mass and Crr.\nv2-1 has the post-suspension values (318 kg, Crr 0.0048). Use v2-1 for anything after today.",
+          "files": [
+            "ks4-sim-inputs-v2-1.xlsx"
+          ]
+        },
+        {
+          "ts": "2026-07-24T22:02:00.000Z",
+          "from": "Ines Calder",
+          "bot": false,
+          "text": "Confirmed, corner weights from Tuesday add up to 318 with driver.",
+          "files": []
+        },
+        {
+          "ts": "2026-07-30T16:00:00.001Z",
+          "from": "Milo Trent",
+          "bot": false,
+          "text": "v2-1 mass may be 8 kg high, the ballast was on the scale. Re-weigh pending.",
+          "files": []
+        },
+        {
+          "ts": "2026-08-11T18:15:00.000Z",
+          "from": "Juno Marsh",
+          "bot": false,
+          "text": "@reviewer run the Northgate to Ferris segment (220 km, no optional loop), start SoC 96%, end SoC 40%, two 20-minute driver swaps, 22 m/s constant. I grabbed the params from the July 3 sheet.",
+          "files": []
+        }
+      ]
+    },
+    {
+      "name": "run_route_check",
+      "args": {
+        "inputs": {
+          "mass_kg": 318,
+          "Crr": 0.0048,
+          "CdA": 0.12,
+          "v_mps": 22,
+          "d_m": 220000,
+          "pack_kWh": 5.2,
+          "soc_start": 0.96,
+          "soc_end": 0.4,
+          "alternative_mass_kg": [
+            310
+          ]
+        }
+      },
+      "result": {
+        "checker": "route",
+        "version": "1",
+        "run_id": "route-20260912T162200Z-2354",
+        "inputs": {
+          "mass_kg": 318,
+          "Crr": 0.0048,
+          "CdA": 0.12,
+          "v_mps": 22,
+          "d_m": 220000,
+          "pack_kWh": 5.2,
+          "soc_start": 0.96,
+          "soc_end": 0.4,
+          "alternative_mass_kg": [
+            310
+          ]
+        },
+        "outputs": {
+          "budget_kWh": 2.912,
+          "primary": "mass_318kg",
+          "cases": {
+            "mass_318kg": {
+              "mass_kg": 318,
+              "rolling_N": 14.974,
+              "aero_N": 34.848,
+              "total_N": 49.822,
+              "energy_kWh": 3.0447,
+              "budget_kWh": 2.912,
+              "feasible": false,
+              "v_max_mps": 21.3037
+            },
+            "mass_310kg": {
+              "mass_kg": 310,
+              "rolling_N": 14.5973,
+              "aero_N": 34.848,
+              "total_N": 49.4453,
+              "energy_kWh": 3.0217,
+              "budget_kWh": 2.912,
+              "feasible": false,
+              "v_max_mps": 21.4261
+            }
+          }
+        },
+        "checks": [
+          {
+            "name": "mass_318kg_feasible",
+            "pass": false,
+            "expected": 2.912,
+            "actual": 3.0447
+          },
+          {
+            "name": "mass_310kg_feasible",
+            "pass": false,
+            "expected": 2.912,
+            "actual": 3.0217
+          }
+        ],
+        "error": null
+      }
+    },
+    {
+      "name": "publish_result",
+      "args": {
+        "run_id": "route-20260912T162200Z-2354",
+        "requirements_revision": "1786472100.000800",
+        "discrepancy": "Request names the July 3 sheet (v2-0). v2-1 (July 24) supersedes it per Milo and Ines. v2-1 mass is unresolved: 318 kg on the sheet, possibly 310 kg after the ballast correction, re-weigh pending. At 22 m/s the segment is not feasible at end SoC 40 percent under either mass.",
+        "why_it_matters": "Feasibility at 22 m/s is not met at 318 kg or 310 kg against the 2.912 kWh budget. The 8 kg question does not change the conclusion but the run cannot be labeled final until the mass is settled.",
+        "sources": [
+          {
+            "kind": "message",
+            "id": "1784929680.000300",
+            "quote": "Use v2-1 for anything after today."
+          },
+          {
+            "kind": "message",
+            "id": "1785427200.001000",
+            "quote": "v2-1 mass may be 8 kg high, the ballast was on the scale. Re-weigh pending."
+          }
+        ],
+        "inferred": [
+          "Array input assumed zero.",
+          "Optional loop excluded and two 20 minute swaps taken from the request text."
+        ],
+        "resolution": "Milo posts the re-weigh result. The run is blocked on that confirmation.",
+        "question": {
+          "to": "Milo Trent",
+          "ask": "Is the v2-1 mass 318 kg or 310 kg? The re-weigh was pending on July 30 and nothing later resolves it."
+        }
+      },
+      "result": {
+        "published": true,
+        "finding_id": "fnd-mtylf0kp-m5br",
+        "requirements_revision": "1786472100.000800"
+      }
+    }
+  ],
+  "checker_runs": [
+    {
+      "checker": "route",
+      "version": "1",
+      "run_id": "route-20260912T162200Z-2354",
+      "inputs": {
+        "mass_kg": 318,
+        "Crr": 0.0048,
+        "CdA": 0.12,
+        "v_mps": 22,
+        "d_m": 220000,
+        "pack_kWh": 5.2,
+        "soc_start": 0.96,
+        "soc_end": 0.4,
+        "alternative_mass_kg": [
+          310
+        ]
+      },
+      "outputs": {
+        "budget_kWh": 2.912,
+        "primary": "mass_318kg",
+        "cases": {
+          "mass_318kg": {
+            "mass_kg": 318,
+            "rolling_N": 14.974,
+            "aero_N": 34.848,
+            "total_N": 49.822,
+            "energy_kWh": 3.0447,
+            "budget_kWh": 2.912,
+            "feasible": false,
+            "v_max_mps": 21.3037
+          },
+          "mass_310kg": {
+            "mass_kg": 310,
+            "rolling_N": 14.5973,
+            "aero_N": 34.848,
+            "total_N": 49.4453,
+            "energy_kWh": 3.0217,
+            "budget_kWh": 2.912,
+            "feasible": false,
+            "v_max_mps": 21.4261
+          }
+        }
+      },
+      "checks": [
+        {
+          "name": "mass_318kg_feasible",
+          "pass": false,
+          "expected": 2.912,
+          "actual": 3.0447
+        },
+        {
+          "name": "mass_310kg_feasible",
+          "pass": false,
+          "expected": 2.912,
+          "actual": 3.0217
+        }
+      ],
+      "error": null
+    }
+  ],
+  "posted_cards": [
+    {
+      "finding_id": "fnd-mtylf0kp-m5br",
+      "status": "live",
+      "requirements_revision": "1786472100.000800",
+      "discrepancy": "Request names the July 3 sheet (v2-0). v2-1 (July 24) supersedes it per Milo and Ines. v2-1 mass is unresolved: 318 kg on the sheet, possibly 310 kg after the ballast correction, re-weigh pending. At 22 m/s the segment is not feasible at end SoC 40 percent under either mass.",
+      "why_it_matters": "Feasibility at 22 m/s is not met at 318 kg or 310 kg against the 2.912 kWh budget. The 8 kg question does not change the conclusion but the run cannot be labeled final until the mass is settled.",
+      "sources": [
+        {
+          "kind": "message",
+          "id": "1784929680.000300",
+          "quote": "Use v2-1 for anything after today."
+        },
+        {
+          "kind": "message",
+          "id": "1785427200.001000",
+          "quote": "v2-1 mass may be 8 kg high, the ballast was on the scale. Re-weigh pending."
+        }
+      ],
+      "reproduced": [
+        {
+          "label": "energy at mass 318kg (budget 2.912)",
+          "computed": 3.0447,
+          "unit": "kWh"
+        },
+        {
+          "label": "energy at mass 310kg (budget 2.912)",
+          "computed": 3.0217,
+          "unit": "kWh"
+        }
+      ],
+      "inferred": [
+        "Array input assumed zero.",
+        "Optional loop excluded and two 20 minute swaps taken from the request text."
+      ],
+      "resolution": "Milo posts the re-weigh result. The run is blocked on that confirmation.",
+      "question": {
+        "to": "Milo Trent",
+        "ask": "Is the v2-1 mass 318 kg or 310 kg? The re-weigh was pending on July 30 and nothing later resolves it."
+      },
+      "checker_run": {
+        "checker": "route",
+        "version": "1",
+        "run_id": "route-20260912T162200Z-2354"
+      }
+    }
+  ],
+  "replaced_cards": [],
+  "failure": null
+}

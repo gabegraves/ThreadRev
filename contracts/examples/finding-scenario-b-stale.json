@@ -1,0 +1,36 @@
+{
+  "finding_id": "fnd-b-40-001",
+  "status": "stale",
+  "requirements_revision": "1786472100.000800",
+  "discrepancy": "The request takes its parameters from the July 3 sheet (v2-0: 290 kg, Crr 0.0040). Milo's July 24 message names v2-1 (318 kg, Crr 0.0048) as the inputs for anything after that date, and Ines confirmed the 318 kg corner weights. At 22 m/s over 220 km with a 96 to 40 percent SoC budget of 2.912 kWh, v2-0 gives 2.825 kWh (feasible) and v2-1 gives 3.045 kWh (not feasible). The conclusion flips between the two input files.",
+  "why_it_matters": "Stale: the end SoC requirement changed at 1786474920.000900 (Milo, 35 percent). This card was computed against the 40 percent budget and is kept for the record. See fnd-b-35-002.",
+  "sources": [
+    {
+      "kind": "message",
+      "id": "1786472100.000800",
+      "quote": "start SoC 96%, end SoC 40%, two 20-minute driver swaps, 22 m/s constant. I grabbed the params from the July 3 sheet."
+    },
+    {
+      "kind": "message",
+      "id": "1784929680.000300",
+      "quote": "Use v2-1 for anything after today."
+    },
+    {
+      "kind": "document",
+      "id": "ks4-sim-inputs-v2-1.xlsx",
+      "revision": "v2-1",
+      "sha256": "8e2419c7620047d5b80fa273828bd062fecbe50bd3404aed39dd2301d07e6ab4",
+      "locator": "sheet params, rows 2 to 5"
+    }
+  ],
+  "reproduced": [
+    { "label": "budget, SoC 96 to 40 percent", "computed": 2.912, "unit": "kWh" },
+    { "label": "energy at 22 m/s, v2-0 inputs (run route-20260912T161102Z-0665)", "computed": 2.825, "unit": "kWh" },
+    { "label": "energy at 22 m/s, v2-1 inputs", "computed": 3.0447, "unit": "kWh" }
+  ],
+  "inferred": [
+    "Array input is assumed zero. Optional loop excluded and two 20-minute swaps taken from the request text."
+  ],
+  "resolution": "Superseded by fnd-b-35-002, which is bound to the 35 percent requirement.",
+  "checker_run": { "checker": "route", "version": "1", "run_id": "route-20260912T161102Z-de45" }
+}

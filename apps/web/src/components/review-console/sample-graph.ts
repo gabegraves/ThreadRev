@@ -1,9 +1,10 @@
 /**
- * Inline sample graph. Delete this file once /api/evidence exists; the hook
- * falls back to it only while the route is missing. Events are a verbatim copy
- * of contracts/examples/evidence-log.jsonl.
+ * Fallback events for when GET /api/evidence is unavailable. Verbatim copy of
+ * contracts/examples/evidence-log.jsonl; the graph is built with agent-core's
+ * buildEvidenceGraph so the fallback and the API agree. Delete once the route
+ * is reliable.
  */
-import type { EvidenceEvent, EvidenceGraph, Finding, GraphEdge, GraphNode } from "agent-core/shared";
+import type { EvidenceEvent } from "agent-core/shared";
 
 export const SAMPLE_EVENTS: EvidenceEvent[] = [
   {"event_id": "ev-sample-0001", "at": "2026-08-19T18:05:10.000Z", "thread": "1787062320.000100", "trigger_ts": "1787166300.000300", "kind": "message_read", "ts": "1787062320.000100", "is_bot": false, "text": "Precharge board r2 review doc is up. Dropped one film cap, bus is now 680 uF.", "is_change": true, "from": "Dara Voss"},
@@ -19,72 +20,6 @@ export const SAMPLE_EVENTS: EvidenceEvent[] = [
   {"event_id": "ev-sample-0011", "at": "2026-08-19T19:30:15.000Z", "thread": "1787062320.000100", "trigger_ts": "1787171400.000400", "kind": "document_read", "document": "precharge-review-r2.docx", "revision": "r2", "sha256": "bef5a5dc15a5e31fbaaceb77e8150767f421e55c86e5c14db33f3b54eefbd282", "line_count": 13, "named_in_ts": "1787062320.000100"},
   {"event_id": "ev-sample-0012", "at": "2026-08-19T19:30:17.000Z", "thread": "1787062320.000100", "trigger_ts": "1787171400.000400", "kind": "check_run", "run_id": "rc-20260912T153100Z-b21c", "checker": "rc", "version": "1", "inputs": {"R_ohm": 470, "threshold": 0.999, "timer_s": 2.5, "capacitances": [{"label": "680uF_text", "C_F": 0.00068}, {"label": "750uF_diagram", "C_F": 0.00075}, {"label": "820uF_change", "C_F": 0.00082}, {"label": "2mF_example", "C_F": 0.002}], "printed": [{"label": "printed_2.435", "value_s": 2.435, "against": ["680uF_text", "750uF_diagram"]}, {"label": "printed_6.91", "value_s": 6.91, "against": ["2mF_example"]}], "tolerance_s": 0.0005}, "outputs": {"per_capacitance": {"680uF_text": {"RC_s": 0.3196, "t_threshold_s": 2.2077, "fraction_at_timer": 0.9996}, "750uF_diagram": {"RC_s": 0.3525, "t_threshold_s": 2.435, "fraction_at_timer": 0.99917}, "820uF_change": {"RC_s": 0.3854, "t_threshold_s": 2.6622, "fraction_at_timer": 0.99848}, "2mF_example": {"RC_s": 0.94, "t_threshold_s": 6.4933, "fraction_at_timer": 0.93002}}}, "checks": [{"name": "820uF_change_reaches_threshold_by_timer", "pass": false, "expected": 0.999, "actual": 0.99848}], "error": null, "evidence_refs": [{"kind": "document", "id": "bef5a5dc15a5e31fbaaceb77e8150767f421e55c86e5c14db33f3b54eefbd282"}, {"kind": "message", "id": "1787171400.000400"}]},
   {"event_id": "ev-sample-0013", "at": "2026-08-19T19:30:19.000Z", "thread": "1787062320.000100", "trigger_ts": "1787171400.000400", "kind": "finding_superseded", "finding_id": "fnd-a-r2-001", "superseded_by": "fnd-a-820-002", "cause_ts": "1787171400.000400"},
-  {"event_id": "ev-sample-0014", "at": "2026-08-19T19:30:20.000Z", "thread": "1787062320.000100", "trigger_ts": "1787171400.000400", "kind": "finding_published", "finding": {"finding_id": "fnd-a-820-002", "status": "live", "supersedes": "fnd-a-r2-001", "requirements_revision": "1787171400.000200", "discrepancy": "Relay close timer 2.5 s is earlier than t_99.9 = 2.662 s at 820 uF. Bus reaches 99.85 percent at 2.5 s, short of the 99.9 percent criterion.", "why_it_matters": "With the 140 uF snubber bank the precharge does not meet its own completion criterion before the relay closes. Firmware timer or resistor value must change before r3 is signed.", "sources": [{"kind": "message", "id": "1787171400.000200", "quote": "Bus is 820 uF, not 680. Doc will be r3."}, {"kind": "document", "id": "precharge-review-r2.docx", "revision": "r2", "sha256": "bef5a5dc15a5e31fbaaceb77e8150767f421e55c86e5c14db33f3b54eefbd282", "locator": "section 1", "quote": "Precharge resistor R = 470 ohm, 10 W."}], "reproduced": [{"label": "t_99.9 at 820 uF", "computed": 2.6622, "unit": "s"}, {"label": "fraction charged at 2.5 s, 820 uF", "computed": 0.99848, "unit": "ratio"}], "inferred": ["R = 470 ohm is carried from r2 because r3 does not exist yet; this card is bound to the message, not a document."], "resolution": "Raise the relay close timer above 2.662 s, or lower R, and publish r3 with the new C and printed result.", "checker_run": {"checker": "rc", "version": "1", "run_id": "rc-20260912T153100Z-b21c"}}, "message_ref": "pref_sample_card_2"},
+  {"event_id": "ev-sample-0014", "at": "2026-08-19T19:30:20.000Z", "thread": "1787062320.000100", "trigger_ts": "1787171400.000400", "kind": "finding_published", "finding": {"finding_id": "fnd-a-820-002", "status": "live", "supersedes": "fnd-a-r2-001", "requirements_revision": "1787171400.000400", "discrepancy": "Relay close timer 2.5 s is earlier than t_99.9 = 2.662 s at 820 uF. Bus reaches 99.85 percent at 2.5 s, short of the 99.9 percent criterion.", "why_it_matters": "With the 140 uF snubber bank the precharge does not meet its own completion criterion before the relay closes. Firmware timer or resistor value must change before r3 is signed.", "sources": [{"kind": "message", "id": "1787171400.000400", "quote": "Bus is 820 uF, not 680. Doc will be r3."}, {"kind": "document", "id": "precharge-review-r2.docx", "revision": "r2", "sha256": "bef5a5dc15a5e31fbaaceb77e8150767f421e55c86e5c14db33f3b54eefbd282", "locator": "section 1", "quote": "Precharge resistor R = 470 ohm, 10 W."}], "reproduced": [{"label": "t_99.9 at 820 uF", "computed": 2.6622, "unit": "s"}, {"label": "fraction charged at 2.5 s, 820 uF", "computed": 0.99848, "unit": "ratio"}], "inferred": ["R = 470 ohm is carried from r2 because r3 does not exist yet; this card is bound to the message, not a document."], "resolution": "Raise the relay close timer above 2.662 s, or lower R, and publish r3 with the new C and printed result.", "checker_run": {"checker": "rc", "version": "1", "run_id": "rc-20260912T153100Z-b21c"}}, "message_ref": "pref_sample_card_2"},
   {"event_id": "ev-sample-0015", "at": "2026-08-18T14:40:05.000Z", "thread": "1787062320.000100", "trigger_ts": "1787064000.000200", "kind": "silence", "reason": "gate_closed"},
 ];
-
-/** Mirrors the shape buildEvidenceGraph is expected to produce. */
-export function buildSampleGraph(events: EvidenceEvent[] = SAMPLE_EVENTS): EvidenceGraph {
-  const nodes = new Map<string, GraphNode>();
-  const edges: GraphEdge[] = [];
-  const findings: Finding[] = [];
-  const put = (n: GraphNode) => {
-    if (!nodes.has(n.id)) nodes.set(n.id, n);
-    return nodes.get(n.id)!;
-  };
-  const link = (from: string, to: string, kind: GraphEdge["kind"]) => {
-    if (!edges.some((e) => e.from === from && e.to === to && e.kind === kind)) edges.push({ from, to, kind });
-  };
-  const revision = (ts: string) =>
-    put({ id: `rev:${ts}`, kind: "revision", label: `rev ${ts.slice(-6)}`, status: "neutral", at: undefined, data: { ts } });
-
-  // Runs are keyed by trigger_ts; message/document reads attach to the run that follows.
-  const readsByTrigger = new Map<string, { kind: "message" | "document"; id: string }[]>();
-  for (const ev of events) {
-    const trigger = ev.trigger_ts ?? "";
-    if (ev.kind === "message_read") {
-      put({
-        id: ev.ts, kind: "message", label: `${ev.from}: ${ev.text.slice(0, 40)}${ev.text.length > 40 ? "…" : ""}`,
-        status: "neutral", at: ev.at, data: { ts: ev.ts, from: ev.from, text: ev.text, is_change: ev.is_change, is_bot: ev.is_bot },
-      });
-      if (ev.is_change) link(ev.ts, revision(ev.ts).id, "changes");
-      readsByTrigger.set(trigger, [...(readsByTrigger.get(trigger) ?? []), { kind: "message", id: ev.ts }]);
-    } else if (ev.kind === "document_read") {
-      put({
-        id: ev.sha256, kind: "document", label: `${ev.document}${ev.revision ? ` (${ev.revision})` : ""}`, status: "neutral", at: ev.at,
-        data: { document: ev.document, revision: ev.revision, sha256: ev.sha256, line_count: ev.line_count, named_in_ts: ev.named_in_ts },
-      });
-      readsByTrigger.set(trigger, [...(readsByTrigger.get(trigger) ?? []), { kind: "document", id: ev.sha256 }]);
-    } else if (ev.kind === "check_run") {
-      const passed = ev.checks.filter((c) => c.pass).length;
-      put({
-        id: ev.run_id, kind: "run", label: `${ev.checker} v${ev.version} · ${passed}/${ev.checks.length} pass`, status: "neutral", at: ev.at,
-        data: { run_id: ev.run_id, checker: ev.checker, version: ev.version, checks: ev.checks, error: ev.error, inputs: ev.inputs, trigger_ts: ev.trigger_ts },
-      });
-      for (const r of readsByTrigger.get(trigger) ?? []) link(ev.run_id, r.id, "read");
-      for (const r of ev.evidence_refs) link(ev.run_id, r.id, "checked_with");
-    } else if (ev.kind === "finding_published") {
-      const f = ev.finding;
-      findings.push(f);
-      put({
-        id: f.finding_id, kind: "finding", label: f.discrepancy.slice(0, 48) + (f.discrepancy.length > 48 ? "…" : ""), status: f.status, at: ev.at,
-        data: { finding_id: f.finding_id, status: f.status, requirements_revision: f.requirements_revision, discrepancy: f.discrepancy, resolution: f.resolution, checker_run: f.checker_run },
-      });
-      link(f.finding_id, f.checker_run.run_id, "published_from");
-      link(f.finding_id, revision(f.requirements_revision).id, "bound_to");
-      if (f.supersedes) link(f.finding_id, f.supersedes, "supersedes");
-    } else if (ev.kind === "finding_superseded") {
-      const old = nodes.get(ev.finding_id);
-      if (old) { old.status = "stale"; old.data = { ...old.data, superseded_by: ev.superseded_by, cause_ts: ev.cause_ts }; }
-      const oldFinding = findings.find((f) => f.finding_id === ev.finding_id);
-      if (oldFinding) oldFinding.status = "stale";
-      link(ev.superseded_by, ev.finding_id, "supersedes");
-    } else if (ev.kind === "publish_refused") {
-      const run = put({ id: ev.run_id, kind: "run", label: ev.run_id, status: "refused", at: ev.at, data: { reason: ev.reason } });
-      run.status = "refused";
-      link(ev.run_id, revision(ev.current_revision).id, "refused_by");
-    }
-  }
-  const thread = events[0]?.thread ?? "";
-  return { thread, nodes: [...nodes.values()], edges, findings, generated_at: new Date(0).toISOString() };
-}

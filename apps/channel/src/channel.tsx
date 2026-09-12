@@ -2,7 +2,14 @@ import { createChannel } from "@copilotkit/channels";
 import { makeChannelAgent } from "./agent";
 import { required } from "./env";
 import { reviewerWelcome } from "./finding-card";
-import { publishResult, readEvidence, readThread, runCheck, type ReviewState } from "./reviewer-tools";
+import {
+  publishResult,
+  readEvidence,
+  readThread,
+  runCheck,
+  searchWorkspace,
+  type ReviewState,
+} from "./reviewer-tools";
 import { controlAck, parseControl } from "./control";
 import { renderWorkTrail } from "./work-trail";
 // agent-core also exports a readEvidence — the evidence LOG reader. The channel
@@ -16,7 +23,7 @@ export const channel = createChannel({
   name: required("CHANNEL_CODE"),
   identifyUser: "platform",
   agent: makeChannelAgent,
-  tools: [readThread, readEvidence, runCheck, publishResult],
+  tools: [readThread, searchWorkspace, readEvidence, runCheck, publishResult],
   components: [],
   context: [
     {

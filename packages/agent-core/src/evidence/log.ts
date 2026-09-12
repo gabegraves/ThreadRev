@@ -1,79 +1,64 @@
 /**
- * Append-only evidence log.
+ * Append-only evidence log on disk, one JSON event per line.
  *
- * RECONSTRUCTED. The original of this file was written alongside the evidence
- * contract but never committed: `.gitignore` carried an unanchored `evidence/`
- * rule, which matched this directory as well as the runtime log directory, so
- * `git add` skipped it and main stopped typechecking. The rule is anchored now
- * (`/evidence/`). If the original turns up, prefer it and delete this — the
- * exported surface is what `index.ts` already declares:
- *
- *   appendEvidence · readEvidence · evidenceLogPath · newEventId
- *
- * One JSONL file per repo, one event per line, never rewritten. Readers filter
- * by thread. Writes validate against the contract first, so a malformed event
- * fails here rather than corrupting the graph the console builds later.
+ * Node-only. The channel tools append; the review console reads. The path
+ * comes from EVIDENCE_LOG or defaults to <repo>/evidence/log.jsonl.
  */
 import { appendFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { evidenceEvent, type EvidenceEvent } from "../contracts/evidence";
 
-const REPO_ROOT = resolve(import.meta.dirname, "../../../..");
-
 /**
- * Where events land. `EVIDENCE_DIR` overrides the directory so a test or a
- * second process can keep its own log; the default sits at the repo root and
- * is gitignored.
+ * Repo root. `import.meta.dirname` is undefined under Next's bundlers, so fall
+ * back to walking up from cwd to the directory that holds `contracts/`.
  */
+export function repoRoot(): string {
+  const here = (import.meta as { dirname?: string }).dirname;
+  if (here) return resolve(here, "../../../..");
+  let dir = process.cwd();
+  for (let i = 0; i < 6; i += 1) {
+    if (existsSync(resolve(dir, "contracts", "examples"))) return dir;
+    const up = dirname(dir);
+    if (up === dir) break;
+    dir = up;
+  }
+  return process.cwd();
+}
+
 export function evidenceLogPath(): string {
-  const dir = process.env.EVIDENCE_DIR ?? resolve(REPO_ROOT, "evidence");
-  return resolve(dir, "events.jsonl");
+  return process.env.EVIDENCE_LOG
+    ? resolve(process.env.EVIDENCE_LOG)
+    : resolve(repoRoot(), "evidence", "log.jsonl");
 }
 
 let seq = 0;
-
-/** Unique within a process and ordered, which is all the contract asks for. */
 export function newEventId(): string {
   seq += 1;
-  return `ev-${Date.now().toString(36)}-${seq.toString().padStart(4, "0")}`;
+  return `ev-${Date.now().toString(36)}-${String(seq).padStart(4, "0")}`;
 }
 
-/**
- * Append one validated event. Throws on a contract violation so the caller
- * sees it; `apps/channel/src/evidence.ts` wraps this and swallows, because a
- * logging failure must never break a review.
- */
-export function appendEvidence(event: EvidenceEvent): void {
+/** Validate and append one event. Returns the event as written. */
+export function appendEvidence(event: EvidenceEvent, path = evidenceLogPath()): EvidenceEvent {
   const parsed = evidenceEvent.parse(event);
-  const path = evidenceLogPath();
   mkdirSync(dirname(path), { recursive: true });
-  appendFileSync(path, `${JSON.stringify(parsed)}\n`, "utf8");
+  appendFileSync(path, JSON.stringify(parsed) + "\n", "utf8");
+  return parsed;
 }
 
-/**
- * Every event, oldest first, optionally narrowed to one thread.
- *
- * A malformed line is skipped rather than thrown on: the log is append-only
- * and may be read while it is being written, so a torn final line is expected
- * and is not a reason to fail the whole read.
- */
-export function readEvidence(thread?: string): EvidenceEvent[] {
-  const path = evidenceLogPath();
-  if (!existsSync(path)) return [];
-
-  const out: EvidenceEvent[] = [];
+/** Read every valid event. Malformed lines are skipped and counted. */
+export function readEvidence(path = evidenceLogPath()): { events: EvidenceEvent[]; skipped: number } {
+  if (!existsSync(path)) return { events: [], skipped: 0 };
+  const events: EvidenceEvent[] = [];
+  let skipped = 0;
   for (const line of readFileSync(path, "utf8").split("\n")) {
     if (!line.trim()) continue;
-    let candidate: unknown;
     try {
-      candidate = JSON.parse(line);
+      const r = evidenceEvent.safeParse(JSON.parse(line));
+      if (r.success) events.push(r.data);
+      else skipped += 1;
     } catch {
-      continue;
+      skipped += 1;
     }
-    const parsed = evidenceEvent.safeParse(candidate);
-    if (!parsed.success) continue;
-    if (thread && parsed.data.thread !== thread) continue;
-    out.push(parsed.data);
   }
-  return out;
+  return { events, skipped };
 }
