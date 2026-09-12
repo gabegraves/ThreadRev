@@ -28,38 +28,24 @@ test("rectContains includes the edges", () => {
 });
 
 test("the overlay captures the mouse over Rev", () => {
-  assert.equal(
-    shouldCapture({ x: 300, y: 500, pet: PET, panel: PANEL, open: false, dragging: false }),
-    true,
-  );
+  assert.equal(shouldCapture([PET], 300, 500), true);
 });
 
 test("the overlay stays click-through over its own empty space", () => {
   // This is the one that matters: the window is far larger than Rev, and a
   // false here is what keeps the corner of the app underneath usable.
-  assert.equal(
-    shouldCapture({ ...away, pet: PET, panel: PANEL, open: false, dragging: false }),
-    false,
-  );
+  assert.equal(shouldCapture([PET], away.x, away.y), false);
 });
 
-test("the panel only captures while it is open", () => {
-  const over = { x: 200, y: 200 };
-  assert.equal(
-    shouldCapture({ ...over, pet: PET, panel: PANEL, open: false, dragging: false }),
-    false,
-  );
-  assert.equal(
-    shouldCapture({ ...over, pet: PET, panel: PANEL, open: true, dragging: false }),
-    true,
-  );
+test("the panel only captures while it is published, i.e. while open", () => {
+  // Closed: the renderer publishes Rev alone.
+  assert.equal(shouldCapture([PET], 200, 200), false);
+  // Open: it publishes the panel too.
+  assert.equal(shouldCapture([PET, PANEL], 200, 200), true);
 });
 
 test("a drag keeps capturing after the cursor outruns the sprite", () => {
-  assert.equal(
-    shouldCapture({ x: -900, y: -900, pet: PET, panel: PANEL, open: false, dragging: true }),
-    true,
-  );
+  assert.equal(shouldCapture([PET], -900, -900, true), true);
 });
 
 const WIN = { width: 412, height: 620 };

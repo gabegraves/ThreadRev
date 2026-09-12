@@ -31,21 +31,22 @@ export function rectContains(r: Rect, x: number, y: number): boolean {
  * Whether the overlay should capture the mouse at this point.
  *
  * The window is a transparent box far larger than Rev. It must only take input
- * over Rev itself, or over the panel while the panel is open — otherwise that
- * corner of whatever is underneath goes dead. While dragging we always capture,
- * or the drag drops the moment the cursor outruns the sprite.
+ * over a published region — Rev, plus the panel while the panel is open —
+ * otherwise that corner of whatever is underneath goes dead. While dragging we
+ * always capture, or the drag drops the moment the cursor outruns the sprite.
+ *
+ * The renderer publishes the regions and the main process evaluates this
+ * against the OS cursor, so the decision never depends on forwarded mouse
+ * events, which Electron can stop delivering on Windows (electron#33281).
  */
-export function shouldCapture(args: {
-  x: number;
-  y: number;
-  pet: Rect;
-  panel: Rect;
-  open: boolean;
-  dragging: boolean;
-}): boolean {
-  if (args.dragging) return true;
-  if (rectContains(args.pet, args.x, args.y)) return true;
-  return args.open && rectContains(args.panel, args.x, args.y);
+export function shouldCapture(
+  regions: readonly Rect[],
+  x: number,
+  y: number,
+  dragging = false,
+): boolean {
+  if (dragging) return true;
+  return regions.some((r) => rectContains(r, x, y));
 }
 
 /**

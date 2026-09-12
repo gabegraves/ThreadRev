@@ -21,13 +21,7 @@ import {
   type PetFinding,
   type Reproduced,
 } from "./findings.js";
-import {
-  applyFilter,
-  formatValue,
-  shouldCapture,
-  unreadCount,
-  type Filter,
-} from "../logic.js";
+import { applyFilter, formatValue, unreadCount, type Filter } from "../logic.js";
 
 interface PetSettings {
   alwaysOnTop: boolean;
@@ -38,7 +32,7 @@ interface PetSettings {
 declare global {
   interface Window {
     pet: {
-      setInteractive(v: boolean): void;
+      setRegions(regions: Array<{ left: number; top: number; right: number; bottom: number }>): void;
       drag(dx: number, dy: number): void;
       dragEnd(): void;
       reportState(state: string): void;
@@ -82,7 +76,6 @@ const liveCount = $("count-live");
 const staleCount = $("count-stale");
 
 let open = false;
-let interactive = false;
 let dragging = false;
 let grab = { dx: 0, dy: 0 };
 let moved = false;
@@ -99,25 +92,19 @@ let pinnedState: PetState | null = null;
 /* ------------------------------------------------------------- hit test --- */
 
 /**
+ * Publish the regions that may take the mouse.
+ *
  * Rect tests rather than elementFromPoint: Rev is an SVG with transparent gaps
  * between its parts, and making the user thread the needle between them would
- * feel broken. The decision itself lives in logic.ts so it can be tested.
+ * feel broken. Main polls the OS cursor against these, so click-through keeps
+ * working even when forwarded mouse events stop arriving.
  */
-function overSolid(x: number, y: number): boolean {
-  return shouldCapture({
-    x,
-    y,
-    pet: petEl.getBoundingClientRect(),
-    panel: panelEl.getBoundingClientRect(),
-    open,
-    dragging,
-  });
-}
-
-function setInteractive(next: boolean): void {
-  if (next === interactive) return;
-  interactive = next;
-  window.pet.setInteractive(next);
+function publishRegions(): void {
+  const r = (el: Element) => {
+    const b = el.getBoundingClientRect();
+    return { left: b.left, top: b.top, right: b.right, bottom: b.bottom };
+  };
+  window.pet.setRegions(open ? [r(petEl), r(panelEl)] : [r(petEl)]);
 }
 
 /* ----------------------------------------------------------------- gaze --- */
@@ -134,19 +121,12 @@ function gaze(x: number, y: number): void {
 }
 
 document.addEventListener("mousemove", (e) => {
-  setInteractive(overSolid(e.clientX, e.clientY));
   gaze(e.clientX, e.clientY);
   if (dragging) {
     moved = true;
     window.pet.drag(grab.dx, grab.dy);
   }
   wake();
-});
-
-// The cursor can leave through the window edge without a final mousemove
-// inside; without this the window stays interactive and eats Slack's clicks.
-document.addEventListener("mouseleave", () => {
-  if (!dragging) setInteractive(false);
 });
 
 /* ----------------------------------------------------------------- drag --- */
@@ -260,6 +240,7 @@ function setOpen(next: boolean): void {
   hitEl.setAttribute("aria-expanded", String(next));
   petEl.dataset.open = String(next);
 
+  publishRegions();
   if (next) {
     drawThread();
     threadEl.dataset.open = "true";
@@ -493,6 +474,10 @@ window.pet.onSettings((s) => {
   settings = s;
   document.body.dataset.reducedMotion = String(s.reducedMotion);
 });
+
+publishRegions();
+// Rev bleeds past the corner and shifts on hover, so republish as it settles.
+window.setInterval(publishRegions, 500);
 
 window.pet.onOpen(() => setOpen(true));
 window.pet.onForceState((s) => {

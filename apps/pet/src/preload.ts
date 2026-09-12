@@ -13,9 +13,9 @@ export interface PetSettings {
 }
 
 contextBridge.exposeInMainWorld("pet", {
-  /** true while the cursor is over the pet or the open panel. */
-  setInteractive(interactive: boolean): void {
-    ipcRenderer.send("pet:set-interactive", interactive);
+  /** Publish the hit regions; main decides click-through from the OS cursor. */
+  setRegions(regions: Array<{ left: number; top: number; right: number; bottom: number }>): void {
+    ipcRenderer.send("pet:regions", regions);
   },
   /** Report the grab offset; main follows the OS cursor from there. */
   drag(dx: number, dy: number): void {

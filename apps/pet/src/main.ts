@@ -34,7 +34,7 @@ import {
 import path from "node:path";
 import fs from "node:fs";
 
-import { clampOrigin } from "./logic.js";
+import { clampOrigin, shouldCapture, type Rect } from "./logic.js";
 
 // Bundled to CJS, so __dirname is dist/.
 const dirname = __dirname;
@@ -309,6 +309,8 @@ if (!app.requestSingleInstanceLock()) {
     const reposition = () => {
       if (win && !win.isDestroyed()) place(win);
     };
+    setInterval(pollCursor, 60);
+
     screen.on("display-metrics-changed", reposition);
     screen.on("display-added", reposition);
     screen.on("display-removed", reposition);
@@ -321,10 +323,40 @@ if (!app.requestSingleInstanceLock()) {
 
 /* ------------------------------------------------------------------ ipc --- */
 
-ipcMain.on("pet:set-interactive", (_e, interactive: unknown) => {
-  if (!win || win.isDestroyed()) return;
-  win.setIgnoreMouseEvents(!interactive, { forward: true });
+/**
+ * Hit regions, in window-relative DIP, published by the renderer whenever they
+ * move. Main owns the click-through decision so it does not depend on forwarded
+ * mouse events arriving — Electron's `forward: true` hook is documented to stop
+ * delivering when certain other windows hold focus (electron#33281), and an
+ * overlay that silently stops being clickable is the worst possible failure.
+ */
+let regions: Rect[] = [];
+
+ipcMain.on("pet:regions", (_e, payload: unknown) => {
+  regions = Array.isArray(payload) ? (payload as Rect[]) : [];
 });
+
+/**
+ * Poll the OS cursor and flip click-through accordingly.
+ *
+ * 60ms is under the threshold where a user notices the boundary, and the work
+ * is one cursor read plus a couple of rect tests, so it is far cheaper than the
+ * system-wide low-level mouse hook it replaces.
+ */
+function pollCursor(): void {
+  if (!win || win.isDestroyed() || !win.isVisible()) return;
+  const b = win.getBounds();
+  const c = screen.getCursorScreenPoint();
+  const x = c.x - b.x;
+  const y = c.y - b.y;
+  const over = shouldCapture(regions, x, y, dragging);
+  if (over === interactive) return;
+  interactive = over;
+  win.setIgnoreMouseEvents(!over, { forward: true });
+}
+
+let interactive = false;
+let dragging = false;
 
 /**
  * Drag. The renderer cannot move the window itself, and `-webkit-app-region:
@@ -334,6 +366,7 @@ ipcMain.on("pet:set-interactive", (_e, interactive: unknown) => {
  */
 ipcMain.on("pet:drag", (_e, payload: unknown) => {
   if (!win || win.isDestroyed()) return;
+  dragging = true;
   const { dx, dy } = payload as { dx: number; dy: number };
   const cursor = screen.getCursorScreenPoint();
   const { x, y } = clamp(cursor.x - dx, cursor.y - dy);
@@ -341,6 +374,7 @@ ipcMain.on("pet:drag", (_e, payload: unknown) => {
 });
 
 ipcMain.on("pet:drag-end", () => {
+  dragging = false;
   if (!win || win.isDestroyed()) return;
   const b = win.getBounds();
   settings.x = b.x;
