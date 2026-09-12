@@ -1,11 +1,17 @@
 "use client";
 
-/* AG grid port of workspace-table.tsx, styled like thread-grid.tsx (same
-   theme params, `.civic-grid` wrapper, row height, portal-mounted page-size
-   control in the pagination bar). Column filters (Author / Channel /
-   Documents / Quantities) replace the popover facet row from
-   workspace-filters.tsx — the query bar above still drives which rows land
-   here; these filters narrow within that result set. */
+/* AG grid port of workspace-table.tsx, styled like thread-grid.tsx / the
+   Findings grid (same theme params, `.civic-grid` wrapper, row height,
+   portal-mounted page-size control in the pagination bar). Column filters
+   (Author / Channel / Documents / Quantities) replace the popover facet row
+   from workspace-filters.tsx — the query bar above (workspace-query-bar.tsx,
+   now restyled to the same toolbar look) still drives which rows land here;
+   these filters narrow within that result set.
+   Channel cell uses channelIcon + "#channel" (Team-cell pattern). Flags cell
+   carries the change / @Rev-mention pills, same pill classes as
+   work-order-grid's StatusCell "needs review" badge. Trailing actions column
+   opens the same detail panel/drawer a row click already does — added here
+   only for the expand-affordance parity with work-order-grid. */
 
 import {
   AllCommunityModule,
@@ -20,16 +26,19 @@ import {
   type ValueGetterParams,
 } from "ag-grid-community";
 import { AgGridReact } from "ag-grid-react";
-import { Check, ChevronDown } from "lucide-react";
+import { Check, ChevronDown, Maximize2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/civic-ui/lib/cn";
+import { channelIcon } from "@/civic/lib/grid/team-icon";
 import { useTheme } from "@/civic/lib/grid/use-theme";
 import { fmtTime } from "@/components/review-console/graph-utils";
 import { tsNum } from "@/lib/workspace-index";
 import type { WorkspaceRow } from "./workspace-table";
 
 ModuleRegistry.registerModules([AllCommunityModule]);
+
+const REV_MENTION = /@rev\b/i;
 
 // ── AG-Grid theme (copied from thread-grid.tsx) ─────────────────────────────
 const gridThemeLight = themeQuartz.withParams({
@@ -76,6 +85,21 @@ function TimeCell({ data }: ICellRendererParams<WorkspaceRow>) {
   );
 }
 
+/** Channel — channelIcon(channel) + "#channel", the Team-cell pattern from
+ *  work-order-grid / thread-grid. Author stays its own plain column. */
+function ChannelCell({ data }: ICellRendererParams<WorkspaceRow>) {
+  if (!data) return null;
+  const Icon = channelIcon(data.channel_name);
+  return (
+    <span className="flex items-center gap-2">
+      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[var(--radius-md)] text-subtle">
+        <Icon className="h-3.5 w-3.5" strokeWidth={2.25} />
+      </span>
+      <span className="truncate font-mono text-[12px] text-subtle">#{data.channel_name}</span>
+    </span>
+  );
+}
+
 function TextCell({ data }: ICellRendererParams<WorkspaceRow>) {
   if (!data) return null;
   return (
@@ -117,6 +141,52 @@ function QuantitiesCell({ data }: ICellRendererParams<WorkspaceRow>) {
         </Chip>
       ))}
     </span>
+  );
+}
+
+/** Flags — change / @Rev-mention badges, same pill classes as
+ *  work-order-grid's StatusCell "needs review" badge (border-hairline chip,
+ *  bold 10px label, colored dot). */
+function FlagsCell({ data }: ICellRendererParams<WorkspaceRow>) {
+  if (!data) return null;
+  const mentionsRev = REV_MENTION.test(data.text);
+  if (!data.is_change && !mentionsRev) return <span className="text-faint">—</span>;
+  return (
+    <span className="flex flex-wrap items-center gap-1">
+      {data.is_change && (
+        <span
+          className="inline-flex items-center gap-1 rounded-[var(--radius-sm)] border border-hairline bg-overlay px-1.5 py-0.5 text-[10px] font-bold text-[var(--status-warning-fg)]"
+          title="Matches the change-language pattern"
+        >
+          <span aria-hidden="true" className="size-1.5 rounded-full bg-[var(--color-warning)]" />
+          Change
+        </span>
+      )}
+      {mentionsRev && (
+        <span
+          className="inline-flex items-center gap-1 rounded-[var(--radius-sm)] border border-hairline bg-overlay px-1.5 py-0.5 text-[10px] font-bold text-subtle"
+          title="Message mentions @Rev"
+        >
+          @Rev
+        </span>
+      )}
+    </span>
+  );
+}
+
+function ExpandCell({ data, context }: ICellRendererParams<WorkspaceRow>) {
+  if (!data) return null;
+  const { onSelect } = context as { onSelect: (row: WorkspaceRow) => void };
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(data)}
+      aria-label={`Open details for message ${data.ts}`}
+      title="Open full details"
+      className="inline-flex h-8 w-8 items-center justify-center rounded-[var(--radius-md)] border border-transparent text-faint outline-none transition-colors hover:border-hairline hover:bg-overlay hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent/60"
+    >
+      <Maximize2 className="h-4 w-4" strokeWidth={2} />
+    </button>
   );
 }
 
@@ -228,8 +298,11 @@ export function WorkspaceGrid({
 
   const rowClassRules = useMemo<RowClassRules<WorkspaceRow>>(() => ({ "civic-row-focus": (p) => p.data?.ts === selectedTs }), [selectedTs]);
 
+  const gridContext = useMemo(() => ({ onSelect }), [onSelect]);
+
   const onCellClicked = useCallback(
     (e: CellClickedEvent<WorkspaceRow>) => {
+      if (e.column.getColId() === "actions") return;
       if (e.data) onSelect(e.data);
     },
     [onSelect],
@@ -260,10 +333,10 @@ export function WorkspaceGrid({
         colId: "channel",
         headerName: "Channel",
         field: "channel_name",
-        cellClass: "font-mono text-[12px]",
+        cellRenderer: ChannelCell,
         filter: true,
-        initialWidth: 140,
-        minWidth: 100,
+        initialWidth: 150,
+        minWidth: 120,
       },
       {
         colId: "text",
@@ -296,6 +369,35 @@ export function WorkspaceGrid({
         initialWidth: 200,
         minWidth: 160,
       },
+      {
+        colId: "flags",
+        headerName: "Flags",
+        valueGetter: (p: ValueGetterParams<WorkspaceRow>) => (p.data?.is_change ? "change" : ""),
+        cellRenderer: FlagsCell,
+        filter: false,
+        sortable: false,
+        initialWidth: 130,
+        minWidth: 110,
+      },
+      {
+        colId: "actions",
+        headerName: "",
+        pinned: "right",
+        width: 56,
+        minWidth: 56,
+        maxWidth: 64,
+        sortable: false,
+        filter: false,
+        resizable: false,
+        editable: false,
+        suppressMovable: true,
+        cellRenderer: ExpandCell,
+        cellStyle: {
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        },
+      },
     ],
     [],
   );
@@ -313,6 +415,7 @@ export function WorkspaceGrid({
         headerHeight={36}
         getRowId={(p) => p.data.ts}
         rowClassRules={rowClassRules}
+        context={gridContext}
         onGridReady={(e: GridReadyEvent<WorkspaceRow>) => {
           gridApiRef.current = e.api;
           mountPagingSlot();

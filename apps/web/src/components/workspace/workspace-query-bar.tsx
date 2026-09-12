@@ -1,14 +1,20 @@
 "use client";
 
 import { Search } from "lucide-react";
+import { cn } from "@/civic-ui/lib/cn";
 import { ResetChip } from "@/civic-ui/components/FilterChips";
-import { Toggle } from "@/civic-ui/components/Tile";
 import { fmtTime } from "@/components/review-console/graph-utils";
 import type { WorkspaceResult } from "@/lib/workspace-index";
 import { EMPTY_FILTERS, type Filters, isFiltered, type ReviewerSearch } from "./workspace-model";
 
 const INPUT =
   "h-8 rounded-[10px] border border-hairline bg-overlay px-2.5 text-[12px] font-medium text-foreground outline-none transition-colors placeholder:text-faint hover:border-hairline-strong focus-visible:ring-2 focus-visible:ring-accent/60";
+
+// Toolbar chip classes copied verbatim from work-order-grid.tsx, so the two
+// scope toggles read as the same preset chips as the Findings/Messages grids.
+const chipBase = "inline-flex items-center rounded-[var(--radius-md)] border px-2.5 py-1 text-xs font-medium transition-colors";
+const chipIdle = "border-hairline bg-overlay text-subtle hover:border-hairline-strong hover:text-foreground";
+const chipActive = "border-transparent bg-foreground text-background";
 
 /** The single control row: free-text query, scope toggles, replay, and the result counts. */
 export function WorkspaceQueryBar({
@@ -43,7 +49,7 @@ export function WorkspaceQueryBar({
   ].filter(Boolean) as string[];
 
   return (
-    <div className="flex flex-wrap items-center gap-x-2.5 gap-y-2 rounded-[var(--radius-lg)] border border-hairline bg-surface px-3 py-2.5">
+    <div data-tour="grid-toolbar" className="flex flex-wrap items-center gap-x-2.5 gap-y-2 rounded-[var(--radius-lg)] border border-hairline bg-surface px-3 py-2.5">
       <input
         value={filters.quantity}
         onChange={(e) => set("quantity", e.target.value)}
@@ -51,13 +57,37 @@ export function WorkspaceQueryBar({
         aria-label="Quantity words"
         className={`${INPUT} w-[30ch] max-w-full`}
       />
-      <input value={filters.keyword} onChange={(e) => set("keyword", e.target.value)} placeholder="keyword · plain substring" aria-label="Keyword" className={`${INPUT} w-[24ch] max-w-full`} />
-      <div className="w-[15ch]">
-        <Toggle label="Changes only" value={filters.changes_only} onChange={(v) => set("changes_only", v)} />
+      <div className="relative min-w-[180px] max-w-[24ch] flex-1">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-faint" />
+        <input
+          type="search"
+          value={filters.keyword}
+          onChange={(e) => set("keyword", e.target.value)}
+          placeholder="keyword · plain substring"
+          aria-label="Keyword"
+          className="w-full rounded-[var(--radius-md)] border border-hairline bg-surface py-1.5 pl-9 pr-3 text-sm text-foreground shadow-[var(--shadow-card)] placeholder:text-faint focus:border-hairline-strong"
+        />
       </div>
-      <div className="w-[17ch]" title={cutoffTs ? `before_ts = ${cutoffTs} · ${fmtTime(cutoffTs)}` : "no trigger in this evidence log"}>
-        <Toggle label="Cutoff at trigger" value={filters.cutoff} onChange={(v) => set("cutoff", v)} />
-      </div>
+      <fieldset className="flex flex-wrap items-center gap-1.5">
+        <legend className="sr-only">Scope</legend>
+        <button
+          type="button"
+          onClick={() => set("changes_only", !filters.changes_only)}
+          aria-pressed={filters.changes_only}
+          className={cn(chipBase, filters.changes_only ? chipActive : chipIdle)}
+        >
+          Changes only
+        </button>
+        <button
+          type="button"
+          onClick={() => set("cutoff", !filters.cutoff)}
+          aria-pressed={filters.cutoff}
+          title={cutoffTs ? `before_ts = ${cutoffTs} · ${fmtTime(cutoffTs)}` : "no trigger in this evidence log"}
+          className={cn(chipBase, filters.cutoff ? chipActive : chipIdle)}
+        >
+          Cutoff at trigger
+        </button>
+      </fieldset>
       <div className="ml-auto flex items-center gap-2">
         {search && (
           <button

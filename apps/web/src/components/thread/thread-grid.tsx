@@ -3,15 +3,23 @@
 /* Copied from src/civic/grid/work-order-grid.tsx (the Civic port) for the
    thread page. What changed and nothing else:
    - rows are ThreadGridRow (one per thread message), keyed by Slack ts.
-   - the columns are read-only: the SelectEditor / EditPill / onCellValueChanged
+   - the columns are read-only: the SelectEditor / onCellValueChanged
      machinery and the "Edits not saved" pill are gone, so every cell click
-     opens the explorer.
+     opens the explorer. The EditPill affordance (bordered pill + chevron)
+     is kept purely for the visual match — chevron doesn't open an editor
+     here, the whole cell opens the message.
    - the Issue cell shows author + excerpt with a trigger/change/message glyph,
-     and the Status cell falls back to the message role when no card was
-     published. Team / Sev / Priority / Dept / Crew columns are dropped: they
-     restated the channel, the author, or the glyph.
+     Team shows the channel (channelIcon + #channel, like work-order-grid's
+     TeamCell but "#"-prefixed since this is a channel not a department), and
+     Priority is the reproduced-value bar (row.priority). The Status cell
+     falls back to the message role when no card was published. Severity /
+     Dept / Crew columns from work-order-grid are dropped: no severity-graded
+     column exists on ThreadGridRow beyond the removed one, and dept drives
+     the toolbar chips instead of a column.
+   - toolbar chips filter by `dept` (trigger/change/message), not status —
+     work-order-grid's status chips became Status a plain read-only cell.
    - the explorer is ThreadExplorer (message detail), not WorkOrderExplorer.
-   Class strings are unchanged. */
+   Class strings are unchanged from work-order-grid where reused. */
 
 import {
   AllCommunityModule,
@@ -23,15 +31,17 @@ import {
   ModuleRegistry,
   type RowClassRules,
   themeQuartz,
-  type ValueFormatterParams,
   type ValueGetterParams,
 } from "ag-grid-community";
 import { AgGridReact } from "ag-grid-react";
 import type { EvidenceEvent, EvidenceGraph } from "agent-core/shared";
 import { Check, ChevronDown, CircleAlert, type LucideIcon, Maximize2, MessageSquare, Search, Zap } from "lucide-react";
+import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/civic-ui/lib/cn";
+import { channelIcon } from "@/civic/lib/grid/team-icon";
+import { TEAMS } from "@/civic/lib/grid/teams";
 import { useTheme } from "@/civic/lib/grid/use-theme";
 import type { ThreadGridRow, ThreadRowDept } from "@/lib/civic-adapters/thread-rows";
 import type { ThreadModel } from "./thread-model";
@@ -45,7 +55,12 @@ const DEPT_ICON: Record<ThreadRowDept, LucideIcon> = {
   message: MessageSquare,
 };
 
-const STATUSES = ["live", "stale", "refused"];
+const DEPTS: ThreadRowDept[] = ["trigger", "change", "message"];
+const DEPT_CHIP_LABEL: Record<ThreadRowDept, string> = {
+  trigger: "Triggers",
+  change: "Changes",
+  message: "Bot",
+};
 
 const titleize = (s: string) => s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
@@ -61,13 +76,23 @@ const STATUS_DOT: Record<string, string> = {
   refused: "bg-[var(--color-danger)]",
 };
 
-const STATUS_CHIP_ACTIVE: Record<string, string> = {
-  live: "border-[color-mix(in_srgb,var(--color-success)_45%,transparent)] bg-[color-mix(in_srgb,var(--color-success)_12%,transparent)] text-[var(--status-success-fg)]",
-  stale:
-    "border-[color-mix(in_srgb,var(--color-warning)_45%,transparent)] bg-[color-mix(in_srgb,var(--color-warning)_12%,transparent)] text-[var(--status-warning-fg)]",
-  refused:
-    "border-[color-mix(in_srgb,var(--color-danger)_45%,transparent)] bg-[color-mix(in_srgb,var(--color-danger)_12%,transparent)] text-[var(--status-danger-fg)]",
+// Priority (reproduced-value count) → green→red ramp — copied verbatim from
+// work-order-grid's SEVERITY_HUE / priorityHue.
+const SEVERITY_HUE: Record<number, string> = {
+  1: "var(--status-success-fg)",
+  2: "color-mix(in srgb, var(--status-success-fg) 55%, var(--status-warning-fg))",
+  3: "var(--status-warning-fg)",
+  4: "color-mix(in srgb, var(--status-warning-fg) 50%, var(--status-danger-fg))",
+  5: "var(--status-danger-fg)",
 };
+const PRIORITY_DOMAIN = 5;
+function priorityHue(score: number): string {
+  if (score <= 0) return SEVERITY_HUE[5];
+  if (score === 1) return SEVERITY_HUE[4];
+  if (score === 2) return SEVERITY_HUE[3];
+  if (score === 3) return SEVERITY_HUE[2];
+  return SEVERITY_HUE[1];
+}
 
 // ── AG-Grid theme ───────────────────────────────────────────────────────────
 const gridThemeLight = themeQuartz.withParams({
@@ -103,6 +128,29 @@ const gridThemeDark = themeQuartz.withParams({
   wrapperBorder: false,
 });
 
+// Neutral icon tile for the dept glyph — copied verbatim from work-order-grid.
+const ICON_TILE = "text-subtle";
+function iconTileStyle(color: string): React.CSSProperties {
+  return { color };
+}
+
+/** The select-affordance container: bordered pill + chevron. Copied verbatim
+ *  from work-order-grid's EditPill for the visual match — every cell here is
+ *  read-only, the chevron is chrome only, click still opens the explorer. */
+function EditPill({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <span
+      className={cn(
+        "inline-flex max-w-full cursor-pointer items-center gap-1.5 rounded-[var(--radius-md)] border border-transparent bg-transparent py-1 pl-2 pr-1.5 transition-colors hover:border-hairline-strong hover:bg-overlay",
+        className,
+      )}
+    >
+      {children}
+      <ChevronDown className="h-3.5 w-3.5 shrink-0 text-faint" />
+    </span>
+  );
+}
+
 // ── cell renderers ──────────────────────────────────────────────────────────
 
 function excerpt(s: string, n: number): string {
@@ -110,13 +158,14 @@ function excerpt(s: string, n: number): string {
   return one.length > n ? `${one.slice(0, n - 1)}…` : one;
 }
 
-/** Issue — author + text excerpt, with the message-role glyph. */
+/** Issue — dept glyph + bold author ("kind") + muted excerpt ("preview"),
+ *  wrapped in the same EditPill affordance as work-order-grid's CategoryCell. */
 function IssueCell({ data }: ICellRendererParams<ThreadGridRow>) {
   if (!data) return null;
   const Icon = DEPT_ICON[data.dept];
   return (
-    <span className="inline-flex h-8 max-w-full items-center gap-1.5 py-1 pl-1.5 pr-1.5">
-      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-[var(--radius-sm)] text-subtle">
+    <EditPill className="h-8 pl-1.5">
+      <span className={cn("flex h-5 w-5 shrink-0 items-center justify-center rounded-[var(--radius-sm)]", ICON_TILE)}>
         <Icon className="h-3.5 w-3.5" strokeWidth={2} />
       </span>
       <span className="shrink-0 truncate text-[13px] font-medium text-foreground" title={data.from}>
@@ -124,6 +173,43 @@ function IssueCell({ data }: ICellRendererParams<ThreadGridRow>) {
       </span>
       <span className="min-w-0 truncate text-[12px] text-faint" title={data.text}>
         {excerpt(data.text, 120)}
+      </span>
+    </EditPill>
+  );
+}
+
+/** Team — the Slack channel this message belongs to. Read-only, same icon
+ *  tile as work-order-grid's TeamCell, "#channel" text per the findings
+ *  parity spec (work-order-grid shows the full department label instead). */
+function TeamCell({ data }: ICellRendererParams<ThreadGridRow>) {
+  if (!data) return null;
+  const team = TEAMS[data.team_key] ?? TEAMS.general_admin;
+  const Icon = channelIcon(data.team_label);
+  return (
+    <span className="flex items-center gap-2">
+      <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-[var(--radius-md)]" style={iconTileStyle(team.color)}>
+        <Icon className="h-3.5 w-3.5" strokeWidth={2.25} />
+      </span>
+      <span className="truncate text-[13px] text-subtle">#{data.team_label}</span>
+    </span>
+  );
+}
+
+/** Priority — reproduced-value count + proportional bar. Copied verbatim from
+ *  work-order-grid's PriorityCell, reading ThreadGridRow's `priority` field. */
+function PriorityCell({ data }: ICellRendererParams<ThreadGridRow>) {
+  if (!data) return null;
+  if (data.priority == null) return <span className="text-faint">—</span>;
+  const score = data.priority;
+  const pct = Math.max(4, Math.min(100, (score / PRIORITY_DOMAIN) * 100));
+  const hue = priorityHue(score);
+  return (
+    <span className="flex items-center gap-2">
+      <span className="tabular-nums text-[13px] font-semibold" style={{ color: hue }}>
+        {score}
+      </span>
+      <span className="h-1.5 w-14 overflow-hidden rounded-full bg-elevated">
+        <span className="block h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: hue }} />
       </span>
     </span>
   );
@@ -150,15 +236,24 @@ function StatusCell({ data }: ICellRendererParams<ThreadGridRow>) {
   );
 }
 
-const dateFmt = (p: ValueFormatterParams<ThreadGridRow, string>) =>
-  p.value
-    ? new Date(p.value).toLocaleDateString("en-US", { timeZone: "America/New_York", 
-        month: "short",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      })
-    : "—";
+/** Reported — mono time cell, same treatment as workspace-grid's TimeCell. */
+function TimeCell({ data }: ICellRendererParams<ThreadGridRow>) {
+  if (!data) return null;
+  const d = new Date(data.at);
+  if (Number.isNaN(d.getTime())) return <span className="text-faint">—</span>;
+  const formatted = d.toLocaleString("en-US", {
+    timeZone: "America/New_York",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  return (
+    <span className="font-mono text-[12px] tabular-nums text-foreground" title={data.at}>
+      {formatted}
+    </span>
+  );
+}
 
 function ExpandCell({ data, context }: ICellRendererParams<ThreadGridRow>) {
   if (!data) return null;
@@ -333,7 +428,7 @@ export function ThreadGrid({
   const gridContext = useMemo(() => ({ openDetail }), [openDetail]);
 
   const [query, setQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
+  const [deptFilter, setDeptFilter] = useState<ThreadRowDept | "">("");
   const [pageChoice, setPageChoice] = useState<PageChoice>(25);
   const allChipRef = useRef<HTMLButtonElement>(null);
 
@@ -350,7 +445,7 @@ export function ThreadGrid({
     );
   }, [rows, query]);
 
-  const filtered = useMemo(() => (statusFilter ? searched.filter((r) => r.status === statusFilter) : searched), [searched, statusFilter]);
+  const filtered = useMemo(() => (deptFilter ? searched.filter((r) => r.dept === deptFilter) : searched), [searched, deptFilter]);
 
   const effectivePageSize = pageChoice === "all" ? Math.max(filtered.length, 1) : pageChoice;
 
@@ -362,7 +457,7 @@ export function ThreadGrid({
     }
     if (!filtered.some((r) => r.ts === focusId)) {
       setQuery("");
-      setStatusFilter("");
+      setDeptFilter("");
       return;
     }
     setHighlightId(focusId);
@@ -388,9 +483,9 @@ export function ThreadGrid({
     return () => cancelAnimationFrame(raf);
   }, [highlightId, filtered, effectivePageSize]);
 
-  const statusCounts = useMemo(() => {
+  const deptCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    for (const r of searched) if (r.status) counts[r.status] = (counts[r.status] ?? 0) + 1;
+    for (const r of searched) counts[r.dept] = (counts[r.dept] ?? 0) + 1;
     return counts;
   }, [searched]);
 
@@ -410,7 +505,7 @@ export function ThreadGrid({
         colId: "created",
         headerName: "Reported",
         field: "at",
-        valueFormatter: dateFmt,
+        cellRenderer: TimeCell,
         initialSort: "asc",
         initialWidth: 150,
         minWidth: 130,
@@ -422,6 +517,23 @@ export function ThreadGrid({
         cellRenderer: IssueCell,
         initialFlex: 2,
         minWidth: 280,
+      },
+      {
+        colId: "team",
+        headerName: "Team",
+        valueGetter: (p: ValueGetterParams<ThreadGridRow>) => (p.data ? p.data.team_label : ""),
+        cellRenderer: TeamCell,
+        initialFlex: 1.1,
+        minWidth: 150,
+      },
+      {
+        colId: "priority",
+        headerName: "Priority",
+        field: "priority",
+        cellRenderer: PriorityCell,
+        comparator: (a, b) => (a ?? -1) - (b ?? -1),
+        initialWidth: 150,
+        minWidth: 140,
       },
       {
         colId: "status",
@@ -459,6 +571,7 @@ export function ThreadGrid({
 
   const chipBase = "inline-flex items-center rounded-[var(--radius-md)] border px-2.5 py-1 text-xs font-medium transition-colors";
   const chipIdle = "border-hairline bg-overlay text-subtle hover:border-hairline-strong hover:text-foreground";
+  const chipActive = "border-transparent bg-foreground text-background";
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col gap-2">
@@ -476,37 +589,36 @@ export function ThreadGrid({
         </div>
 
         <fieldset data-tour="grid-status" className="flex flex-wrap items-center gap-1.5">
-          <legend className="sr-only">Filter by card status</legend>
+          <legend className="sr-only">Filter by message kind</legend>
           <button
             ref={allChipRef}
             type="button"
-            onClick={() => setStatusFilter("")}
-            aria-pressed={statusFilter === ""}
-            className={cn(chipBase, statusFilter === "" ? "border-transparent bg-foreground text-background" : chipIdle)}
+            onClick={() => setDeptFilter("")}
+            aria-pressed={deptFilter === ""}
+            className={cn(chipBase, deptFilter === "" ? chipActive : chipIdle)}
           >
             All
             <span className="ml-1 tabular-nums opacity-60">{searched.length}</span>
           </button>
-          {STATUSES.filter((s) => (statusCounts[s] ?? 0) > 0 || statusFilter === s).map((s) => (
+          {DEPTS.filter((d) => (deptCounts[d] ?? 0) > 0 || deptFilter === d).map((d) => (
             <button
-              key={s}
+              key={d}
               type="button"
               onClick={() => {
-                const turningOff = statusFilter === s;
-                setStatusFilter(turningOff ? "" : s);
-                if (turningOff && (statusCounts[s] ?? 0) === 0) {
+                const turningOff = deptFilter === d;
+                setDeptFilter(turningOff ? "" : d);
+                if (turningOff && (deptCounts[d] ?? 0) === 0) {
                   allChipRef.current?.focus();
                 }
               }}
-              aria-pressed={statusFilter === s}
-              className={cn(chipBase, statusFilter === s ? STATUS_CHIP_ACTIVE[s] : chipIdle)}
+              aria-pressed={deptFilter === d}
+              className={cn(chipBase, deptFilter === d ? chipActive : chipIdle)}
             >
-              {titleize(s)}
-              <span className="ml-1 tabular-nums opacity-60">{statusCounts[s] ?? 0}</span>
+              {DEPT_CHIP_LABEL[d]}
+              <span className="ml-1 tabular-nums opacity-60">{deptCounts[d] ?? 0}</span>
             </button>
           ))}
         </fieldset>
-
       </div>
 
       <div ref={gridWrapRef} data-tour="grid-table" className="civic-grid relative min-h-0 flex-1">
