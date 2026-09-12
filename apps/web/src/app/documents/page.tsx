@@ -3,7 +3,6 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { Drawer } from "@/civic-ui/components/Drawer";
-import { SegmentedChips } from "@/civic-ui/components/FilterChips";
 import { buildChatRows, ChatDetailBody, ChatDetailPanel, ChatsTable } from "@/components/documents/chats";
 import { DocumentDetailBody, DocumentDetailPanel } from "@/components/documents/document-detail";
 import { buildDocumentRows, useIsLg } from "@/components/documents/document-model";
@@ -45,25 +44,10 @@ function DocumentsBody() {
     setPicked(null);
     router.replace(`/documents?kind=${kind}`, { scroll: false });
   }, [router, kind]);
-  const setKind = useCallback(
-    (k: "files" | "chats") => {
-      setPicked(null);
-      router.replace(`/documents?kind=${k}`, { scroll: false });
-    },
-    [router],
-  );
 
   return (
     <>
       <PageHeader title="Documents" subtitle="Which exact bytes a claim quotes." />
-      <SegmentedChips
-        options={[
-          { value: "files", label: `Files · ${rows.length}` },
-          { value: "chats", label: `Chats · ${chatRows.length}` },
-        ]}
-        value={kind}
-        onChange={setKind}
-      />
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
         {kind === "chats" ? (
           <ChatsTable rows={chatRows} loading={!loaded} selectedId={selectedId} onSelect={(r) => select(r.id)} />

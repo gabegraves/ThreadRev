@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import { Providers } from "@/components/providers";
 import { AppSidebar } from "@/components/shell/app-sidebar";
@@ -29,7 +30,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Providers>
           <div className="flex min-h-[calc(100dvh/var(--app-zoom,1))] flex-col bg-background text-foreground md:flex-row">
             <MobileHeader />
-            <AppSidebar />
+            {/* AppSidebar reads search params for sub-tab state; Suspense keeps the shell prerenderable. */}
+            <Suspense fallback={null}>
+              <AppSidebar />
+            </Suspense>
             <main className="flex min-w-0 flex-1 flex-col">
               <div className="mx-auto flex w-full max-w-[1800px] flex-grow flex-col gap-5 px-3 pt-city-content pb-10 sm:px-4 lg:px-6">{children}</div>
             </main>

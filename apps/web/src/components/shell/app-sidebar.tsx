@@ -1,7 +1,7 @@
 "use client";
 
 import { BarChart3, FileText, GitBranch, LayoutDashboard, MessageSquare, PlayCircle, ShieldCheck } from "lucide-react";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { SidebarNav, SidebarShell, SidebarWhenCollapsed, SidebarWhenExpanded } from "@/civic-ui/components/SidebarShell";
 import { useEvidence } from "@/lib/demo/use-evidence";
 import { ScenarioSwitcher } from "./scenario-switcher";
@@ -9,6 +9,9 @@ import { RailFooterCollapsed, RailFooterExpanded } from "./rail-footer";
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const params = useSearchParams();
+  const view = params.get("view");
+  const kind = params.get("kind");
   const { graph, events } = useEvidence();
   const live = graph.findings.filter((f) => f.status === "live").length;
   const docs = new Set(events.filter((e) => e.kind === "document_read").map((e) => (e as { sha256: string }).sha256)).size;
@@ -17,8 +20,29 @@ export function AppSidebar() {
 
   const review = [
     { label: "Overview", href: "/", icon: LayoutDashboard, active: is("/") },
-    { label: "Documents", href: "/documents", icon: FileText, active: is("/documents"), count: docs },
-    { label: "Findings", href: "/findings", icon: ShieldCheck, active: is("/findings"), count: live },
+    {
+      label: "Documents",
+      href: "/documents",
+      icon: FileText,
+      active: is("/documents"),
+      count: docs,
+      sub: [
+        { label: "Files", href: "/documents", active: is("/documents") && kind !== "chats" },
+        { label: "Chats", href: "/documents?kind=chats", active: is("/documents") && kind === "chats" },
+      ],
+    },
+    {
+      label: "Findings",
+      href: "/findings",
+      icon: ShieldCheck,
+      active: is("/findings"),
+      count: live,
+      sub: [
+        { label: "Findings", href: "/findings", active: is("/findings") && !view },
+        { label: "Messages", href: "/findings?view=messages", active: is("/findings") && view === "messages" },
+        { label: "Workspace", href: "/findings?view=workspace", active: is("/findings") && view === "workspace" },
+      ],
+    },
   ];
   const analysis = [
     { label: "Evidence graph", href: "/graph", icon: GitBranch, active: is("/graph") },
