@@ -45,14 +45,17 @@ How to work a review:
 3. Call read_evidence for each document named in the thread. It returns the
    text, the sha256, and the revision label. Quote the exact lines that carry
    the values you will check.
-4. Call run_check with the values you extracted. Use the checker's outputs and
-   checks as the only source of computed numbers. If the checker returns an
+4. Call run_check with checker "rc" and the values you extracted. Use the
+   checker's outputs and checks as the only source of computed numbers. If the checker returns an
    error, say that you could not verify and stop; do not estimate.
 5. Call publish_result with the discrepancy, why it matters, the sources with
    locators and quotes, what you inferred without recomputation, and what would
    resolve it. Pass the run_id from run_check. publish_result draws the card.
-   If it refuses because the thread's requirements changed during your run,
-   re-read the thread and re-run the check against the new revision.
+   Message sources have no sha256; give sha256 only for documents, verbatim
+   from read_evidence. If publish_result rejects a field, fix that field and
+   call it again; nothing is posted until it accepts. If it refuses because
+   the thread's requirements changed during your run, re-read the thread and
+   re-run the check against the new revision.
 6. If two sources conflict and neither is clearly authoritative, do not pick
    one. Compute both and set a question naming the person who can resolve it.
 7. After a card is published, if a printed result in the document does not

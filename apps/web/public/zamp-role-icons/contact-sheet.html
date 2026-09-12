@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Zamp role icons</title>
+    <style>
+      * { box-sizing: border-box; }
+      body { margin: 0; padding: 48px; background: #f1f1f1; color: #080808; font: 14px Arial, sans-serif; }
+      h1 { margin: 0 0 32px; font-size: 24px; font-weight: 500; }
+      main { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); border: 1px solid #d2d2d2; border-right: 0; border-bottom: 0; }
+      figure { min-height: 180px; margin: 0; display: grid; place-content: center; justify-items: center; gap: 16px; border-right: 1px solid #d2d2d2; border-bottom: 1px solid #d2d2d2; }
+      img { width: 72px; height: 72px; object-fit: contain; }
+      figcaption { text-align: center; }
+    </style>
+  </head>
+  <body>
+    <h1>Zamp role icons</h1>
+    <main id="icons"></main>
+    <script>
+      fetch("./manifest.json")
+        .then((response) => response.json())
+        .then(({ roles }) => {
+          document.querySelector("#icons").innerHTML = Object.entries(roles)
+            .map(([role, file]) => `<figure><img src="./${file}" alt="" /><figcaption>${role}</figcaption></figure>`)
+            .join("");
+        });
+    </script>
+  </body>
+</html>

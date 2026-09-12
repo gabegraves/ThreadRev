@@ -1,0 +1,20 @@
+{
+  "name": "pet",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ThreadRev desktop companion. A transparent always-on-top overlay that sits in the corner above Slack.",
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "node build.mjs",
+    "dev": "node build.mjs && electron .",
+    "start": "electron .",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.renderer.json",
+    "test": "node --import tsx --test \"src/**/*.test.ts\""
+  },
+  "devDependencies": {
+    "electron": "36.9.5",
+    "esbuild": "^0.25.0",
+    "tsx": "^4.23.1",
+    "typescript": "^5.7.0"
+  }
+}

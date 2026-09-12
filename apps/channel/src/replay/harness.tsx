@@ -20,11 +20,13 @@ import {
   readEvidence,
   readThread,
   rememberRun,
+  revisionNow,
   runCheck,
   searchWorkspace,
 } from "../reviewer-tools";
 import { ManagedGateway, preparedDelivery } from "../testing/managed-gateway";
 import { splitAtCutoff, toTranscript, type FixtureMessage } from "./fixture-loader";
+import { runContext, threadKey } from "../evidence";
 import { runChecker } from "./run-checker";
 
 export interface ToolCall {
@@ -175,7 +177,7 @@ export function createRouteCheckTool(state: ReplayState, options: ReplayOptions)
     parameters: z.object({ inputs: z.record(z.string(), z.unknown()) }),
     async handler({ inputs }, { thread }) {
       const response = await runChecker({ checker: "route", version: "1", inputs });
-      rememberRun(response);
+      rememberRun(response, await revisionNow(thread, runContext(threadKey(thread)).trigger_ts));
       state.checkerRuns.push(response);
       const injected = options.afterChecker?.(response, state);
       if (injected) {
@@ -282,8 +284,9 @@ export async function runReplay(options: ReplayOptions): Promise<ReplayResult> {
   const trigger = split.visible.find((m) => m.role === "trigger");
   assert.ok(trigger, "fixture must contain a trigger message at or before the cutoff");
   const state: ReplayState = { visible: [...split.visible], checkerRuns: [] };
-  const gateway = new ManagedGateway();
   const agentFactory = options.agent;
+  // A real model turn takes seconds per tool call; the scripted reviewer is instant.
+  const gateway = new ManagedGateway({ deliverTimeoutMs: agentFactory ? 300_000 : 1_000 });
   if (!agentFactory) assert.ok(options.steps, "runReplay needs either steps or an agent factory");
   const channel = createChannel({
     name: "support",

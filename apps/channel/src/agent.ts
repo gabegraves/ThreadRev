@@ -134,7 +134,9 @@ export class ChannelRunAgent extends AbstractAgent {
 
 export function makeChannelAgent(threadId: string) {
   return new ChannelRunAgent(
-    (id) => makeAgent(id, { prompt: REVIEWER_PROMPT, workplace: false }),
+    // A live Scenario A run is 9 to 13 tool calls; one refused publish and a
+    // re-run push it past the kit's default of 10, which ended a run with no card.
+    (id) => makeAgent(id, { prompt: REVIEWER_PROMPT, workplace: false, maxSteps: 24 }),
     threadId,
   );
 }

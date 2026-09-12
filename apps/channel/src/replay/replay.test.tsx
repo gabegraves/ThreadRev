@@ -1,5 +1,6 @@
 import { it } from "node:test";
 import assert from "node:assert/strict";
+import { tsNum } from "../revision";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { finding, type CheckerResponse } from "agent-core";
@@ -231,6 +232,28 @@ it("scenario A: proposes the section 4 edit, approval writes a new file, the sou
     delete process.env.EDIT_OUTPUT_DIR;
     rmSync(outDir, { recursive: true, force: true });
   }
+});
+
+it("publish_result binds to the revision the check ran against, not the string the model passes", { timeout: 20_000 }, async () => {
+  // Live, the model once passed a fixture ts it had seen through search_workspace.
+  // The thread had not moved since the run, so the card must post, bound to the run's revision.
+  const messages = loadFixture("scenario-a");
+  const base = scriptFor("scenario-a", messages);
+  const steps = base.steps.slice(0, 3);
+  steps.push((ctx) => {
+    const call = base.steps[3]!(ctx)!;
+    return { ...call, args: { ...(call.args as Record<string, unknown>), requirements_revision: "1700000000.000001" } };
+  });
+  steps.push(() => undefined);
+  const result = await runReplay({ messages, steps });
+  assert.equal(result.failure, undefined);
+  assert.equal(result.postedCards.length, 1, "the card must post");
+  const ok = result.agentMessages.find((m) => m.role === "tool" && String(m.content).includes('"published":true'));
+  assert.ok(ok, "expected a published result");
+  const trigger = messages.find((m) => m.role === "trigger")!;
+  const bound = JSON.parse(String(ok.content)).requirements_revision as string;
+  assert.equal(Math.floor(tsNum(bound)), Math.floor(tsNum(trigger.ts)), "bound to the trigger's second, however it is spelled");
+  assert.match(String(ok.content), /Bound to .* not the 1700000000\.000001 you passed/);
 });
 
 it("propose_edit refuses a replacement value the checker did not produce", { timeout: 20_000 }, async () => {

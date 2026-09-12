@@ -728,7 +728,8 @@ p {
   position: fixed;
   top: 0;
   right: 0;
-  height: 100dvh;
+  /* The Civic shell zooms html by --app-zoom; a plain 100dvh comes out 80% tall. */
+  height: calc(100dvh / var(--app-zoom, 1));
   width: 420px;
   max-width: 100vw;
   z-index: 30;

@@ -25,7 +25,7 @@ import {
 } from "agent-core";
 import { runChecker } from "./replay/run-checker";
 import { guardPublish, markStale } from "./replay/publish-guard";
-import { CHANGE_PATTERN, latestRevision } from "./revision";
+import { CHANGE_PATTERN, latestRevision, tsNum } from "./revision";
 import { record, runContext, threadKey } from "./evidence";
 import { editProposalBody, renderFindingCard, type EditProposalView } from "./finding-card";
 import { queryIndex, workspaceIndex } from "./workspace";
@@ -43,11 +43,29 @@ export function editOutputDir() {
 
 /** Checker runs this process has seen, by run_id. publish_result reads here. */
 const runs = new Map<string, CheckerResponse>();
-export function rememberRun(r: CheckerResponse) {
+/**
+ * The thread's requirements revision at the moment each run executed. This,
+ * not the string the model passes to publish_result, is what a card is bound
+ * to: a run is stale when the thread moved after it, not when the model
+ * mislabels it (live, the model once bound to a fixture ts found through
+ * search_workspace and the card was refused as stale although nothing moved).
+ */
+const runRevisions = new Map<string, string>();
+export function rememberRun(r: CheckerResponse, revisionAtRun?: string) {
   runs.set(r.run_id, r);
+  if (revisionAtRun) runRevisions.set(r.run_id, revisionAtRun);
 }
 export function recallRun(id: string) {
   return runs.get(id);
+}
+export function runRevision(id: string) {
+  return runRevisions.get(id);
+}
+/** latestRevision over the thread as it is right now; empty when there is no trigger to fall back to. */
+export async function revisionNow(thread: { getMessages(): Promise<Array<{ ts?: string; text: string; isBot?: boolean }>> }, fallback: string | undefined) {
+  if (!fallback) return undefined;
+  const messages = await thread.getMessages();
+  return latestRevision(messages.map((m) => ({ ts: m.ts, text: m.text, isBot: m.isBot })), fallback);
 }
 
 /* ---------------------------------------------------------- read_thread */
@@ -251,14 +269,14 @@ export const runCheck = defineChannelTool({
   description:
     "Run the trusted precharge RC checker on values you extracted from the evidence. Returns recomputed times, the fraction charged when the relay closes, and named pass/fail checks. These are the only numbers you may put on a card. Pass every capacitance the evidence mentions, including ones from later messages.",
   parameters: z.object({
-    checker: z.literal("rc"),
+    checker: z.literal("rc").describe('Always "rc". It is the only checker.'),
     inputs: rcInputs,
   }),
   async handler({ checker, inputs }, { thread }) {
     try {
       const res = await runChecker({ checker, version: "1", inputs });
-      rememberRun(res);
       const ctx = runContext(threadKey(thread));
+      rememberRun(res, await revisionNow(thread, ctx.trigger_ts));
       record({
         kind: "check_run",
         thread: threadKey(thread),
@@ -360,7 +378,9 @@ export const publishResult = defineChannelTool({
           kind: z.enum(["document", "message"]),
           id: z.string().min(1).describe("Document filename or message ts."),
           revision: z.string().optional(),
-          sha256: z.string().optional().describe("From read_evidence, verbatim."),
+          sha256: z
+            .preprocess((v) => (typeof v === "string" && v.trim() === "" ? undefined : v), z.string().optional())
+            .describe("Documents only, verbatim from read_evidence. Omit for messages."),
           locator: z.string().optional().describe('e.g. "line 9" or "section 3".'),
           quote: z.string().max(300).optional(),
         }),
@@ -377,31 +397,37 @@ export const publishResult = defineChannelTool({
     if (run.error) return { published: false, reason: `Run ${args.run_id} ended with an error; nothing to publish.` };
 
     const messages = await thread.getMessages();
+    // Bind to the revision the thread had when the run executed. The model's
+    // string is kept when it names the same instant (Slack ts and transcript
+    // occurredAt spell one moment two ways); it is replaced when it names a
+    // different one, which is how a run gets mislabeled as stale.
+    // Whole seconds: a Slack ts carries a sequence number after the dot that an
+    // occurredAt does not.
+    const second = (ts: string) => Math.floor(tsNum(ts));
+    const atRun = runRevision(args.run_id);
+    const bound = atRun && second(atRun) !== second(args.requirements_revision) ? atRun : args.requirements_revision;
     const current = latestRevision(
       messages.map((m) => ({ ts: m.ts, text: m.text, isBot: m.isBot })),
-      args.requirements_revision,
+      bound,
     );
     const state = (await thread.state<ReviewState>()) ?? { cards: [], staleRuns: [] };
 
-    const decision = guardPublish(
-      { requirements_revision: args.requirements_revision, status: "live" },
-      current,
-    );
+    const decision = guardPublish({ requirements_revision: bound, status: "live" }, current);
     if (!decision.ok) {
-      state.staleRuns.push({ run_id: args.run_id, bound: args.requirements_revision, current });
+      state.staleRuns.push({ run_id: args.run_id, bound, current });
       await thread.setState(state);
       record({
         kind: "publish_refused",
         thread: threadKey(thread),
         trigger_ts: runContext(threadKey(thread)).trigger_ts,
         run_id: args.run_id,
-        bound_revision: args.requirements_revision,
+        bound_revision: bound,
         current_revision: current,
         reason: "requirements changed after the run",
       });
       return {
         published: false,
-        reason: `Requirements changed at ${current} after this run (bound to ${args.requirements_revision}). Run recorded as stale. Re-read the thread, re-run the check, and publish against ${current}.`,
+        reason: `Requirements changed at ${current} after this run (bound to ${bound}). Run recorded as stale. Re-read the thread, re-run the check, and publish against ${current}.`,
         current_revision: current,
       };
     }
@@ -409,7 +435,7 @@ export const publishResult = defineChannelTool({
     const duplicate = state.cards.find(
       (c) =>
         c.finding.status === "live" &&
-        c.finding.requirements_revision === args.requirements_revision &&
+        c.finding.requirements_revision === bound &&
         c.finding.discrepancy === args.discrepancy,
     );
     if (duplicate) {
@@ -420,7 +446,7 @@ export const publishResult = defineChannelTool({
       finding_id: newFindingId(),
       status: "live",
       supersedes: args.supersedes,
-      requirements_revision: args.requirements_revision,
+      requirements_revision: bound,
       discrepancy: args.discrepancy,
       why_it_matters: args.why_it_matters,
       sources: args.sources,
@@ -462,7 +488,14 @@ export const publishResult = defineChannelTool({
       finding: f,
       message_ref: typeof ref?.id === "string" ? ref.id : undefined,
     });
-    return { published: true, finding_id: f.finding_id, requirements_revision: f.requirements_revision };
+    return {
+      published: true,
+      finding_id: f.finding_id,
+      requirements_revision: f.requirements_revision,
+      ...(args.requirements_revision !== bound
+        ? { note: `Bound to ${bound}, the thread's revision when run ${args.run_id} executed, not the ${args.requirements_revision} you passed.` }
+        : {}),
+    };
   },
 });
 
