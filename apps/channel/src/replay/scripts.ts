@@ -45,9 +45,6 @@ export const docSource = (doc: EvidenceResult, pattern: RegExp) => {
 export const routeCases = (res: CheckerResponse) =>
   res.outputs.cases as Record<string, { energy_kWh: number; budget_kWh: number; feasible: boolean }>;
 
-export const ROUTE_V20 = { mass_kg: 290, Crr: 0.004, CdA: 0.12, v_mps: 22, d_m: 220000, pack_kWh: 5.2, soc_start: 0.96 };
-export const ROUTE_V21 = { mass_kg: 318, Crr: 0.0048, CdA: 0.12, v_mps: 22, d_m: 220000, pack_kWh: 5.2, soc_start: 0.96 };
-
 
 /**
  * A numeric parameter out of an extracted spreadsheet row.
@@ -366,14 +363,16 @@ function rc3Midrun(messages: FixtureMessage[]): Script {
   return {
     steps: [
       () => readThread,
-      () => routeCheck({ ...ROUTE_V21, soc_end: 0.4 }),
+      () => readEvidence("ks4-sim-inputs-v2-1.xlsx"),
+      (ctx) => routeCheck(routeFromSheet(ctx.evidence[0]!, 0.4)),
       (ctx) => routeFinding(ctx, t.ts, t.ts, 0.4),
       // Refused: the refusal names the current revision; rerun against it.
       (ctx) => {
         const last = ctx.publishes.at(-1);
         assert.ok(last && last.published === false, JSON.stringify(last));
         assert.ok(last.current_revision, last.reason);
-        return routeCheck({ ...ROUTE_V21, soc_end: 0.35 });
+        // Re-read nothing: the sheet did not change, the requirement did.
+        return routeCheck(routeFromSheet(ctx.evidence[0]!, 0.35));
       },
       (ctx) => {
         const refusal = ctx.publishes.at(-1);
