@@ -8,7 +8,7 @@ import { CopilotKitIntelligence, CopilotRuntime } from "@copilotkit/runtime/v2";
 import { createCopilotNodeListener } from "@copilotkit/runtime/v2/node";
 import { resolveModel } from "agent-core";
 import { channel } from "./channel";
-import { required } from "./env";
+import { required, requiredAny } from "./env";
 
 /**
  * Fail on a bad model configuration at boot, not on the first message.
@@ -33,7 +33,8 @@ try {
 }
 
 const intelligence = new CopilotKitIntelligence({
-  apiKey: required("INTELLIGENCE_API_KEY"),
+  // Whichever name the CLI happened to write. See requiredAny.
+  apiKey: requiredAny(["INTELLIGENCE_API_KEY", "CPK_INTELLIGENCE_API_KEY", "COPILOTKIT_API_KEY"]),
   // Hosted Intelligence supplies both defaults. Override both together only for
   // self-hosted — they are separate hosts, so never derive one from the other.
   apiUrl: process.env.INTELLIGENCE_API_URL,
