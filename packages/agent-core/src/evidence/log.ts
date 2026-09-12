@@ -25,9 +25,27 @@ export function repoRoot(): string {
   return process.cwd();
 }
 
+/**
+ * The value of EVIDENCE_LOG that means "do not keep a log at all". Tests set it.
+ *
+ * It has to live here because this module is what turns EVIDENCE_LOG into a
+ * path: apps/channel treated "off" as a sentinel and checked for it before
+ * calling, while this module treated the same value as a filename and resolved
+ * it to <repo>/off. Nothing wrote that file only because the channel's guard
+ * happened to come first — any other caller, the console's evidence route
+ * included, would have read and written a file called "off" without anyone
+ * noticing. One variable, one meaning.
+ */
+export const EVIDENCE_LOG_OFF = "off";
+
+export function isEvidenceLogDisabled(): boolean {
+  return process.env.EVIDENCE_LOG === EVIDENCE_LOG_OFF;
+}
+
 export function evidenceLogPath(): string {
-  return process.env.EVIDENCE_LOG
-    ? resolve(process.env.EVIDENCE_LOG)
+  const configured = process.env.EVIDENCE_LOG;
+  return configured && configured !== EVIDENCE_LOG_OFF
+    ? resolve(configured)
     : resolve(repoRoot(), "evidence", "log.jsonl");
 }
 

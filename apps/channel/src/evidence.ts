@@ -2,13 +2,15 @@
  * Evidence recording for the channel app. Never throws: a logging failure
  * must not break a review. Set EVIDENCE_LOG=off to disable (tests do).
  */
-import { appendEvidence, newEventId, type EvidenceEvent } from "agent-core";
+import { appendEvidence, isEvidenceLogDisabled, newEventId, type EvidenceEvent } from "agent-core";
 
 type DistributiveOmit<T, K extends keyof T> = T extends unknown ? Omit<T, K> : never;
 type Draft = DistributiveOmit<EvidenceEvent, "event_id" | "at">;
 
 export function record(draft: Draft): void {
-  if (process.env.EVIDENCE_LOG === "off") return;
+  // One authority for what EVIDENCE_LOG means; this used to be a local string
+  // comparison that agent-core did not share.
+  if (isEvidenceLogDisabled()) return;
   try {
     appendEvidence({ ...draft, event_id: newEventId(), at: new Date().toISOString() } as EvidenceEvent);
   } catch (e) {
