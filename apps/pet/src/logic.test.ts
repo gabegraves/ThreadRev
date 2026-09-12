@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 
 import {
   applyFilter,
+  arrivalReaction,
+  arrivals,
   clampOrigin,
   DRAG_THRESHOLD_PX,
   cleanFeed,
@@ -12,6 +14,7 @@ import {
   isDrag,
   rectContains,
   shouldCapture,
+  STARTLE_COOLDOWN_MS,
   unreadCount,
 } from "./logic.js";
 
@@ -337,4 +340,52 @@ test("the sweep is always one of the offered widths", () => {
 
 test("a single item needs no sweep at all", () => {
   assert.equal(fitSweep({ x: 100, y: 100 }, R, 1, WIN_BOX, PAD).step, 0);
+});
+
+/* -------------------------------------------------------------- arrival --- */
+
+const ids = (items: ReadonlyArray<{ finding_id: string }>) => items.map((f) => f.finding_id);
+
+test("an arrival is a live finding Rev has not reacted to yet", () => {
+  assert.deepEqual(ids(arrivals(FINDINGS, new Set())), ["a", "c"]);
+  assert.deepEqual(ids(arrivals(FINDINGS, new Set(["a"]))), ["c"]);
+});
+
+test("a superseded card never arrives", () => {
+  assert.deepEqual(ids(arrivals([{ finding_id: "b", status: "stale" as const }], new Set())), []);
+});
+
+test("a reviewer serving the same findings again is not news", () => {
+  // The poll returns every finding every 3s, and a restarted reviewer serves
+  // them all again. Only ids Rev has never reacted to count.
+  assert.deepEqual(ids(arrivals(FINDINGS, new Set(["a", "c"]))), []);
+});
+
+const calm = { now: 100_000, lastStartleAt: null, engaged: false };
+
+test("the first arrival startles", () => {
+  assert.equal(arrivalReaction(calm), "startle");
+});
+
+test("a batch landing across polls startles once, then only nudges", () => {
+  const last = 100_000;
+  assert.equal(arrivalReaction({ ...calm, lastStartleAt: last, now: last + 3_000 }), "nudge");
+  assert.equal(
+    arrivalReaction({ ...calm, lastStartleAt: last, now: last + STARTLE_COOLDOWN_MS - 1 }),
+    "nudge",
+  );
+  assert.equal(
+    arrivalReaction({ ...calm, lastStartleAt: last, now: last + STARTLE_COOLDOWN_MS }),
+    "startle",
+  );
+});
+
+test("with the menu or the panel open Rev holds still and only nudges", () => {
+  assert.equal(arrivalReaction({ ...calm, engaged: true }), "nudge");
+});
+
+test("a clock that ran backwards does not silence Rev", () => {
+  // Without this, a clock stepped back an hour would suppress every startle
+  // for that hour.
+  assert.equal(arrivalReaction({ ...calm, lastStartleAt: 500_000, now: 100_000 }), "startle");
 });
