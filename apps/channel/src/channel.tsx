@@ -52,7 +52,12 @@ channel.onMessage(async ({ thread, message }) => {
   // to take effect on the turn it is said rather than after a model round trip.
   const control = parseControl(message.text, human);
   if (control === "explain") {
-    await thread.post(renderWorkTrail(readEvidenceLog(thread.conversationKey)));
+    // readEvidence reads the whole log and reports how many lines it could not
+    // parse; the trail is per-thread, so filter here.
+    const { events } = readEvidenceLog();
+    await thread.post(
+      renderWorkTrail(events.filter((e) => e.thread === thread.conversationKey)),
+    );
     return;
   }
   if (control) {
