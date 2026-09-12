@@ -92,3 +92,10 @@ If Card 2 has not posted 90 s after message D: keep Card 1 and the proposal card
 3. Confirm no token, key, or `.env` content appears in any frame, including the console and Chrome address bar.
 4. Upload (YouTube unlisted or Loom).
 5. Paste the link into `submission/final-submission.md`. Another lane owns that file, only the link goes in.
+
+## Live caveats (master session, 3:37 PM)
+
+- Do not restart `npm run dev:slack` and do not edit anything under `apps/channel/src` before recording. The dev script runs with `--watch`, channel state is an in-memory store, and a restart forgets Card 1 and the proposal in the existing thread, so the stale marker and the Approve button stop working there. If a restart happens anyway, record Option 1 (fresh thread) instead.
+- Dara's correction was posted in the live thread at 3:27 PM and produced nothing in the following minutes: no stale marker, no Card 2, no event in `evidence/log.jsonl`. The gate accepts that text and the process is connected, so the cause is unknown. The @Rev mention path is proven live. In the recording, after Dara's correction, wait 60 s. If nothing lands, Juno replies in the thread: `@Rev the bus is 820 uF now. Does your card above still hold?` That mention always runs the reviewer. If that also produces nothing within 90 s, use the Path B fallback above.
+- The console and the overlay on :3130 read the live log now (`EVIDENCE_LOG` points at `ThreadRev/evidence/log.jsonl`), so the Evidence graph shows the real run behind Card 1, and the glyph is red for that finding until the panel is opened.
+- The Chrome profile used by agents is not signed into kestrel-motors.slack.com. The human records from their own Slack sign-in.
