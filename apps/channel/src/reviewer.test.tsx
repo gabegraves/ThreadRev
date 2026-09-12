@@ -786,3 +786,30 @@ test("the task payload satisfies create_task's real constraints", () => {
   assert.match(followupTitle(clean), /^ThreadRev: Review reproduced/);
   assert.ok(followupTitle(clean).length <= 255);
 });
+
+import { requiredAny } from "./env";
+
+test("the Intelligence key is accepted under whichever name setup wrote", () => {
+  const names = ["INTELLIGENCE_API_KEY", "CPK_INTELLIGENCE_API_KEY", "COPILOTKIT_API_KEY"];
+  const saved = names.map((n) => [n, process.env[n]] as const);
+  try {
+    for (const n of names) delete process.env[n];
+    // channels setup writes CPK_*; the runtime historically read the bare name.
+    // Mapping that by hand is a step to forget, and forgetting it produces a
+    // channel that starts, reports online, and answers nothing.
+    process.env.CPK_INTELLIGENCE_API_KEY = "cpk-from-setup";
+    assert.equal(requiredAny(names), "cpk-from-setup");
+
+    delete process.env.CPK_INTELLIGENCE_API_KEY;
+    process.env.COPILOTKIT_API_KEY = "legacy-name";
+    assert.equal(requiredAny(names), "legacy-name");
+
+    delete process.env.COPILOTKIT_API_KEY;
+    assert.throws(() => requiredAny(names), /set one of INTELLIGENCE_API_KEY, CPK_INTELLIGENCE_API_KEY/);
+  } finally {
+    for (const [n, v] of saved) {
+      if (v === undefined) delete process.env[n];
+      else process.env[n] = v;
+    }
+  }
+});
