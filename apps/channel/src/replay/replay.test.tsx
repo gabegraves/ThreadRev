@@ -213,3 +213,43 @@ it("author identity survives the managed transcript", { timeout: 20_000 }, async
     assert.ok(typeof m.text === "string", "message text must survive as a string");
   }
 });
+
+import { normalizeRecord, type RunRecord } from "./record";
+
+it("two runs of the same fixture normalize to the same record", async () => {
+  // run_id and finding_id embed a timestamp and a random suffix, so raw records
+  // never match run to run. Normalized, they are golden-file comparable — which
+  // is the only way six committed records can detect a regression.
+  const a = normalizeRecord(JSON.parse(JSON.stringify({
+    case: "rc1-clean",
+    run: 1,
+    checker_runs: [{ run_id: "rc-20260912T162159Z-3a95" }],
+    posted_cards: [{ finding_id: "fnd-mtylf01b-d4lx", checker_run: { run_id: "rc-20260912T162159Z-3a95" } }],
+  })) as RunRecord);
+  const b = normalizeRecord(JSON.parse(JSON.stringify({
+    case: "rc1-clean",
+    run: 1,
+    checker_runs: [{ run_id: "rc-20260912T171557Z-8f77" }],
+    posted_cards: [{ finding_id: "fnd-mtyncek8-gfgm", checker_run: { run_id: "rc-20260912T171557Z-8f77" } }],
+  })) as RunRecord);
+
+  assert.deepEqual(a, b, "the same run should normalize to the same bytes");
+  assert.equal((a as unknown as { checker_runs: { run_id: string }[] }).checker_runs[0]!.run_id, "run-1");
+});
+
+it("normalization keeps distinct ids distinct and repeated ids identical", () => {
+  const out = normalizeRecord(JSON.parse(JSON.stringify({
+    posted_cards: [
+      { finding_id: "fnd-aaa-111", checker_run: { run_id: "rc-20260912T162159Z-3a95" } },
+      { finding_id: "fnd-bbb-222", supersedes: "fnd-aaa-111", checker_run: { run_id: "rc-20260912T162159Z-3a95" } },
+    ],
+  })) as RunRecord) as unknown as {
+    posted_cards: { finding_id: string; supersedes?: string; checker_run: { run_id: string } }[];
+  };
+
+  assert.notEqual(out.posted_cards[0]!.finding_id, out.posted_cards[1]!.finding_id);
+  assert.equal(out.posted_cards[1]!.supersedes, out.posted_cards[0]!.finding_id,
+    "a supersedes pointer must still resolve to the card it replaced");
+  assert.equal(out.posted_cards[0]!.checker_run.run_id, out.posted_cards[1]!.checker_run.run_id,
+    "the same run referenced twice must stay one id");
+});
