@@ -12,6 +12,8 @@ One line per lane. Update yours after every push. Read all four before you start
 
 ## Decisions and announcements
 
+- 2:25 README polish is queued behind a working UI, not started. Gate: the Slack lane reports Card 1 and the stale marker posted live (A4), or the 3:00 PM Path B call. Then, in this order: F14 rerun `npm run verify` and paste real counts into README Status; F15 add a 30-second version under the tagline (recomputes, binds to a revision, goes stale, video link); F12 screenshot of Card 1 with the stale marker under the tagline (Slack card if live, web console if Path B); F13 move the roadmap table and "Why search, not RAG" to `docs/` with one-line links; F16 replace the ASCII diagram with Mermaid; F17 cut the five-part card list in "What it does" to one sentence; F18 fold team rules, repo map, research, sponsors into a collapsed details block so the page ends on Run it and Built versus inherited. Owner: Gabe. Docs only, no verify needed except F14.
+
 - 2:15 Exa is out. It was never registered on the reviewer; the key is blanked in `.env` and every doc that listed it as ours is updated (README status and sponsors, SETUP, SCRATCHPAD, AGENTS, demo and Slack handoffs). Inherited `agent-core` search code and tests untouched. Sponsor line everywhere is OpenAI plus CopilotKit Channels.
 
 - 2:00 README comparison section rewritten in plain terms (Slack keeps the conversation; ThreadRev keeps the decision, what it was decided against, and whether it is still true). `submission/description.md` created with the spoken comparison beat and the written submission description. Demo lane owns wording from here; claims must match the README section.
