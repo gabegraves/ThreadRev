@@ -16,6 +16,7 @@
 import { useEffect, useMemo, useRef } from "react";
 import type { EvidenceGraph, GraphEdge, GraphNode } from "agent-core/shared";
 import * as d3 from "d3";
+import { fmtTime } from "@/components/review-console/graph-utils";
 import { EmptyState } from "@/civic-ui/components/Tile";
 
 type Kind = GraphNode["kind"];
@@ -50,8 +51,8 @@ const STATUS_STROKE: Record<GraphNode["status"], string> = {
 const CSS = `
 .pe-graph .node{cursor:pointer}
 .pe-graph .node .shape{stroke-width:1.5px;transition:opacity .18s}
-.pe-graph .node text{font-size:11px;fill:var(--subtle);pointer-events:none;paint-order:stroke;stroke:var(--surface);stroke-width:3px;stroke-linejoin:round}
-.pe-graph .node.is-claim text{fill:var(--foreground);font-size:12px;font-weight:600}
+.pe-graph .node text{font-size:10.5px;font-weight:500;letter-spacing:-.01em;fill:var(--subtle);pointer-events:none;paint-order:stroke;stroke:var(--surface);stroke-width:3.5px;stroke-linejoin:round}
+.pe-graph .node.is-claim text{fill:var(--foreground);font-size:11.5px;font-weight:600}
 .pe-graph .node.selected .shape{stroke:var(--foreground);stroke-width:2.5px}
 .pe-graph .node.dim{opacity:.13}
 .pe-graph .link{fill:none;transition:opacity .18s}
@@ -205,7 +206,13 @@ export function EvidenceGraphNetwork({ graph, selected, onSelect, noted }: Props
     const svgEl = svgRef.current;
     if (!wrap || !svgEl || graph.nodes.length === 0) return;
 
-    const nodes: N[] = graph.nodes.map((n) => ({ id: n.id, kind: n.kind, label: n.label, status: n.status }));
+    // A message node whose label is only its ts reads as a time instead.
+    const nodes: N[] = graph.nodes.map((n) => ({
+      id: n.id,
+      kind: n.kind,
+      label: n.kind === "message" && /^\d+\.\d+$/.test(n.label) ? `message · ${fmtTime(n.label)}` : n.label,
+      status: n.status,
+    }));
     const byId: Record<string, N> = Object.fromEntries(nodes.map((n) => [n.id, n]));
     const links: L[] = graph.edges
       .filter((e) => byId[e.from] && byId[e.to])
@@ -233,8 +240,8 @@ export function EvidenceGraphNetwork({ graph, selected, onSelect, noted }: Props
       .join("path")
       .attr("class", "link")
       .attr("stroke", (d) => LINK_STYLE[d.type].color)
-      .attr("stroke-width", 1.4)
-      .attr("stroke-opacity", 0.8)
+      .attr("stroke-width", 1.2)
+      .attr("stroke-opacity", 0.55)
       .attr("stroke-dasharray", (d) => LINK_STYLE[d.type].dash)
       .attr("marker-end", (d) => `url(#${markerId(d.type)})`);
 
@@ -278,14 +285,14 @@ export function EvidenceGraphNetwork({ graph, selected, onSelect, noted }: Props
       .attr("stroke-width", 1.2);
 
     nodeSel.each(function (d) {
-      const lines = wrapLabel(d.label, 22, 2);
+      const lines = wrapLabel(d.label, 18, 2);
       const text = d3
         .select(this)
         .append("text")
         .attr("text-anchor", "middle")
-        .attr("dy", nodeRadius(d) + 12);
+        .attr("dy", nodeRadius(d) + 13);
       lines.forEach((line, i) => {
-        text.append("tspan").attr("x", 0).attr("dy", i === 0 ? 0 : 12).text(line);
+        text.append("tspan").attr("x", 0).attr("dy", i === 0 ? 0 : 12.5).text(line);
       });
     });
 
@@ -296,12 +303,12 @@ export function EvidenceGraphNetwork({ graph, selected, onSelect, noted }: Props
         d3
           .forceLink<N, L>(model.links)
           .id((d) => d.id)
-          .distance(130)
+          .distance(150)
           .strength(0.5),
       )
-      .force("charge", d3.forceManyBody().strength(-520))
+      .force("charge", d3.forceManyBody().strength(-700))
       .force("center", d3.forceCenter(W / 2, H / 2))
-      .force("collide", d3.forceCollide<N>().radius((d) => nodeRadius(d) + 28))
+      .force("collide", d3.forceCollide<N>().radius((d) => nodeRadius(d) + 40))
       .force("x", d3.forceX(W / 2).strength(0.03))
       .force("y", d3.forceY(H / 2).strength(0.05));
 
@@ -318,9 +325,7 @@ export function EvidenceGraphNetwork({ graph, selected, onSelect, noted }: Props
         // simulation is not reheated until the pointer actually moves.
         .clickDistance(4)
         .on("drag", (event, d) => {
-          if (d.fx == null) {
-            if (!event.active) sim.alphaTarget(0.3).restart();
-          }
+          if (d.fx == null) sim.alphaTarget(0.3).restart();
           d.fx = event.x;
           d.fy = event.y;
         })
