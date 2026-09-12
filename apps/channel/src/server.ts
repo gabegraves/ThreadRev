@@ -98,7 +98,43 @@ teardown = async () => {
   if (server.listening) server.close();
 };
 
-await channels.ready({ timeoutMs: 30_000 });
+/**
+ * Say something before the wait that can hang.
+ *
+ * `channels.ready()` is the first slow thing this process does, and with no
+ * output before it a hang is indistinguishable from a crash — observed here as
+ * a minute of complete silence on a fresh setup.
+ *
+ * The likeliest cause is a missing realtime URL. The CLI's own diagnostic says
+ * it plainly: the realtime plane is a different host from the API plane and is
+ * not derived from it, so a missing value does not error — ready() simply hangs
+ * until it times out. Naming that here turns a silent minute into a sentence.
+ */
+const READY_TIMEOUT_MS = 30_000;
+console.log(`\n  Connecting channel "${process.env.CHANNEL_CODE ?? "(CHANNEL_CODE unset)"}"…`);
+
+const readyAt = Date.now();
+let readyTimedOut = false;
+try {
+  await channels.ready({ timeoutMs: READY_TIMEOUT_MS });
+} catch (error) {
+  readyTimedOut = true;
+  console.error(`\n  Channel did not become ready: ${(error as Error).message}`);
+}
+if (readyTimedOut || Date.now() - readyAt >= READY_TIMEOUT_MS) {
+  const wsSet = Boolean(process.env.INTELLIGENCE_GATEWAY_WS_URL || process.env.COPILOTKIT_INTELLIGENCE_WS_URL);
+  console.error(
+    `\n  Waited ${READY_TIMEOUT_MS / 1000}s for the Channel and it never connected.\n` +
+      (wsSet
+        ? "  → A realtime URL is set, so check it points at the gateway host and not the API host.\n"
+        : "  → Neither INTELLIGENCE_GATEWAY_WS_URL nor COPILOTKIT_INTELLIGENCE_WS_URL is set.\n" +
+          "    The realtime plane is a different host from the API plane and is not derived\n" +
+          "    from it, so a missing value does not error — this wait is what it looks like.\n") +
+      "  → Run: npm run channel:status\n",
+  );
+  await teardown();
+  process.exit(1);
+}
 
 // `ready()` is NOT proof of life — it resolves on `setup_required` too, because
 // a declared-but-unprovisioned Channel counts as a valid degraded state. Skip
