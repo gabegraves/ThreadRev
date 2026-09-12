@@ -297,3 +297,91 @@ test("different numbers are different findings", () => {
   );
   assert.equal(sameClaim("none", "Printed value does not reproduce."), false);
 });
+
+import { mock } from "node:test";
+import { publishResult, rememberRun } from "./reviewer-tools";
+
+const stubCtx = (thread: Record<string, unknown>) =>
+  ({ thread, user: { id: "u1", name: "Dara Voss" }, actor: { id: "a1" }, platform: "slack" }) as never;
+
+const TEST_RUN = {
+  checker: "rc",
+  version: "1",
+  run_id: "rc-ordering-test",
+  inputs: { R_ohm: 470, timer_s: 2.5, capacitances: [{ label: "680uF", C_F: 0.00068 }] },
+  outputs: { per_capacitance: {} },
+  checks: [],
+  error: null,
+};
+
+const priorLive = () => ({
+  finding: {
+    finding_id: "fnd-prior",
+    status: "live" as const,
+    requirements_revision: "100.000100",
+    discrepancy: "an earlier discrepancy",
+    why_it_matters: "it mattered",
+    sources: [{ kind: "message" as const, id: "100.000100" }],
+    reproduced: [],
+    inferred: [],
+    resolution: "someone confirms",
+    checker_run: { checker: "rc", version: "1", run_id: "rc-earlier" },
+  },
+  ref: { id: "ref-prior" },
+});
+
+const publishArgs = {
+  run_id: "rc-ordering-test",
+  requirements_revision: "100.000100",
+  discrepancy: "a new and different discrepancy",
+  why_it_matters: "it matters now",
+  sources: [{ kind: "message" as const, id: "100.000100" }],
+  inferred: [],
+  resolution: "someone confirms the bus capacitance",
+  supersedes: "fnd-prior",
+};
+
+test("a failed post never withdraws the card it was going to replace", async () => {
+  rememberRun(TEST_RUN);
+  const state = { cards: [priorLive()], staleRuns: [] };
+  const update = mock.fn(async () => {});
+
+  await assert.rejects(() =>
+    publishResult.handler(
+      publishArgs,
+      stubCtx({
+        getMessages: async () => [{ ts: "100.000100", text: "please check section 3", isBot: false }],
+        state: async () => state,
+        setState: async () => {},
+        post: async () => {
+          throw new Error("slack rate limited");
+        },
+        update,
+      }),
+    ),
+  );
+
+  // The whole point: the engineer must never be left looking at a withdrawn
+  // conclusion with no replacement.
+  assert.equal(update.mock.callCount(), 0, "the prior card must not have been struck");
+  assert.equal(state.cards[0]!.finding.status, "live", "the prior finding must still be live");
+});
+
+test("a card that cannot be re-struck later says so instead of pretending", async () => {
+  rememberRun(TEST_RUN);
+  const state = { cards: [], staleRuns: [] };
+  const result = (await publishResult.handler(
+    { ...publishArgs, supersedes: undefined },
+    stubCtx({
+      getMessages: async () => [{ ts: "100.000100", text: "please check section 3", isBot: false }],
+      state: async () => state,
+      setState: async () => {},
+      // Surface accepted the post but handed back no usable reference.
+      post: async () => undefined,
+      update: async () => {},
+    }),
+  )) as { published: boolean; warning?: string };
+
+  assert.equal(result.published, true);
+  assert.match(String(result.warning), /not be able to mark this card stale/);
+});
