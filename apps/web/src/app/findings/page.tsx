@@ -5,32 +5,46 @@ import { Suspense, useCallback } from "react";
 import { SegmentedChips } from "@/civic-ui/components/FilterChips";
 import { FindingsExplorer } from "@/components/findings/findings-explorer";
 import { ThreadBody } from "@/components/thread/thread-body";
+import { WorkspaceBody } from "@/components/workspace/workspace-body";
 
-type View = "findings" | "messages";
+type View = "findings" | "messages" | "workspace";
+
+const VIEW_HREF: Record<View, string> = {
+  findings: "/findings",
+  messages: "/findings?view=messages",
+  workspace: "/findings?view=workspace",
+};
+
+const VIEW_BLURB: Record<View, string> = {
+  findings: "Every card Rev published, across recorded threads.",
+  messages: "The selected thread in order, with what each message triggered.",
+  workspace: "The reviewer's exact-match message index.",
+};
 
 function Body() {
   const router = useRouter();
   const params = useSearchParams();
-  const view: View = params.get("view") === "messages" ? "messages" : "findings";
-  const setView = useCallback((v: View) => router.replace(v === "messages" ? "/findings?view=messages" : "/findings", { scroll: false }), [router]);
+  const rawView = params.get("view");
+  const view: View = rawView === "messages" ? "messages" : rawView === "workspace" ? "workspace" : "findings";
+  const setView = useCallback((v: View) => router.replace(VIEW_HREF[v], { scroll: false }), [router]);
   return (
     <>
       {/* Findings = what Rev concluded, across every recorded thread.
-          Messages = the selected thread in order, with what each message triggered. */}
+          Messages = the selected thread in order, with what each message triggered.
+          Workspace = the reviewer's exact-match message index. */}
       <div className="flex items-center gap-3 border-b border-hairline px-3 py-2 sm:px-4 lg:px-6">
         <SegmentedChips
           options={[
             { value: "findings", label: "Findings" },
             { value: "messages", label: "Messages" },
+            { value: "workspace", label: "Workspace" },
           ]}
           value={view}
           onChange={setView}
         />
-        <span className="text-[12px] text-faint">
-          {view === "findings" ? "Every card Rev published, across recorded threads." : "The selected thread in order, with what each message triggered."}
-        </span>
+        <span className="text-[12px] text-faint">{VIEW_BLURB[view]}</span>
       </div>
-      {view === "messages" ? <ThreadBody /> : <FindingsExplorer />}
+      {view === "messages" ? <ThreadBody /> : view === "workspace" ? <WorkspaceBody /> : <FindingsExplorer />}
     </>
   );
 }
