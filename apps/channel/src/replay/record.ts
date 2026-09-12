@@ -133,3 +133,41 @@ export function toRecord({ caseName, run, mode, model, result }: RecordInput): R
           : String(failure),
   };
 }
+
+/**
+ * Replace identifiers that change on every run with stable placeholders.
+ *
+ * A run record is only useful as a golden file if two runs of the same fixture
+ * produce the same bytes, and two of its fields never do: run_id embeds a
+ * timestamp and random suffix, finding_id a timestamp and random suffix. Both
+ * *should* be unique — that is what makes them provenance — so the fix is not
+ * to make them deterministic but to normalise them when comparing.
+ *
+ * Ids are mapped in order of first appearance, so a record that references the
+ * same run twice still references the same placeholder twice, and a record that
+ * supersedes an earlier finding still points at the right one. Anything that
+ * looks like an id but was never issued in this record is left alone.
+ */
+export function normalizeRecord(record: RunRecord): RunRecord {
+  const mapped = new Map<string, string>();
+  const counters = { run: 0, finding: 0 };
+
+  const placeholder = (id: string): string => {
+    const existing = mapped.get(id);
+    if (existing) return existing;
+    const kind = id.startsWith("fnd-") ? "finding" : "run";
+    counters[kind] += 1;
+    const next = kind === "finding" ? `fnd-${counters.finding}` : `run-${counters.run}`;
+    mapped.set(id, next);
+    return next;
+  };
+
+  // Collect first, so ordering follows the record rather than the walk.
+  const VOLATILE = /(?:fnd-[a-z0-9]+-[a-z0-9]+|[a-z]+-\d{8}T\d{6}Z-[a-f0-9]+)/g;
+  const serialized = JSON.stringify(record);
+  for (const id of serialized.match(VOLATILE) ?? []) placeholder(id);
+
+  return JSON.parse(
+    serialized.replace(VOLATILE, (id) => mapped.get(id) ?? id),
+  ) as RunRecord;
+}
