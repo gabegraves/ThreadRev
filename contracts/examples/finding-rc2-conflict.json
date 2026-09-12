@@ -1,0 +1,55 @@
+{
+  "finding_id": "fnd-rc2-001",
+  "status": "live",
+  "requirements_revision": "1786472100.000800",
+  "discrepancy": "The request uses the July 3 sheet (v2-0). v2-1 (July 24) is the latest named inputs, but Milo's July 30 message says the v2-1 mass may be 8 kg high because ballast was on the scale, with a re-weigh pending. No re-weigh has been posted. With the 96 to 40 percent budget of 2.912 kWh, 22 m/s is not feasible at either 318 kg (3.045 kWh) or 310 kg (3.022 kWh). The mass question does not change the feasibility answer for this request, but it does change the margin and the max speed, and it is unresolved.",
+  "why_it_matters": "Either mass gives a shortfall of at least 0.11 kWh at 22 m/s. Which mass is right decides whether the max constant speed is 21.30 or 21.43 m/s. The reviewer cannot pick one; only a re-weigh can.",
+  "sources": [
+    {
+      "kind": "message",
+      "id": "1786472100.000800",
+      "quote": "I grabbed the params from the July 3 sheet."
+    },
+    {
+      "kind": "message",
+      "id": "1784929680.000300",
+      "quote": "v2-1 has the post-suspension values (318 kg, Crr 0.0048). Use v2-1 for anything after today."
+    },
+    {
+      "kind": "message",
+      "id": "1784930520.000400",
+      "quote": "Confirmed, corner weights from Tuesday add up to 318 with driver."
+    },
+    {
+      "kind": "message",
+      "id": "1785427200.001000",
+      "quote": "v2-1 mass may be 8 kg high, the ballast was on the scale. Re-weigh pending."
+    },
+    {
+      "kind": "document",
+      "id": "ks4-sim-inputs-v2-1.xlsx",
+      "revision": "v2-1",
+      "sha256": "8e2419c7620047d5b80fa273828bd062fecbe50bd3404aed39dd2301d07e6ab4",
+      "locator": "sheet params, rows 2 to 5",
+      "quote": "mass_kg 318, Crr 0.0048, CdA 0.12, pack_kWh 5.2"
+    }
+  ],
+  "reproduced": [
+    { "label": "budget, SoC 96 to 40 percent", "computed": 2.912, "unit": "kWh" },
+    { "label": "energy at 22 m/s, 318 kg, Crr 0.0048", "computed": 3.0447, "unit": "kWh" },
+    { "label": "energy at 22 m/s, 310 kg, Crr 0.0048", "computed": 3.0217, "unit": "kWh" },
+    { "label": "max feasible speed, 318 kg", "computed": 21.3037, "unit": "m/s" },
+    { "label": "max feasible speed, 310 kg", "computed": 21.4261, "unit": "m/s" }
+  ],
+  "inferred": [
+    "310 kg is Milo's stated 8 kg correction applied to 318 kg. It is a candidate, not a measured value.",
+    "Crr 0.0048 is carried unchanged for both masses because the July 30 message questions only the mass.",
+    "Array input is assumed zero. Optional loop excluded and two 20-minute swaps taken from the request text."
+  ],
+  "resolution": "Milo posts the re-weigh result, or states that 318 kg stands. Until then neither mass is final and the run is blocked on that answer.",
+  "question": {
+    "to": "Milo Trent",
+    "ask": "Has the re-weigh from your July 30 message happened? Is the KS-4 mass with driver 318 kg or 310 kg?"
+  },
+  "checker_run": { "checker": "route", "version": "1", "run_id": "route-20260912T161056Z-d049" }
+}

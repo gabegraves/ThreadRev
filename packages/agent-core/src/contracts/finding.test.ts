@@ -50,6 +50,40 @@ test("route checker examples agree with the schemas and carry both RC2 masses", 
   assert.equal(byName["mass_310kg_feasible"], false);
 });
 
+test("scenario B finding flips feasibility between input versions and asks Juno", () => {
+  const f = finding.parse(load("finding-scenario-b.json"));
+  assert.equal(f.status, "live");
+  assert.equal(f.requirements_revision, "1786472100.000800");
+  assert.equal(f.question?.to, "Juno Marsh");
+  assert.ok(f.sources.some((s) => s.kind === "document" && s.revision === "v2-1"));
+  assert.ok(f.sources.some((s) => s.kind === "document" && s.revision === "v2-0"));
+});
+
+test("scenario B stale card keeps its id and run id and points at its successor", () => {
+  const stale = finding.parse(load("finding-scenario-b-stale.json"));
+  const live = finding.parse(load("finding-scenario-b.json"));
+  assert.equal(stale.status, "stale");
+  assert.equal(stale.finding_id, live.finding_id);
+  assert.equal(stale.checker_run.run_id, live.checker_run.run_id);
+  assert.ok(stale.why_it_matters.includes("fnd-b-35-002"));
+});
+
+test("scenario B superseding card binds to the 35 percent message", () => {
+  const f = finding.parse(load("finding-scenario-b-superseding.json"));
+  assert.equal(f.supersedes, "fnd-b-40-001");
+  assert.equal(f.requirements_revision, "1786474920.000900");
+  assert.ok(f.sources.some((s) => s.id === "1786474920.000900"));
+});
+
+test("RC2 card computes both masses and asks Milo without choosing", () => {
+  const f = finding.parse(load("finding-rc2-conflict.json"));
+  assert.equal(f.question?.to, "Milo Trent");
+  const labels = f.reproduced.map((r) => r.label);
+  assert.ok(labels.some((l) => l.includes("318 kg")));
+  assert.ok(labels.some((l) => l.includes("310 kg")));
+  assert.ok(f.sources.some((s) => s.id === "1785427200.001000"));
+});
+
 test("a finding without sources is rejected", () => {
   const bad = { ...(load("finding-rc1-clean.json") as object), sources: [] };
   assert.throws(() => finding.parse(bad));
