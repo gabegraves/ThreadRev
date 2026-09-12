@@ -20,11 +20,13 @@ import {
   readEvidence,
   readThread,
   rememberRun,
+  revisionNow,
   runCheck,
   searchWorkspace,
 } from "../reviewer-tools";
 import { ManagedGateway, preparedDelivery } from "../testing/managed-gateway";
 import { splitAtCutoff, toTranscript, type FixtureMessage } from "./fixture-loader";
+import { runContext, threadKey } from "../evidence";
 import { runChecker } from "./run-checker";
 
 export interface ToolCall {
@@ -175,7 +177,7 @@ export function createRouteCheckTool(state: ReplayState, options: ReplayOptions)
     parameters: z.object({ inputs: z.record(z.string(), z.unknown()) }),
     async handler({ inputs }, { thread }) {
       const response = await runChecker({ checker: "route", version: "1", inputs });
-      rememberRun(response);
+      rememberRun(response, await revisionNow(thread, runContext(threadKey(thread)).trigger_ts));
       state.checkerRuns.push(response);
       const injected = options.afterChecker?.(response, state);
       if (injected) {

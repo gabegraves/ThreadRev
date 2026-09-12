@@ -23,6 +23,8 @@ export type AgentFactoryOptions = {
   workplace?: boolean;
   /** Override the default incident prompt for a surface-specific starter. */
   prompt?: string;
+  /** Tool-call loop budget. The reviewer needs more than the incident agent. */
+  maxSteps?: number;
 };
 
 export function makeAgent(threadId: string, options: AgentFactoryOptions = {}) {
@@ -33,7 +35,7 @@ export function makeAgent(threadId: string, options: AgentFactoryOptions = {}) {
     // NOT optional in practice. maxSteps defaults to 1, which means the agent
     // can call one tool and then stops — before it ever sees the result. Any
     // agent with tools needs room to loop.
-    maxSteps: 10,
+    maxSteps: options.maxSteps ?? 10,
 
     // The workplace, when one is configured. Empty array when it is not, so the
     // agent is never handed tools that would 401. Add your own MCP servers here
