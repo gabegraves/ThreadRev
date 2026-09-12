@@ -616,3 +616,16 @@ test("run_check reaches the route checker, not only rc", async () => {
   // Scenario B's expectation: v2-1 is not feasible at 40 percent.
   assert.equal(result.outputs?.cases?.["mass_318kg"]?.feasible, false);
 });
+
+test("a missing document names what the store does hold", async () => {
+  const result = (await readEvidence.handler(
+    { document: "precharge-review-r3.docx" },
+    stubCtx({ conversationKey: "missing-doc" }),
+  )) as { error?: string };
+
+  // "Not found" alone leaves the model guessing at a filename, and guessing at
+  // evidence is the one thing this reviewer must not do.
+  assert.match(String(result.error), /is not in the document store/);
+  assert.match(String(result.error), /precharge-review-r2\.docx/);
+  assert.match(String(result.error), /ks4-sim-inputs-v2-1\.xlsx/);
+});

@@ -13,6 +13,7 @@
  * put a number on a card that the checker did not produce.
  */
 import { spawn } from "node:child_process";
+import { existsSync, readdirSync } from "node:fs";
 import { basename, resolve } from "node:path";
 import { defineChannelTool } from "@copilotkit/channels";
 import type { MessageRef } from "@copilotkit/channels";
@@ -32,7 +33,18 @@ import { renderFindingCard } from "./finding-card";
 import { queryIndex, workspaceIndex } from "./workspace";
 
 export const REPO_ROOT = resolve(import.meta.dirname, "../../..");
-const DOCUMENTS_DIR = resolve(REPO_ROOT, "fixtures", "documents");
+/**
+ * Where documents are served from.
+ *
+ * DOCUMENT_STORE points a deployment at a real share; without it the fixture
+ * documents stand in, which is what every test and the offline replay use. The
+ * reviewer never fetches a file from Slack — it reads the store by name — so
+ * this is the one setting that decides whether it is reviewing real documents
+ * or synthetic ones.
+ */
+const DOCUMENTS_DIR = process.env.DOCUMENT_STORE
+  ? resolve(process.env.DOCUMENT_STORE)
+  : resolve(REPO_ROOT, "fixtures", "documents");
 const DOCX_EXTRACTOR = resolve(REPO_ROOT, "extractors", "docx_text.py");
 const XLSX_EXTRACTOR = resolve(REPO_ROOT, "extractors", "xlsx_text.py");
 
@@ -293,6 +305,15 @@ export const searchWorkspace = defineChannelTool({
 
 /* -------------------------------------------------------- read_evidence */
 
+/** Filenames the store holds that an extractor can read. Never throws. */
+function available(): string[] {
+  try {
+    return readdirSync(DOCUMENTS_DIR).filter((f) => extractorFor(f) !== undefined).sort();
+  } catch {
+    return [];
+  }
+}
+
 function runPython(script: string, args: string[]): Promise<string> {
   return new Promise((done, fail) => {
     const child = spawn(process.env.PYTHON ?? "python3", [script, ...args], {
@@ -334,6 +355,15 @@ export const readEvidence = defineChannelTool({
     const extractor = extractorFor(name);
     if (!extractor) {
       return { error: `No extractor for "${name}".` };
+    }
+    // Naming what the store actually holds turns a dead end into a correction:
+    // the model misreads a filename off a thread often enough that "not found"
+    // alone leaves it guessing, and guessing at evidence is the one thing this
+    // reviewer must not do.
+    if (!existsSync(resolve(DOCUMENTS_DIR, name))) {
+      return {
+        error: `"${name}" is not in the document store. Available: ${available().join(", ") || "nothing"}. Use one of these exactly, or ask in the thread for the values.`,
+      };
     }
     const raw = await runPython(extractor, [resolve(DOCUMENTS_DIR, name)]);
     let parsed: { sha256?: string; paragraphs?: string[]; error?: string };
