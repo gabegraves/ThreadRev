@@ -67,3 +67,59 @@ test("tsNum orders Slack ts and ISO occurredAt on one scale", () => {
   assert.equal(tsNum("2026-08-19T20:30:00.000Z") > tsNum("2026-08-18T14:12:00.000Z"), true);
   assert.equal(tsNum("seven fifty"), -1);
 });
+
+import { mentionsQuantity, unitsFromInputs } from "./revision";
+
+const RC_INPUTS = {
+  R_ohm: 470,
+  threshold: 0.999,
+  timer_s: 2.5,
+  capacitances: [
+    { label: "680uF_text", C_F: 0.00068 },
+    { label: "750uF_diagram", C_F: 0.00075 },
+  ],
+  tolerance_s: 0.0005,
+};
+
+test("run inputs name the units the run depends on", () => {
+  const units = unitsFromInputs(RC_INPUTS);
+  assert.equal(units.includes("ohm"), true);
+  assert.equal(units.includes("s"), true);
+  assert.equal(units.includes("F"), true, "C_F inside the capacitances array must be reached");
+});
+
+test("a restated quantity counts as a change even with no change vocabulary", () => {
+  const units = unitsFromInputs(RC_INPUTS);
+  // None of these contain a CHANGE_PATTERN token, and all of them move the run.
+  assert.equal(mentionsQuantity("we're going with 820 uF", units), true);
+  assert.equal(mentionsQuantity("let's do 820uF on the bus", units), true);
+  assert.equal(mentionsQuantity("bumping the relay to 3 s", units), true);
+  assert.equal(mentionsQuantity("swap in the 560 ohm part", units), true);
+});
+
+test("prose without a run-relevant quantity does not move the revision", () => {
+  const units = unitsFromInputs(RC_INPUTS);
+  assert.equal(mentionsQuantity("looks good to me, shipping it", units), false);
+  assert.equal(mentionsQuantity("I'll be 5 mins", units), false);
+  assert.equal(mentionsQuantity("section 3 is the one I meant", units), false);
+});
+
+test("the quantity backstop closes a gap CHANGE_PATTERN leaves open", () => {
+  const msgs = [
+    { ts: "1787166300.000300", text: "can you check section 3 of the r2 doc?" },
+    { ts: "1787171400.000400", text: "we're going with 820 uF" },
+  ];
+  const trigger = "1787166300.000300";
+
+  // Regex alone sees no change here, so the card would publish as fresh.
+  assert.equal(latestRevision(msgs, trigger), trigger);
+
+  // With the run's own units, the restated capacitance moves the revision and
+  // the guard refuses the stale publish.
+  const current = latestRevision(msgs, trigger, unitsFromInputs(RC_INPUTS));
+  assert.equal(current, "1787171400.000400");
+  assert.equal(
+    guardPublish({ status: "live", requirements_revision: trigger }, current).ok,
+    false,
+  );
+});
