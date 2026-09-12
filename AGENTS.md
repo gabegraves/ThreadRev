@@ -1,5 +1,31 @@
 # Notes for coding agents
 
+Four people and their agents work on this repo in parallel until 5:00 PM EDT on 2026-09-12. Read this section, then [STATUS.md](STATUS.md), before editing anything.
+
+## Who is working on what
+
+| Lane | Owner | Owns | Does not touch |
+|---|---|---|---|
+| Backend / reviewer | Gabe | `apps/channel/`, `packages/agent-core/`, `checkers/`, `extractors/`, `contracts/`, `fixtures/` | `apps/web/`, `submission/` |
+| Web console | fill in | `apps/web/` | everything else; `contracts/` and `packages/agent-core/src/contracts/` are read-only inputs |
+| Demo and submission | fill in | `submission/`, `SUBMISSION.md`, `research/handoff-*.md`, `research/setup-evidence/` | all code |
+| Slack environment and credentials | fill in | local `.env` (never committed), `research/environment-audit.md`, `research/card-design-notes.md` | all code |
+
+Lane handoffs: [research/handoff-frontend-demo.md](research/handoff-frontend-demo.md) (state of the project, demo story, video plan), [research/handoff-demo-narrative.md](research/handoff-demo-narrative.md), [research/handoff-slack-environment.md](research/handoff-slack-environment.md), [research/handoff-openai-key.md](research/handoff-openai-key.md).
+
+If you need a change outside your lane, write the request to the owner and keep working. Do not make the edit. The seam between lanes is the contracts: `contracts/` and `packages/agent-core/src/contracts/`. Only the backend lane edits them, and announces every change in `STATUS.md`.
+
+## Workspace rules
+
+- One checkout per person or agent. Never run two agents in the same working tree. On a shared machine use `git worktree add ../ThreadRev-<lane> -b <lane>`.
+- Stage by explicit path: `git add <file>`. Never `git add -A` or `git add .`. Never commit files outside your lane, even if they show up as modified or untracked.
+- Commit every completed unit of work, then `git pull --rebase origin main && git push origin main`. Small commits. Never end a task with uncommitted work. Never force-push `main`.
+- `main` must pass `npm run verify` at all times. Whoever pushes is responsible for it passing afterward. If it fails because of another lane's files, tell that owner in `STATUS.md`; do not fix their files.
+- Before starting, read `STATUS.md`. When you finish a unit of work, update your lane's line: what you pushed, what you are editing next, what you are blocked on.
+- Never commit `.env`, tokens, screenshots containing secrets, or anything from the private research archive outside this repo. No co-author trailers on commits.
+- The project name is ThreadRev. Do not rename, reorganize, or clean up files outside your lane.
+- Report only what you verified. Say which command you ran.
+
 ## ThreadRev workspace
 
 Read [SCRATCHPAD.md](SCRATCHPAD.md) for accepted project decisions, including Convex storage scope and its implementation boundaries.
