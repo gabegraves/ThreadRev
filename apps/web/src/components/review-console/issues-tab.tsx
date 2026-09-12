@@ -12,8 +12,19 @@ function FindingDetail({ f }: { f: Finding }) {
       </summary>
       <dl className="ck-facts">
         <dt>Finding</dt><dd><code>{f.finding_id}</code>{f.supersedes && <> supersedes <code>{f.supersedes}</code></>}</dd>
+        {f.supersedes_reason && (<><dt>Replaced</dt><dd>{f.supersedes_reason}</dd></>)}
         <dt>Revision</dt><dd><code>{f.requirements_revision}</code></dd>
         <dt>Why it matters</dt><dd>{f.why_it_matters}</dd>
+        {f.evidence_notices && f.evidence_notices.length > 0 && (
+          <>
+            <dt>Noticed in the evidence</dt>
+            <dd>
+              <ul>
+                {f.evidence_notices.map((n) => <li key={n}>{n}</li>)}
+              </ul>
+            </dd>
+          </>
+        )}
         <dt>Reproduced</dt>
         <dd>
           {f.reproduced.length === 0 ? <span className="ck-muted">none</span> : (
