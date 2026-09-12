@@ -2,8 +2,12 @@
  * Demo evidence logs assembled from fixtures/slack/*.json, fixtures/SHA256SUMS
  * and contracts/examples/*.json. Card contents and every number are copied
  * from those files; only event ids and timestamps are synthetic.
+ * SYNTHETIC_SCENARIOS (apps/web/src/lib/demo/scenarios-synthetic.ts) is
+ * hand-authored, not fixture-derived, and widens the demo console with more
+ * scenarios across the same Kestrel KS-4 world; SCENARIOS merges both.
  */
 import type { EvidenceEvent } from "agent-core/shared";
+import { SYNTHETIC_SCENARIOS } from "./scenarios-synthetic";
 
 export type DemoScenario = {
   id: string;
@@ -18,7 +22,7 @@ export type DemoScenario = {
 
 export const ENGINEERS = ["Dara Voss", "Tam Holloway", "Juno Marsh", "Milo Trent", "Ines Calder"] as const;
 
-export const SCENARIOS: DemoScenario[] = [
+const fixtureScenarios: DemoScenario[] = [
   {
     "id": "scenario-a",
     "title": "Precharge RC timing",
@@ -583,7 +587,7 @@ export const SCENARIOS: DemoScenario[] = [
         "document": "precharge-review-r2.docx",
         "source_sha256": "b63f3e53bb2651e37c05c8d341f9c331e34a6edf516d2b91994dda8128b66c18",
         "output": "precharge-review-r2-proposed.docx",
-        "sha256": "839e48a591bc255000f6cd9a80a5679a0aac990357b11f18f18cb8c68421c93f"
+        "sha256": "34319b01ffb1c5a790d82fc98681b6cddfb10b8fce8c427188f114a25771001d"
       }
     ]
   },
@@ -2457,5 +2461,7 @@ export const SCENARIOS: DemoScenario[] = [
     ]
   }
 ];
+
+export const SCENARIOS: DemoScenario[] = [...fixtureScenarios, ...SYNTHETIC_SCENARIOS];
 
 export const DEFAULT_SCENARIO = SCENARIOS[0]!.id;
