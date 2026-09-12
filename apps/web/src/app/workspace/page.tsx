@@ -3,7 +3,6 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Drawer } from "@/civic-ui/components/Drawer";
-import { StatsCards } from "@/civic-ui/components/StatsCards";
 import { useIsLg } from "@/components/documents/document-model";
 import { PageHeader } from "@/components/shell/page-header";
 import { WorkspaceDetailBody, WorkspaceDetailPanel } from "@/components/workspace/workspace-detail";
@@ -11,16 +10,8 @@ import { WorkspaceColumnFilters } from "@/components/workspace/workspace-filters
 import { BY_TS, EMPTY_FILTERS, type Filters, fromQuery, hitMark, INDEX, reviewerSearch, toQuery, triggerCutoff } from "@/components/workspace/workspace-model";
 import { WorkspaceQueryBar } from "@/components/workspace/workspace-query-bar";
 import { toRows, WorkspaceTable } from "@/components/workspace/workspace-table";
-import { WorkspaceTimeline } from "@/components/workspace/workspace-timeline";
 import { useEvidence } from "@/lib/demo/use-evidence";
 import { queryIndex } from "@/lib/workspace-index";
-
-const STATS = [
-  { label: "Messages indexed", value: String(INDEX.messages.length) },
-  { label: "Channels", value: String(INDEX.channels.size) },
-  { label: "Documents named", value: String(INDEX.byDocument.size) },
-  { label: "Distinct units", value: String(INDEX.byUnit.size) },
-];
 
 function Workspace() {
   const router = useRouter();
@@ -67,7 +58,7 @@ function Workspace() {
   const query = useMemo(() => toQuery(filters, cutoffTs), [filters, cutoffTs]);
   const result = useMemo(() => queryIndex(INDEX, query), [query]);
   const rows = useMemo(() => toRows(result.hits.map((h) => BY_TS.get(h.ts)!), replay ? search : null), [result, replay, search]);
-  // A timeline dot outside the result set is still selectable; it just carries no row.
+  // A deep-linked ts outside the result set is still selectable; it just carries no row.
   const selected = useMemo(() => {
     if (!selectedTs) return null;
     const row = rows.find((r) => r.ts === selectedTs);
@@ -111,16 +102,11 @@ function Workspace() {
     // out of the html zoom; the header sits inside so the body gets the rest.
     <div className="-mx-3 -mb-10 -mt-[calc(env(safe-area-inset-top)+8rem)] flex h-[calc(100dvh/var(--app-zoom,1)-5.5rem)] min-h-[480px] w-auto flex-col overflow-hidden sm:-mx-4 md:-mt-8 md:h-[calc(100dvh/var(--app-zoom,1))] lg:-mx-6">
       <div className="px-3 pt-4 pb-3 sm:px-4 lg:px-6">
-        <PageHeader
-          title="Workspace"
-          subtitle="The Slack export the reviewer searches. Every query is an exact match on document name, unit, quantity words, keyword, author or channel, cut off at the trigger message. Nothing here is ranked by similarity."
-        />
+        <PageHeader title="Workspace" />
       </div>
       <div className="flex min-h-0 flex-1 border-t border-hairline">
         <section ref={listRef} className="custom-scrollbar flex min-w-0 flex-1 flex-col gap-4 overflow-y-auto p-3 sm:p-4 lg:px-6">
-          <StatsCards cards={STATS} />
           <WorkspaceQueryBar filters={filters} onChange={onFilters} cutoffTs={cutoffTs} result={result} search={search} replayActive={replay} onReplay={onReplay} />
-          <WorkspaceTimeline messages={INDEX.messages} rows={rows} cutoffTs={filters.cutoff ? cutoffTs : replay ? search?.cutoff : undefined} selectedTs={selectedTs} onSelect={select} />
           <div className="flex flex-col">
             <WorkspaceColumnFilters index={INDEX} filters={filters} onChange={onFilters} />
             <WorkspaceTable rows={rows} replayActive={replay} selectedTs={selectedTs} onSelect={(r) => select(r.ts)} />

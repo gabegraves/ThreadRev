@@ -41,15 +41,13 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 function WhatChanged({ before, after }: { before: Finding; after: Finding }) {
   return (
     <section className="flex flex-col gap-2">
-      <SectionTitle>
-        What changed · <Id href={hrefs.finding(before.finding_id)}>{before.finding_id}</Id> → <Id href={hrefs.finding(after.finding_id)}>{after.finding_id}</Id>
-      </SectionTitle>
-      <div className="overflow-x-auto rounded-[var(--radius-md)] border border-hairline">
-        <table className="w-full min-w-[420px] border-collapse text-[12px]">
+      <SectionTitle>What changed</SectionTitle>
+      <div className="rounded-[var(--radius-md)] border border-hairline">
+        <table className="w-full table-fixed border-collapse text-[12px]">
           <thead>
             <tr className="border-b border-hairline">
               {["field", "stale", "live"].map((h) => (
-                <th key={h} className="px-2.5 py-1.5 text-left text-[10.5px] font-semibold uppercase tracking-[0.07em] text-faint">
+                <th key={h} className="px-2.5 py-1.5 text-left text-[11px] font-semibold uppercase tracking-[0.07em] text-faint">
                   {h}
                 </th>
               ))}
@@ -105,8 +103,8 @@ function historyOf(f: Finding, events: EvidenceEvent[]): HistoryItem[] {
         at: ev.at,
         text: (
           <>
-            Publish refused for run <Id href={hrefs.run(ev.run_id)}>{ev.run_id}</Id>: bound{" "}
-            <Id href={hrefs.thread(ev.bound_revision)}>{ev.bound_revision}</Id> vs current <Id href={hrefs.thread(ev.current_revision)}>{ev.current_revision}</Id>
+            Publish refused: bound <Id href={hrefs.thread(ev.bound_revision)}>{ev.bound_revision}</Id> vs current{" "}
+            <Id href={hrefs.thread(ev.current_revision)}>{ev.current_revision}</Id>
             {ev.reason && <> · {ev.reason}</>}
           </>
         ),

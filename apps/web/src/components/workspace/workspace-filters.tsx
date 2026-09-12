@@ -6,7 +6,7 @@
  * MenuRow are transcribed from Civic src/civic/filters/filter-bar.tsx (not
  * exported there); TriggerPill / ResetChip come from the civic-ui kit.
  */
-import { AtSign, Check, FileText, Hash, ListFilter, Ruler } from "lucide-react";
+import { AtSign, Check, FileText, Hash, Ruler } from "lucide-react";
 import { type ReactNode, useCallback, useEffect, useId, useRef, useState } from "react";
 import { ResetChip, TriggerPill } from "@/civic-ui/components/FilterChips";
 import { cn } from "@/civic-ui/lib/cn";
@@ -164,10 +164,6 @@ export function WorkspaceColumnFilters({ index, filters, onChange }: { index: Wo
   return (
     <div className="flex flex-wrap items-center gap-x-2.5 gap-y-2 rounded-t-[var(--radius-lg)] border border-b-0 border-hairline bg-surface px-3 py-2">
       <style>{`@media (prefers-reduced-motion:no-preference){@keyframes popover-in{from{opacity:0;transform:translateY(-4px) scale(.98)}to{opacity:1;transform:none}}@keyframes popover-out{from{opacity:1;transform:none}to{opacity:0;transform:scale(.98)}}}`}</style>
-      <span className="inline-flex items-center gap-1.5 pr-1 text-[11px] font-medium uppercase tracking-wide text-faint">
-        <ListFilter className="h-3.5 w-3.5" />
-        Columns
-      </span>
       <PickFilter icon={<Hash className="h-3.5 w-3.5" />} label="Channel" options={channels} value={filters.channel} onChange={(v) => set("channel", v)} mono />
       <PickFilter icon={<AtSign className="h-3.5 w-3.5" />} label="Author" options={people} value={filters.from} onChange={(v) => set("from", v)} />
       <PickFilter icon={<FileText className="h-3.5 w-3.5" />} label="Document" options={documents} value={filters.document} onChange={(v) => set("document", v)} mono />

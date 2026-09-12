@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useMemo } from "react";
 import type { EvidenceEvent } from "agent-core/shared";
 import { DataTable, type Column } from "@/civic-ui/components/DataTable";
-import { StatusPill } from "@/civic-ui/components/StatusPill";
 import { LINK_CLASS, hrefs } from "@/lib/demo/links";
 import { CheckBar, checkSummary } from "./kv-table";
 
@@ -28,23 +27,6 @@ export function runRows(events: EvidenceEvent[]): RunRow[] {
     const refused = events.find((e): e is RefusedEvent => e.kind === "publish_refused" && e.run_id === ev.run_id) ?? null;
     return [{ run: ev, triggerFrom: trigger && trigger.kind === "message_read" ? trigger.from : (ev.trigger_ts ?? "—"), published, refused }];
   });
-}
-
-export function Outcome({ row }: { row: RunRow }) {
-  if (row.published.length === 0 && !row.refused) return <StatusPill tone="neutral">none</StatusPill>;
-  return (
-    <span className="inline-flex flex-wrap gap-1">
-      {row.published.map((id) => (
-        <StatusPill key={id} tone="success">
-          published ·{" "}
-          <Link href={hrefs.finding(id)} onClick={(e) => e.stopPropagation()} className={`font-mono ${LINK_CLASS}`}>
-            {id}
-          </Link>
-        </StatusPill>
-      ))}
-      {row.refused && <StatusPill tone="danger">refused</StatusPill>}
-    </span>
-  );
 }
 
 export const LINK = "font-mono text-[12px] text-accent-text underline-offset-2 hover:underline";
@@ -76,7 +58,7 @@ function Result({ row }: { row: RunRow }) {
 export function RunsTable({ rows, selected, onSelect, loading }: { rows: RunRow[]; selected: string | null; onSelect: (id: string) => void; loading?: boolean }) {
   const columns = useMemo<Column<RunRow>[]>(
     () => [
-      { key: "run_id", header: "run id", mono: true, cell: (r) => r.run.run_id },
+      { key: "run_id", header: "run id", mono: true, cell: (r) => <span className="whitespace-nowrap">{r.run.run_id}</span> },
       { key: "checker", header: "checker", cell: (r) => <span>{r.run.checker} <span className="font-mono text-[11px] text-faint">v{r.run.version}</span></span> },
       {
         key: "trigger",
@@ -100,7 +82,6 @@ export function RunsTable({ rows, selected, onSelect, loading }: { rows: RunRow[
           return <CheckBar passed={s.passed} total={s.total} />;
         },
       },
-      { key: "error", header: "error", cell: (r) => (r.run.error ? <span className="text-[var(--status-danger-fg)]">{r.run.error}</span> : <span className="text-faint">—</span>) },
       { key: "result", header: "result", cell: (r) => <Result row={r} /> },
     ],
     [],

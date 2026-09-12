@@ -77,14 +77,13 @@ export function FindingCard({ finding: f, compact = false, onOpen, graphNodeIds,
       className={cn("rounded-[var(--radius-lg)] border border-hairline bg-surface p-4 shadow-[var(--shadow-card)]", stale && "opacity-80", className)}
     >
       <header className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <StatusPill tone={STATUS_TONE[toneKey]}>{STATUS_LABEL[toneKey]}</StatusPill>
-          {!compact && <span className="text-[12px] font-medium text-subtle">{headline(f)}</span>}
-        </div>
+        <StatusPill tone={STATUS_TONE[toneKey]}>{STATUS_LABEL[toneKey]}</StatusPill>
         <span className="inline-flex items-center gap-2 font-mono text-[11px]">
-          <Link href={hrefs.finding(f.finding_id)} className={cn("text-faint", LINK_CLASS)}>
-            {f.finding_id}
-          </Link>
+          {compact && (
+            <Link href={hrefs.finding(f.finding_id)} className={cn("whitespace-nowrap text-faint", LINK_CLASS)}>
+              {f.finding_id}
+            </Link>
+          )}
           {!compact && inGraph && (
             <Link href={hrefs.graph(f.finding_id)} className={cn("font-sans", LINK_CLASS)}>
               Open in graph
@@ -93,17 +92,7 @@ export function FindingCard({ finding: f, compact = false, onOpen, graphNodeIds,
         </span>
       </header>
 
-      {stale && !compact && (
-        <p className="mt-3 rounded-[var(--radius-md)] border border-hairline bg-overlay px-3 py-2 text-[12px] text-subtle">
-          This card was computed against revision{" "}
-          <Link href={hrefs.thread(f.requirements_revision)} className={cn("font-mono", LINK_CLASS)}>
-            {f.requirements_revision}
-          </Link>{" "}
-          and has been superseded. Kept for the record; do not act on it.
-        </p>
-      )}
-
-      <p className="mt-2 text-[13.5px] font-medium leading-snug text-foreground">{f.discrepancy === "none" ? "No discrepancy found." : f.discrepancy}</p>
+      <p className="mt-2 text-[13px] font-medium leading-snug text-foreground">{f.discrepancy === "none" ? "No discrepancy found." : f.discrepancy}</p>
 
       {!compact && (
         <section className="mt-3">
@@ -126,7 +115,7 @@ export function FindingCard({ finding: f, compact = false, onOpen, graphNodeIds,
       {!compact && f.inferred.length > 0 && (
         <section className="mt-3 border-l-2 border-hairline-strong pl-3">
           <MicroLabel>Inferred, not recomputed</MicroLabel>
-          <ul className="mt-1 flex flex-col gap-1 text-[12.5px] italic leading-relaxed text-subtle">
+          <ul className="mt-1 flex flex-col gap-1 text-[12px] italic leading-relaxed text-subtle">
             {f.inferred.map((i) => (
               <li key={i}>{i}</li>
             ))}
@@ -137,34 +126,27 @@ export function FindingCard({ finding: f, compact = false, onOpen, graphNodeIds,
       {!compact && (
         <section className="mt-3">
           <MicroLabel>Sources</MicroLabel>
-          <ul className="mt-1.5 flex flex-col gap-2">
+          <ul className="mt-1.5 flex flex-col gap-1">
             {f.sources.map((s, i) => (
-              <li key={`${s.kind}-${s.id}-${i}`} className="text-[12px]">
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                  <span className="rounded-[var(--radius-sm)] border border-hairline bg-overlay px-1.5 py-0.5 font-mono text-[10.5px] uppercase tracking-[0.08em] text-subtle">
-                    {s.kind}
+              // biome-ignore lint/suspicious/noArrayIndexKey: the same source can be cited twice with different locators
+              <li key={`${s.kind}-${s.id}-${i}`} className="flex items-baseline gap-2 text-[12px]">
+                <span className="shrink-0 font-mono text-[11px] uppercase tracking-[0.08em] text-faint">{s.kind === "message" ? "msg" : "doc"}</span>
+                {s.kind === "message" ? (
+                  <Link href={hrefs.thread(s.id)} className={cn("whitespace-nowrap font-mono", LINK_CLASS)}>
+                    {s.id}
+                  </Link>
+                ) : s.sha256 ? (
+                  <Link href={hrefs.document(s.sha256)} title={s.sha256} className={cn("truncate whitespace-nowrap font-mono", LINK_CLASS)}>
+                    {s.id}
+                  </Link>
+                ) : (
+                  <code className="truncate font-mono text-foreground">{s.id}</code>
+                )}
+                {s.revision && <code className="shrink-0 font-mono text-[11px] text-subtle">{s.revision}</code>}
+                {s.locator && (
+                  <span className="min-w-0 truncate text-subtle" title={s.locator}>
+                    {s.locator}
                   </span>
-                  {s.kind === "message" ? (
-                    <Link href={hrefs.thread(s.id)} className={cn("font-mono", LINK_CLASS)}>
-                      {s.id}
-                    </Link>
-                  ) : s.sha256 ? (
-                    <Link href={hrefs.document(s.sha256)} className={cn("font-mono", LINK_CLASS)}>
-                      {s.id}
-                    </Link>
-                  ) : (
-                    <code className="font-mono text-foreground">{s.id}</code>
-                  )}
-                  {s.revision && <code className="font-mono text-subtle">{s.revision}</code>}
-                  {s.sha256 && (
-                    <Link href={hrefs.document(s.sha256)} className={cn("font-mono text-faint", LINK_CLASS)} title={s.sha256}>
-                      {s.sha256.slice(0, 12)}
-                    </Link>
-                  )}
-                  {s.locator && <span className="text-subtle">· {s.locator}</span>}
-                </div>
-                {s.quote && (
-                  <blockquote className="mt-1 border-l-2 border-hairline pl-2.5 text-[12.5px] leading-relaxed text-subtle">{s.quote}</blockquote>
                 )}
               </li>
             ))}
@@ -183,11 +165,11 @@ export function FindingCard({ finding: f, compact = false, onOpen, graphNodeIds,
         <section className="mt-3 grid grid-cols-1 gap-3 border-t border-hairline pt-3 sm:grid-cols-2">
           <div className="min-w-0">
             <MicroLabel>Resolves it</MicroLabel>
-            <p className="mt-1 text-[12.5px] leading-relaxed text-foreground">{f.resolution}</p>
+            <p className="mt-1 text-[12px] leading-relaxed text-foreground">{f.resolution}</p>
           </div>
           <div className="min-w-0">
             <MicroLabel>Bound to revision</MicroLabel>
-            <Link href={hrefs.thread(f.requirements_revision)} className={cn("mt-1 block break-all font-mono text-[12.5px] tabular-nums", LINK_CLASS)}>
+            <Link href={hrefs.thread(f.requirements_revision)} className={cn("mt-1 block whitespace-nowrap font-mono text-[12px] tabular-nums", LINK_CLASS)}>
               {f.requirements_revision}
             </Link>
           </div>
@@ -195,7 +177,7 @@ export function FindingCard({ finding: f, compact = false, onOpen, graphNodeIds,
       )}
 
       {!compact && (
-        <footer className="mt-3 border-t border-hairline pt-2.5 font-mono text-[10.5px] leading-relaxed text-faint">
+        <footer className="mt-3 border-t border-hairline pt-2.5 font-mono text-[11px] leading-relaxed text-faint">
           <span>
             {f.checker_run.checker} v{f.checker_run.version} · run{" "}
             <Link href={hrefs.run(f.checker_run.run_id)} className={LINK_CLASS}>
@@ -215,7 +197,6 @@ export function FindingCard({ finding: f, compact = false, onOpen, graphNodeIds,
               </>
             )}
           </span>
-          <span className="block">checks passed against stated inputs, not a design sign-off</span>
         </footer>
       )}
 

@@ -14,8 +14,8 @@ export function toRows(messages: IndexedMessage[], search: ReviewerSearch | null
 }
 
 export function MarkPill({ mark }: { mark: HitMark }) {
-  if (mark === "returned") return <StatusPill tone="success">returned to reviewer</StatusPill>;
-  if (mark === "hidden") return <StatusPill tone="neutral">after trigger, hidden</StatusPill>;
+  if (mark === "returned") return <StatusPill tone="success">returned</StatusPill>;
+  if (mark === "hidden") return <StatusPill tone="neutral">hidden</StatusPill>;
   return null;
 }
 
@@ -28,15 +28,22 @@ function Chip({ children, title }: { children: React.ReactNode; title?: string }
 }
 
 const BASE: Column<WorkspaceRow>[] = [
-  { key: "time", header: "Time", mono: true, cell: (r) => <span title={r.ts}>{fmtTime(r.ts)}</span> },
-  { key: "channel", header: "Channel", mono: true, cell: (r) => `#${r.channel_name}` },
-  { key: "author", header: "Author", cell: (r) => <span className="whitespace-nowrap">{r.user_name}</span> },
+  { key: "time", header: "Time", mono: true, cell: (r) => <span className="whitespace-nowrap" title={r.ts}>{fmtTime(r.ts)}</span> },
+  {
+    key: "author",
+    header: "Author",
+    cell: (r) => (
+      <span className="whitespace-nowrap">
+        {r.user_name} <span className="font-mono text-[11px] text-faint">#{r.channel_name}</span>
+      </span>
+    ),
+  },
   {
     key: "text",
     header: "Text",
     width: "40ch",
     cell: (r) => (
-      <span title={r.text} className="line-clamp-2 block max-w-[40ch] whitespace-normal py-1 text-[12.5px] leading-snug">
+      <span title={r.text} className="line-clamp-2 block max-w-[40ch] whitespace-normal py-1 text-[12px] leading-snug">
         {r.text}
       </span>
     ),
@@ -74,7 +81,7 @@ const BASE: Column<WorkspaceRow>[] = [
   },
 ];
 
-const MARK: Column<WorkspaceRow> = { key: "search", header: "Reviewer's search", cell: (r) => (r.mark ? <MarkPill mark={r.mark} /> : <span className="text-faint">—</span>) };
+const MARK: Column<WorkspaceRow> = { key: "search", header: "Search", cell: (r) => (r.mark ? <MarkPill mark={r.mark} /> : <span className="text-faint">—</span>) };
 
 export function WorkspaceTable({
   rows,
