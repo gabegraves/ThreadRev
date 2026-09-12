@@ -103,7 +103,13 @@ def run(checker, version, compute, stdin=None, stdout=None):
         response["outputs"] = {}
         response["checks"] = []
         code = 1
-    except (KeyError, TypeError, ValueError, ZeroDivisionError, OverflowError) as exc:
+    except Exception as exc:  # noqa: BLE001 - the envelope is the contract
+        # Deliberately broad. The docstring above promises exactly one JSON
+        # object on stdout, and the caller treats an unparseable stdout as "the
+        # checker did not complete" with no detail. An IndexError escaping to a
+        # traceback on stderr is a checker that answered nothing, which is the
+        # one thing this harness exists to prevent. BaseException still escapes,
+        # so KeyboardInterrupt and SystemExit behave normally.
         response["error"] = "%s: %s" % (type(exc).__name__, exc)
         response["outputs"] = {}
         response["checks"] = []
