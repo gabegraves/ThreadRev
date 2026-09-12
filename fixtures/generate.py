@@ -6,12 +6,15 @@ Dependencies: python-docx, openpyxl. Everything else is stdlib.
 
 Usage (from the repo root):
     python3 fixtures/generate.py
-    shasum -a 256 fixtures/documents/* > fixtures/SHA256SUMS
+
+SHA256SUMS is written by this script, so the manifest cannot fall behind the
+documents it certifies.
 
 Output is byte-for-byte reproducible: document metadata timestamps are pinned
 and every zip entry is rewritten with a fixed date so the sha256 sums are
 stable across runs.
 """
+import hashlib
 import io
 import os
 import zipfile
@@ -166,6 +169,41 @@ def main():
         mass_kg=318, crr=0.0048, cda=0.12, pack_kwh=5.2,
         change_note="mass and Crr updated after KS-4 suspension swap, see #ks4-suspension 2026-07-22.",
     )
+
+    write_checksums()
+
+
+def write_checksums():
+    """Write SHA256SUMS for everything in documents/.
+
+    This used to be a `shasum -a 256 fixtures/documents/* > fixtures/SHA256SUMS`
+    line in the docstring above, which is a manual step and had already drifted:
+    the injected document was generated here and added to the manifest by hand.
+    A manifest that a human has to remember to refresh is a manifest that
+    eventually certifies the wrong bytes.
+
+    Paths are repo-root-relative so `sha256sum -c fixtures/SHA256SUMS` works
+    from the repo root, sorted so the output is stable, and written with
+    explicit LF because the checksummed names are content — a CRLF here puts a
+    carriage return inside every filename and nothing can be verified.
+    """
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    lines = []
+    for name in sorted(os.listdir(OUT)):
+        path = os.path.join(OUT, name)
+        if not os.path.isfile(path):
+            continue
+        digest = hashlib.sha256()
+        with open(path, "rb") as fh:
+            for chunk in iter(lambda: fh.read(1024 * 1024), b""):
+                digest.update(chunk)
+        rel = os.path.relpath(path, root).replace(os.sep, "/")
+        lines.append("%s  %s" % (digest.hexdigest(), rel))
+
+    manifest = os.path.join(os.path.dirname(OUT), "SHA256SUMS")
+    with open(manifest, "w", encoding="utf-8", newline="\n") as fh:
+        fh.write("\n".join(lines) + "\n")
+    print("%s: %d documents" % (os.path.relpath(manifest, root).replace(os.sep, "/"), len(lines)))
 
 
 if __name__ == "__main__":
