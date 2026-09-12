@@ -11,13 +11,22 @@
 
 When an engineering document stops matching the decisions around it, Rev traces the evidence, recomputes the supported calculation, and leaves a review card with the exact human decision still needed.
 
-[**Scenario**](#the-problem-in-one-thread) · [**Proof boundary**](#status) · [**Why Slack matters**](#why-slack-context-matters) · [**Run offline**](#run-it) · [**Architecture**](#how-it-works)
+[**Proof**](#proof-at-a-glance) · [**Scenario**](#the-problem-in-one-thread) · [**Why Slack matters**](#why-slack-context-matters) · [**Run it**](#run-it) · [**Architecture**](#how-it-works)
 
 </div>
 
 Built on September 12, 2026 at the [Agents, Everywhere](https://aitinkerers.org/hackathons/global/agents-everywhere) hackathon, on top of CopilotKit's [agents-everywhere-starter-kit](https://github.com/CopilotKit/agents-everywhere-starter-kit). Everything the reviewer does was written during the event; the split is in [What we built and what we inherited](#what-we-built-and-what-we-inherited).
 
 > **Prototype status:** a live `@Rev` mention produced an initial checker-backed Slack card and proposed-edit card. The workspace search and document extraction in this demo use a synthetic Slack export and local DOCX fixtures. Stale replacement and approved-copy output are replay-verified; they have not yet been captured together in one live Slack run. See [the evidence boundary](#live-versus-sample).
+
+## Proof at a glance
+
+| What to inspect | Evidence | Boundary |
+|---|---|---|
+| **Agent in the work** | A live `@Rev` mention in `#ks4-electrical` posted Card 1 and a proposed-edit card in 40 seconds. | Live Slack + live model; the machine-readable trace is [`scenario-a.1.json`](evals/records/model/scenario-a.1.json). |
+| **Decision stays current** | A correction makes Card 1 visibly **STALE** and posts Card 2 bound to the new revision. | Deterministic replay, including real checker and card code. [Inspect the superseding finding.](contracts/examples/finding-scenario-a-superseding.json) |
+| **Checker-backed numbers; no autonomous write** | *Reproduced by checker* rows are copied from a named run; a document edit is proposed, then a person approves a new copy. | Replay-verified. The original document remains untouched. |
+| **Explore the evidence** | The deployed console shows the decision lifecycle, checker runs, and provenance. | Fixture-backed viewer, not proof of a live Slack session. [Open it.](https://threadrev-web.vercel.app/analytics) |
 
 ## See the decision lifecycle
 
@@ -55,7 +64,7 @@ And two rules shape everything else: **checker-derived rows stay tied to a named
 
 ---
 
-## Inspect the first live run
+## One decision, end to end
 
 **Live, in a real Slack workspace, with a live model.** On September 12 at 19:22:30Z, forty seconds after an `@Rev` mention in `#ks4-electrical`, Rev posted Card 1 (`fnd-mtyrv4yj-y70h`) and then the section 4 proposed-edit card with Approve/Reject buttons. The record is [`scenario-a.1.json`](evals/records/model/scenario-a.1.json): `read_thread`, seven scoped `search_workspace` calls, `read_evidence`, and one RC checker run.
 
@@ -65,7 +74,7 @@ What the card says, in Scenario A:
 2. **Replay continuation:** Dara says, "Bus is 820 uF, not 680. Doc will be r3."
 3. **Replay result:** Card 1 is marked STALE and Card 2 reports that t<sub>99.9</sub> = 2.662 s, later than the 2.5 s relay timer. [`finding-scenario-a-superseding.json`](contracts/examples/finding-scenario-a-superseding.json).
 
-The replay records make the checker run, source hashes, and thread revision inspectable. The stale continuation has not yet been proven as one live Slack sequence.
+The replay records make the checker run, source hashes, and thread revision inspectable. This is the point of the product: the conclusion is not merely a response—it is a reviewable object that can become stale, be replaced, and drive a human-controlled correction. The stale continuation has not yet been proven as one live Slack sequence.
 
 ---
 
@@ -76,7 +85,7 @@ Judges score 1 to 5 per criterion. The table gives the 5-point language, what Th
 | Criterion, and what a 5 requires | ThreadRev | Verify |
 |---|---|---|
 | **Core Requirements & Functionality** — _robust, reliable, and fully functional within its intended environment_ | A live Slack mention produced the initial finding and proposed-edit card. The remaining stale and approved-copy beats are deterministic replay evidence, not yet a single live take. | [`scenario-a.1.json`](evals/records/model/scenario-a.1.json), [`apps/channel/src/replay/`](apps/channel/src/replay/) |
-| **Innovation & Theme Alignment** — _a surprising new agent pattern whose central value could not be reproduced in a standalone chatbox_ | The core pattern is a revision-bound, evidence-carrying card placed next to the engineering decision. It uses ordered thread context and a scoped workspace record rather than pasted text alone. | [Why Slack matters](#why-this-cannot-be-a-chatbox), [`revision.ts`](apps/channel/src/revision.ts), [`workspace.ts`](apps/channel/src/workspace.ts) |
+| **Innovation & Theme Alignment** — _a surprising new agent pattern whose central value could not be reproduced in a standalone chatbox_ | The core pattern is a revision-bound, evidence-carrying card placed next to the engineering decision. It uses ordered thread context and a scoped workspace record rather than pasted text alone. | [Why Slack matters](#why-slack-context-matters), [`revision.ts`](apps/channel/src/revision.ts), [`workspace.ts`](apps/channel/src/workspace.ts) |
 | **Technical Execution & Integration** — _robust orchestration, thoughtful failure handling, and a deeply integrated architecture_ | Six tools, deterministic checkers, a thread-local freshness guard, copy-only approval flow, evidence log, and replay harness make the tested boundary inspectable. | [How it works](#how-it-works), [`reviewer-tools.tsx`](apps/channel/src/reviewer-tools.tsx), [`evidence/`](packages/agent-core/src/evidence/) |
 | **Usefulness & Agentic Experience** — _native to its environment, using context intelligently while remaining clear and controllable_ | The card explains the mismatch, evidence, checker run, and named next decision in the thread where sign-off is happening. A human click is required before a document copy is written. | [`finding-card.tsx`](apps/channel/src/finding-card.tsx), [Approval workflow](#approval-workflow-rev-proposes-a-person-approves-rev-writes-a-copy) |
 
@@ -225,7 +234,7 @@ Every scenario is a fixture Slack script under [`fixtures/slack/`](fixtures/slac
 
 | Scenario | What it proves | Fixture |
 |---|---|---|
-| **A** — precharge review | The full beat: Card 1, correction, Card 1 STALE, Card 2, section 4 edit proposal. Ran live in Slack with the live model. | [`scenario-a.json`](fixtures/slack/scenario-a.json) |
+| **A** — precharge review | The full beat: Card 1, correction, Card 1 STALE, Card 2, section 4 edit proposal. Card 1 and the proposal ran live in Slack; the correction, stale marker, and Card 2 are replay-verified. | [`scenario-a.json`](fixtures/slack/scenario-a.json) |
 | **A, cross-channel** | The 820 uF correction was posted two weeks earlier in `#ks4-purchasing`. The thread alone cannot catch it; `search_workspace` by unit `uF` does, and the card cites the purchasing message by channel and timestamp. | [`scenario-a-cross.json`](fixtures/slack/scenario-a-cross.json) |
 | **B** — stale simulation inputs | A route-energy request in `#ks4-strategy-sim` pulls a mass from a parameter sheet that a correction superseded. `check_route.py` evaluates both sheets; the conclusion flips between them. | [`scenario-b.json`](fixtures/slack/scenario-b.json) |
 | **RC1** — clean control | Every value reproduces. The card says so and suggests no change. Proves Rev does not manufacture findings. | [`rc1-clean.json`](fixtures/slack/rc1-clean.json) |
