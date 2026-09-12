@@ -126,6 +126,19 @@ document.addEventListener(
 );
 document.addEventListener("pointerdown", () => (keyboardNav = false), true);
 
+/**
+ * Whether a hover can name a menu item yet.
+ *
+ * The items fly out from Rev. Click the lower-left of the glyph and the first
+ * item, Findings, emerges straight under a cursor that has not moved — which
+ * the browser reports as the pointer entering it, and the label announced
+ * "Findings" nobody pointed at. Hover now only counts once the opening
+ * animation has finished and the pointer has actually moved.
+ */
+let hoverArmed = false;
+let hoverArmTimer: ReturnType<typeof setTimeout> | undefined;
+const OPEN_SETTLE_MS = 420;
+
 type View = "findings" | "status" | "settings";
 
 const VIEW_TITLE: Record<View, string> = {
@@ -516,8 +529,23 @@ function showMenuLabel(item: HTMLElement | null, hint = false): void {
   const angle = itemAngles[i];
   if (angle !== undefined) {
     const r = parseFloat(getComputedStyle(radialEl).getPropertyValue("--r")) + 48;
-    radialLabel.style.setProperty("--lx", `${(r * Math.cos(angle)).toFixed(1)}px`);
-    radialLabel.style.setProperty("--ly", `${(r * Math.sin(angle)).toFixed(1)}px`);
+    let lx = r * Math.cos(angle);
+    let ly = r * Math.sin(angle);
+
+    // Keep the whole label on screen. It is placed outward from its icon, and
+    // the last icon on the arc sits near the right edge, so "Hide Rev" ran off
+    // it. The label is centred on (lx, ly), so clamp that centre by half its size.
+    const origin = radialEl.getBoundingClientRect();
+    const w = radialLabel.offsetWidth;
+    const h = radialLabel.offsetHeight;
+    const pad = 8;
+    const cx = Math.min(Math.max(origin.left + lx, pad + w / 2), window.innerWidth - pad - w / 2);
+    const cy = Math.min(Math.max(origin.top + ly, pad + h / 2), window.innerHeight - pad - h / 2);
+    lx = cx - origin.left;
+    ly = cy - origin.top;
+
+    radialLabel.style.setProperty("--lx", `${lx.toFixed(1)}px`);
+    radialLabel.style.setProperty("--ly", `${ly.toFixed(1)}px`);
   }
   radialLabel.dataset.show = "true";
   radialLabel.dataset.hint = String(hint);
@@ -561,6 +589,12 @@ function setMenuOpen(next: boolean): void {
   publishRegions();
 
   if (next) {
+    hoverArmed = false;
+    if (hoverArmTimer) clearTimeout(hoverArmTimer);
+    hoverArmTimer = setTimeout(() => {
+      // Armed, but still waiting for real movement: see the pointermove below.
+      hoverArmTimer = undefined;
+    }, OPEN_SETTLE_MS);
     drawArc();
     // The panel and the menu are two ways to look at the same thing; showing
     // both at once would put the arc on top of the cards.
@@ -588,7 +622,11 @@ for (const item of radialItems) {
   item.setAttribute("aria-label", entry.label);
   item.title = entry.label;
   item.addEventListener("click", entry.run);
-  item.addEventListener("mouseenter", () => showMenuLabel(item));
+  // pointermove rather than mouseenter: it fires only when the pointer really
+  // moves, never because an item slid underneath a still cursor.
+  item.addEventListener("pointermove", () => {
+    if (hoverArmed) showMenuLabel(item);
+  });
   item.addEventListener("focus", () => {
     if (keyboardNav) showMenuLabel(item);
   });
@@ -603,9 +641,21 @@ for (const item of radialItems) {
     if (keyboardNav && focused) showMenuLabel(focused);
     else showMenuLabel(null);
   };
-  item.addEventListener("mouseleave", clear);
+  item.addEventListener("pointerleave", clear);
   item.addEventListener("blur", () => window.setTimeout(clear, 0));
 }
+
+document.addEventListener("pointermove", (e) => {
+  if (!menuOpen || hoverArmed || hoverArmTimer !== undefined) return;
+  // A zero-distance "move" is what a browser emits when content shifts under a
+  // stationary pointer; only a real displacement counts as intent.
+  if (e.movementX === 0 && e.movementY === 0) return;
+  hoverArmed = true;
+  const under = (document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null)?.closest<HTMLElement>(
+    ".radial__item",
+  );
+  if (under) showMenuLabel(under);
+});
 
 /** Arrows walk the arc; the arc is a line, so Up/Left and Down/Right pair up. */
 radialEl.addEventListener("keydown", (e) => {
