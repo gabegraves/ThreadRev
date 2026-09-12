@@ -22,6 +22,7 @@ import {
   type Reproduced,
 } from "./findings.js";
 import { applyFilter, formatValue, isDrag, unreadCount, type Filter } from "../logic.js";
+import { WEB_ORIGIN } from "./findings.js";
 
 import type { PetSettings } from "../preload.js";
 
@@ -83,11 +84,17 @@ const connEl = $("conn");
 const connLabel = $("conn-label");
 const threadEl = $("thread");
 const threadPath = need<SVGPathElement>("thread-path");
+const radialEl = $("radial");
+const radialLabel = $("radial-label");
+const radialBadge = $("radial-badge");
+const radialArc = need<SVGPathElement>("radial-arc");
+const radialItems = [...document.querySelectorAll<HTMLButtonElement>(".radial__item")];
 const liveRegion = $("live-region");
 const liveCount = $("count-live");
 const staleCount = $("count-stale");
 
 let open = false;
+let menuOpen = false;
 let dragging = false;
 let grab = { dx: 0, dy: 0 };
 /** Where the press started, so a click is not mistaken for a zero-distance drag. */
@@ -131,7 +138,11 @@ function publishRegions(): void {
       bottom: Math.round(b.bottom),
     };
   };
-  const regions = open ? [r(petEl), r(panelEl)] : [r(petEl)];
+  const regions = [r(petEl)];
+  if (open) regions.push(r(panelEl));
+  // Each item is its own small circle out on the arc; publishing one big box
+  // would make the whole quadrant swallow clicks meant for the app underneath.
+  if (menuOpen) for (const item of radialItems) regions.push(r(item));
   // Rounded and compared, so the 500ms safety sweep is silent while nothing
   // moves instead of posting an identical message twice a second forever.
   const key = JSON.stringify(regions);
@@ -183,9 +194,10 @@ function endDrag(): void {
   if (moved) {
     window.pet.dragEnd();
   } else {
-    // A click, not a drag.
+    // A click, not a drag. Rev opens the menu; the menu opens everything else.
     pop();
-    setOpen(!open);
+    if (open) setOpen(false);
+    else setMenuOpen(!menuOpen);
   }
 }
 
@@ -263,6 +275,124 @@ window.setInterval(() => {
   if (idleMs > settings.sleepAfterMin * 60_000 && state !== "found") setState("asleep");
 }, 5000);
 
+/* --------------------------------------------------------------- menu --- */
+
+/** What each arc item does, and what the shared label calls it. */
+const MENU: Record<string, { label: string; run: () => void }> = {
+  findings: {
+    label: "Findings",
+    run: () => {
+      setMenuOpen(false);
+      setOpen(true);
+    },
+  },
+  console: {
+    label: "Review console",
+    run: () => {
+      setMenuOpen(false);
+      window.pet.openExternal(`${WEB_ORIGIN}/`);
+    },
+  },
+  voice: {
+    label: "Voice review",
+    run: () => {
+      setMenuOpen(false);
+      window.pet.openExternal(`${WEB_ORIGIN}/voice`);
+    },
+  },
+  settings: {
+    label: "Settings",
+    run: () => {
+      setMenuOpen(false);
+      window.pet.contextMenu();
+    },
+  },
+  hide: {
+    label: "Hide Rev",
+    run: () => {
+      setMenuOpen(false);
+      window.pet.hide();
+    },
+  },
+};
+
+/**
+ * Draw the guide arc through the item centres.
+ *
+ * Measured from the same radius and sweep the CSS uses, so the stroke lands
+ * under the items rather than near them. Reading the values back from the
+ * computed style keeps one source of truth in the stylesheet.
+ */
+function drawArc(): void {
+  const css = getComputedStyle(radialEl);
+  const r = parseFloat(css.getPropertyValue("--r"));
+  const from = parseFloat(css.getPropertyValue("--sweep-from"));
+  const step = parseFloat(css.getPropertyValue("--sweep-step"));
+  if (!Number.isFinite(r) || !Number.isFinite(from) || !Number.isFinite(step)) return;
+
+  const last = from + step * (radialItems.length - 1);
+  const rad = (deg: number) => (deg * Math.PI) / 180;
+  // The guide svg is 300x300 with its own centre at 150,150.
+  const pt = (deg: number) => [150 + r * Math.cos(rad(deg)), 150 + r * Math.sin(rad(deg))];
+  const [x1, y1] = pt(from);
+  const [x2, y2] = pt(last);
+  const large = Math.abs(last - from) > 180 ? 1 : 0;
+  radialArc.setAttribute("d", `M${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2}`);
+  radialEl.style.setProperty("--arc-len", String(Math.ceil(radialArc.getTotalLength())));
+}
+
+function showMenuLabel(text: string | null): void {
+  if (text) radialLabel.textContent = text;
+  radialLabel.dataset.show = String(Boolean(text));
+}
+
+function setMenuOpen(next: boolean): void {
+  if (next === menuOpen) return;
+  menuOpen = next;
+  radialEl.dataset.open = String(next);
+  radialEl.toggleAttribute("inert", !next);
+  petEl.dataset.menu = String(next);
+  hitEl.setAttribute("aria-expanded", String(next));
+  publishRegions();
+
+  if (next) {
+    drawArc();
+    // The panel and the menu are two ways to look at the same thing; showing
+    // both at once would put the arc on top of the cards.
+    if (open) setOpen(false);
+    window.setTimeout(() => radialItems[0]?.focus(), 160);
+  } else {
+    showMenuLabel(null);
+  }
+  wake();
+}
+
+for (const item of radialItems) {
+  const action = item.dataset.action ?? "";
+  const entry = MENU[action];
+  if (!entry) continue;
+
+  item.setAttribute("aria-label", entry.label);
+  item.title = entry.label;
+  item.addEventListener("click", entry.run);
+  item.addEventListener("mouseenter", () => showMenuLabel(entry.label));
+  item.addEventListener("focus", () => showMenuLabel(entry.label));
+  item.addEventListener("mouseleave", () => showMenuLabel(null));
+  item.addEventListener("blur", () => showMenuLabel(null));
+}
+
+/** Arrows walk the arc; the arc is a line, so Up/Left and Down/Right pair up. */
+radialEl.addEventListener("keydown", (e) => {
+  const i = radialItems.indexOf(document.activeElement as HTMLButtonElement);
+  if (i < 0) return;
+  const back = e.key === "ArrowUp" || e.key === "ArrowLeft";
+  const fwd = e.key === "ArrowDown" || e.key === "ArrowRight";
+  if (!back && !fwd) return;
+  e.preventDefault();
+  const n = radialItems.length;
+  radialItems[(i + (fwd ? 1 : -1) + n) % n].focus();
+});
+
 /* --------------------------------------------------------------- panel --- */
 
 /**
@@ -286,6 +416,7 @@ function drawThread(): void {
 }
 
 function setOpen(next: boolean): void {
+  if (next && menuOpen) setMenuOpen(false);
   open = next;
   panelEl.dataset.open = String(next);
   // `inert` rather than aria-hidden: aria-hidden on a container whose children
@@ -327,6 +458,14 @@ function focusables(): HTMLElement[] {
 
 document.addEventListener("keydown", (e) => {
   wake();
+
+  if (menuOpen && e.key === "Escape") {
+    e.preventDefault();
+    setMenuOpen(false);
+    hitEl.focus();
+    return;
+  }
+
   if (!open) return;
 
   if (e.key === "Escape") {
@@ -616,8 +755,13 @@ function renderList(): void {
 
 function renderBadge(): void {
   const unread = unreadCount(findings, seen);
+  const text = String(unread);
   countEl.hidden = unread === 0;
-  countEl.textContent = String(unread);
+  countEl.textContent = text;
+  // Mirrored onto the menu's findings item, so the count is visible once the
+  // arc is out and Rev's own badge is behind it.
+  radialBadge.hidden = unread === 0;
+  radialBadge.textContent = text;
 }
 
 function recomputeState(): void {

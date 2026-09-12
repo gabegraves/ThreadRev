@@ -2,6 +2,15 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
+    <!--
+      Everything this window renders is bundled beside it, so nothing needs to
+      be fetched, framed or evaluated. The only outbound request is the reviewer
+      poll on loopback.
+    -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src http://localhost:3000; form-action 'none'; base-uri 'none'; frame-ancestors 'none'"
+    />
     <title>Rev — ThreadRev</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
@@ -111,6 +120,59 @@
 
       <p id="live-region" class="sr-only" role="status" aria-live="polite"></p>
 
+      <!--
+        The radial menu. Five destinations on an arc that fans out of Rev.
+        A full circle cannot fit in a screen corner, so the arc sweeps 110
+        degrees into the free space up and to the left.
+      -->
+      <nav id="radial" class="radial" aria-label="Rev menu" inert>
+        <svg class="radial__guide" viewBox="0 0 300 300" aria-hidden="true">
+          <path id="radial-arc" class="radial__arc" />
+        </svg>
+
+        <button class="radial__item" type="button" data-action="findings">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="12" r="7.5" />
+            <path class="fill" d="M12 7.2 16.2 9.6 16.2 14.4 12 16.8 7.8 14.4 7.8 9.6Z" />
+          </svg>
+          <span class="radial__badge" id="radial-badge" hidden></span>
+        </button>
+
+        <button class="radial__item" type="button" data-action="console">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="3.5" y="5" width="17" height="14" rx="2.5" />
+            <path d="M3.5 9.5h17" />
+            <path d="M7.5 13.5l2 2-2 2" />
+          </svg>
+        </button>
+
+        <button class="radial__item" type="button" data-action="voice">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="9" y="3" width="6" height="11" rx="3" />
+            <path d="M5.5 11.5a6.5 6.5 0 0 0 13 0" />
+            <path d="M12 18v3" />
+          </svg>
+        </button>
+
+        <button class="radial__item" type="button" data-action="settings">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M4 8h10M18 8h2M4 16h4M12 16h8" />
+            <circle class="fill" cx="16" cy="8" r="2.2" />
+            <circle class="fill" cx="10" cy="16" r="2.2" />
+          </svg>
+        </button>
+
+        <button class="radial__item" type="button" data-action="hide">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M3.5 12S7 6.5 12 6.5 20.5 12 20.5 12 17 17.5 12 17.5 3.5 12 3.5 12Z" />
+            <circle cx="12" cy="12" r="2.6" />
+            <path d="M4 20 20 4" />
+          </svg>
+        </button>
+
+        <span id="radial-label" class="radial__label" aria-hidden="true"></span>
+      </nav>
+
       <!-- Rev. A revision stamp with an aperture for a face. -->
       <div id="pet" class="pet" data-state="idle">
         <button
@@ -118,7 +180,7 @@
           class="pet__hit"
           type="button"
           aria-expanded="false"
-          aria-label="Rev. Open findings."
+          aria-label="Rev. Open menu."
         >
           <svg class="pet__svg" viewBox="0 0 140 164" aria-hidden="true">
             <defs>

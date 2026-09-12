@@ -97,8 +97,14 @@ body {
   transition: none;
 }
 
-.pet:not([data-dragging="true"]):hover,
-.pet[data-open="true"] {
+/*
+ * The small hover lift, but only while the menu is closed. `:hover` carries more
+ * specificity than `.pet[data-menu="true"]`, so without excluding it here Rev
+ * stayed put under the cursor that had just opened the menu — and the arc,
+ * which does move, ended up centred somewhere Rev was not.
+ */
+.pet:not([data-dragging="true"]):not([data-menu="true"]):hover,
+.pet[data-open="true"]:not([data-menu="true"]) {
   transform: translate(6px, 4px);
 }
 
@@ -1080,4 +1086,255 @@ body[data-reduced-motion="true"] *::before,
 body[data-reduced-motion="true"] *::after {
   animation: none !important;
   transition-duration: 80ms !important;
+}
+
+/* ============================================================== radial === */
+
+/*
+ * The menu that fans out of Rev.
+ *
+ * A full circle does not fit in a screen corner, so the arc sweeps ~110 degrees
+ * into the free space up and to the left. Each item is placed with the standard
+ * radial trick — rotate out to the angle, translate along the radius, rotate
+ * back — so the icon stays upright while only one transform animates.
+ *
+ * Angles are measured clockwise from due east, so -180deg is due left and
+ * -90deg is straight up.
+ */
+
+.radial {
+  position: absolute;
+  /* Anchored on Rev's centre, which is fixed relative to the window corner. */
+  right: 68px;
+  bottom: 78px;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+
+  /*
+   * A full 180-degree sweep, centred on the up-left diagonal. It only fits
+   * because Rev steps out of the corner while the menu is open — against the
+   * screen edge there is nowhere for the right-hand items to go.
+   */
+  --r: 132px;
+  --sweep-from: -225deg;
+  --sweep-step: 45deg;
+
+  /* Travels with Rev, so the arc stays centred on it. */
+  transform: translate(0, 0);
+  transition: transform 420ms var(--ease-spring);
+}
+
+.radial[data-open="true"] {
+  transform: translate(-60px, -74px);
+}
+
+.radial[data-open="true"] {
+  pointer-events: auto;
+}
+
+/* The guide arc, drawn as the items travel out along it. */
+.radial__guide {
+  position: absolute;
+  left: -150px;
+  top: -150px;
+  width: 300px;
+  height: 300px;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.radial__arc {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  opacity: 0;
+  stroke-dasharray: var(--arc-len, 300);
+  stroke-dashoffset: var(--arc-len, 300);
+}
+
+.radial[data-open="true"] .radial__arc {
+  opacity: 0.5;
+  stroke-dashoffset: 0;
+  transition:
+    stroke-dashoffset 420ms var(--ease-out) 40ms,
+    opacity 200ms ease;
+}
+
+/* --- items --------------------------------------------------------------- */
+
+/*
+ * Index by position rather than an inline style attribute: the renderer's CSP
+ * sets style-src 'self', which blocks HTML style attributes outright. An inline
+ * `--i` silently resolved to nothing, every item's transform became invalid,
+ * and all five stacked on top of Rev.
+ */
+.radial__item:nth-child(2) {
+  --i: 0;
+}
+.radial__item:nth-child(3) {
+  --i: 1;
+}
+.radial__item:nth-child(4) {
+  --i: 2;
+}
+.radial__item:nth-child(5) {
+  --i: 3;
+}
+.radial__item:nth-child(6) {
+  --i: 4;
+}
+
+.radial__item {
+  --a: calc(var(--sweep-from) + var(--i) * var(--sweep-step));
+
+  position: absolute;
+  left: -24px;
+  top: -24px;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--panel-line);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--panel-bg) 96%, transparent);
+  backdrop-filter: blur(14px) saturate(1.2);
+  box-shadow:
+    0 8px 20px rgb(0 0 0 / 0.45),
+    inset 0 1px 0 rgb(255 255 255 / 0.08);
+  color: var(--panel-text);
+  cursor: pointer;
+
+  /* Closed: collapsed into Rev. */
+  transform: rotate(var(--a)) translate(0) rotate(calc(-1 * var(--a))) scale(0.35);
+  opacity: 0;
+  transition:
+    transform 420ms var(--ease-spring),
+    opacity 160ms ease,
+    color 140ms ease,
+    border-color 140ms ease,
+    background 140ms ease;
+  /* Reverse the stagger on the way in so the arc collapses toward Rev. */
+  transition-delay: calc((4 - var(--i)) * 26ms);
+}
+
+.radial[data-open="true"] .radial__item {
+  transform: rotate(var(--a)) translate(var(--r)) rotate(calc(-1 * var(--a))) scale(1);
+  opacity: 1;
+  transition-delay: calc(var(--i) * 34ms);
+}
+
+.radial__item svg {
+  width: 21px;
+  height: 21px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.radial__item svg .fill {
+  fill: currentColor;
+  stroke: none;
+}
+
+.radial__item:hover,
+.radial__item:focus-visible {
+  color: var(--panel-text);
+  border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+  background: color-mix(in srgb, var(--accent) 16%, var(--panel-bg));
+  outline: none;
+}
+
+/* Lift the hovered item slightly further out; it reads as reaching toward you. */
+.radial[data-open="true"] .radial__item:hover,
+.radial[data-open="true"] .radial__item:focus-visible {
+  transform: rotate(var(--a)) translate(calc(var(--r) + 7px)) rotate(calc(-1 * var(--a)))
+    scale(1.09);
+  transition-delay: 0ms;
+}
+
+.radial__item:focus-visible {
+  box-shadow:
+    0 0 0 2px var(--focus),
+    0 8px 20px rgb(0 0 0 / 0.45);
+}
+
+/* Unread count rides the findings item. */
+.radial__badge {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--alert);
+  color: #17181a;
+  font-weight: 700;
+  font-size: 11px;
+  line-height: 18px;
+  text-align: center;
+}
+
+/* --- shared label -------------------------------------------------------- */
+
+/*
+ * One label for whichever item is hovered or focused, rather than five labels
+ * competing for the gaps between icons. At this radius the items are ~59px
+ * apart; their own labels would collide.
+ */
+.radial__label {
+  position: absolute;
+  left: 50%;
+  top: 26px;
+  transform: translate(-50%, 4px);
+  padding: 4px 10px;
+  border: 1px solid var(--panel-line);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel-bg) 96%, transparent);
+  backdrop-filter: blur(14px);
+  color: var(--panel-text);
+  font-size: 11.5px;
+  font-weight: 550;
+  letter-spacing: 0.2px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 140ms ease,
+    transform 200ms var(--ease-spring);
+}
+
+.radial__label[data-show="true"] {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+/*
+ * Rev steps out of the corner to present the menu, and settles back after.
+ * This is what buys the full semicircle: in the corner the arc can only open
+ * about 110 degrees before the right-hand items run off the screen edge.
+ */
+.pet[data-menu="true"] {
+  transform: translate(-46px, -56px);
+}
+
+.pet[data-menu="true"] .pet__svg {
+  transform: scale(0.92);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .radial__item,
+  .radial[data-open="true"] .radial__item {
+    transition-delay: 0ms !important;
+  }
+}
+
+body[data-reduced-motion="true"] .radial__item,
+body[data-reduced-motion="true"] .radial[data-open="true"] .radial__item {
+  transition-delay: 0ms !important;
 }

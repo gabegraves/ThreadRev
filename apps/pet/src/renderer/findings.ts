@@ -22,7 +22,10 @@ export type Connection =
   | { kind: "connected"; feed: Feed }
   | { kind: "offline"; reason: string };
 
-export const PET_ENDPOINT = "http://localhost:3000/api/pet/findings";
+/** Where apps/web serves. The menu opens its pages; the poll hits its API. */
+export const WEB_ORIGIN = "http://localhost:3000";
+
+export const PET_ENDPOINT = `${WEB_ORIGIN}/api/pet/findings`;
 
 const POLL_MS = 3000;
 /** Shorter than the poll, so a stalled request cannot outlive its own interval. */
