@@ -1,8 +1,8 @@
 # Synthetic fixtures (W1)
 
-Everything here is fictional. Company: Kestrel Motors, a fictional electric vehicle maker, workspace `kestrel-motors.slack.example`. Slack IDs use the `U00SYN` / `C00SYN` prefix only. The single source for every name, number, timestamp, and message is `research/synthetic-fixture-spec.md`. If a value here disagrees with the spec, the spec wins and this directory is wrong.
+Everything here is fictional. Company: Kestrel Motors, a fictional maker of light electric city vehicles, workspace `kestrel-motors.slack.example`. Slack IDs use the `U00SYN` / `C00SYN` prefix only. The single source for every name, number, timestamp, and message is `research/synthetic-fixture-spec.md`. If a value here disagrees with the spec, the spec wins and this directory is wrong.
 
-Regenerate the documents with `python3 fixtures/generate.py` (needs python-docx and openpyxl), then `shasum -a 256 fixtures/documents/* > fixtures/SHA256SUMS` from the repo root. The docx output is byte-for-byte reproducible. The xlsx output is not stable across openpyxl versions, so do not regenerate the workbooks unless their contents change; the bound hashes in `contracts/examples` would move.
+Regenerate the documents with `python3 fixtures/generate.py` (needs python-docx and openpyxl), then `shasum -a 256 fixtures/documents/* > fixtures/SHA256SUMS` from the repo root. Output is byte-for-byte reproducible: metadata timestamps are pinned, including the `dcterms:modified` stamp openpyxl rewrites on save, and zip entries carry a fixed date. Verified by running the generator twice and diffing the sums.
 
 ## documents/
 

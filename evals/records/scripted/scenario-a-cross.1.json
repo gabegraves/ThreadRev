@@ -269,7 +269,7 @@
       "result": {
         "checker": "rc",
         "version": "1",
-        "run_id": "rc-20260912T165558Z-99b8",
+        "run_id": "rc-20260912T170612Z-290b",
         "inputs": {
           "R_ohm": 470,
           "threshold": 0.999,
@@ -396,7 +396,7 @@
     {
       "name": "publish_result",
       "args": {
-        "run_id": "rc-20260912T165558Z-99b8",
+        "run_id": "rc-20260912T170612Z-290b",
         "requirements_revision": "1787166300.000600",
         "discrepancy": "Section 3 states 680 uF, the section 2 diagram states 750 uF, and the printed 2.435 s reproduces only with 750 uF. Neither is the project's current bus: Dara's 2026-08-05 message in #ks4-purchasing added a 140 uF snubber bank, bus 820 uF, and r2 does not mention it. At 820 uF t_99.9 = 2.6622 s, later than the 2.5 s relay timer. Section 4 prints 6.91 s; recomputed 6.4933 s.",
         "why_it_matters": "If the snubber bank is on the bus, the relay closes at 2.5 s with the bus at 99.85 percent, short of the 99.9 percent criterion. The review cannot be signed against r2's stated basis.",
@@ -441,7 +441,7 @@
       },
       "result": {
         "published": true,
-        "finding_id": "fnd-mtymmp75-856o",
+        "finding_id": "fnd-mtymzv3w-ic00",
         "requirements_revision": "1787166300.000600"
       }
     }
@@ -450,7 +450,7 @@
     {
       "checker": "rc",
       "version": "1",
-      "run_id": "rc-20260912T165558Z-99b8",
+      "run_id": "rc-20260912T170612Z-290b",
       "inputs": {
         "R_ohm": 470,
         "threshold": 0.999,
@@ -576,7 +576,7 @@
   ],
   "posted_cards": [
     {
-      "finding_id": "fnd-mtymmp75-856o",
+      "finding_id": "fnd-mtymzv3w-ic00",
       "status": "live",
       "requirements_revision": "1787166300.000600",
       "discrepancy": "Section 3 states 680 uF, the section 2 diagram states 750 uF, and the printed 2.435 s reproduces only with 750 uF. Neither is the project's current bus: Dara's 2026-08-05 message in #ks4-purchasing added a 140 uF snubber bank, bus 820 uF, and r2 does not mention it. At 820 uF t_99.9 = 2.6622 s, later than the 2.5 s relay timer. Section 4 prints 6.91 s; recomputed 6.4933 s.",
@@ -666,7 +666,7 @@
       "checker_run": {
         "checker": "rc",
         "version": "1",
-        "run_id": "rc-20260912T165558Z-99b8"
+        "run_id": "rc-20260912T170612Z-290b"
       }
     }
   ],

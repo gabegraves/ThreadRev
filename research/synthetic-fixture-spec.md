@@ -80,8 +80,8 @@ Four to synthesize: `precharge-review-r2.docx` (or markdown rendering of it), `k
 
 ## 3. Fictional team
 
-- Company: Kestrel Motors, a fictional electric vehicle maker.
-- Vehicles: KS-3 (previous platform, shipped 2025), KS-4 (current platform, in development).
+- Company: Kestrel Motors, a fictional maker of light electric city vehicles.
+- Vehicles: KS-3 (previous platform, shipped 2025), KS-4 (current platform, in development). Both are light electric city vehicles, which is why the pack is 5.2 kWh, the HV bus is 120 V, and the curb mass is around 300 kg.
 - Workspace: `kestrel-motors.slack.example`. Slack IDs use the synthetic prefix `U00SYN` / `C00SYN` so they cannot collide with real IDs.
 
 Channels:

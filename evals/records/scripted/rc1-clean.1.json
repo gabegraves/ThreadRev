@@ -154,7 +154,7 @@
       "result": {
         "checker": "rc",
         "version": "1",
-        "run_id": "rc-20260912T165559Z-cb08",
+        "run_id": "rc-20260912T170614Z-1e33",
         "inputs": {
           "R_ohm": 470,
           "threshold": 0.999,
@@ -258,7 +258,7 @@
     {
       "name": "publish_result",
       "args": {
-        "run_id": "rc-20260912T165559Z-cb08",
+        "run_id": "rc-20260912T170614Z-1e33",
         "requirements_revision": "1787166300.000600",
         "discrepancy": "none",
         "why_it_matters": "All three printed results reproduce within 5 ms. Relay close at 2.5 s leaves 292 ms margin at 680 uF.",
@@ -293,7 +293,7 @@
       },
       "result": {
         "published": true,
-        "finding_id": "fnd-mtymmqd4-hz93",
+        "finding_id": "fnd-mtymzwj9-nkb1",
         "requirements_revision": "1787166300.000600"
       }
     }
@@ -302,7 +302,7 @@
     {
       "checker": "rc",
       "version": "1",
-      "run_id": "rc-20260912T165559Z-cb08",
+      "run_id": "rc-20260912T170614Z-1e33",
       "inputs": {
         "R_ohm": 470,
         "threshold": 0.999,
@@ -405,7 +405,7 @@
   ],
   "posted_cards": [
     {
-      "finding_id": "fnd-mtymmqd4-hz93",
+      "finding_id": "fnd-mtymzwj9-nkb1",
       "status": "live",
       "requirements_revision": "1787166300.000600",
       "discrepancy": "none",
@@ -472,7 +472,7 @@
       "checker_run": {
         "checker": "rc",
         "version": "1",
-        "run_id": "rc-20260912T165559Z-cb08"
+        "run_id": "rc-20260912T170614Z-1e33"
       }
     }
   ],

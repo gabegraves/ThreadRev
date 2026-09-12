@@ -33,7 +33,7 @@ Two rules shape everything:
 
 ## The demo: Scenario A
 
-A fictional electric vehicle company, channel `#ks4-electrical`, precharge RC timing. Fixture script in [`fixtures/slack/scenario-a.json`](fixtures/slack/scenario-a.json), full spec in [`research/synthetic-fixture-spec.md`](research/synthetic-fixture-spec.md).
+A fictional light electric vehicle maker, channel `#ks4-electrical`, precharge RC timing. Fixture script in [`fixtures/slack/scenario-a.json`](fixtures/slack/scenario-a.json), full spec in [`research/synthetic-fixture-spec.md`](research/synthetic-fixture-spec.md).
 
 1. Dara posts `precharge-review-r2.docx`: "Dropped one film cap, bus is now 680 uF."
 2. Tam: "Relay close timer in firmware is 2.5 s, matches the doc."

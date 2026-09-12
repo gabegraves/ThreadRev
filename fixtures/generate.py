@@ -9,11 +9,12 @@ Usage (from the repo root):
     shasum -a 256 fixtures/documents/* > fixtures/SHA256SUMS
 
 Output is byte-for-byte reproducible: document metadata timestamps are pinned
-and every zip entry is rewritten with a fixed date so the sha256 sums are
-stable across runs.
+(including the dcterms:modified stamp openpyxl rewrites on save) and every zip
+entry is rewritten with a fixed date so the sha256 sums are stable across runs.
 """
 import io
 import os
+import re
 import zipfile
 from datetime import datetime
 
@@ -32,6 +33,14 @@ def normalize_zip(path):
     """Rewrite a zip in place with sorted entries and a fixed timestamp."""
     with zipfile.ZipFile(path) as zin:
         entries = [(n, zin.read(n)) for n in sorted(zin.namelist())]
+    # openpyxl overwrites dcterms:modified with the wall clock on every save,
+    # ignoring wb.properties.modified. Pin it here so the sha256 is stable.
+    stamp = PINNED.strftime("%Y-%m-%dT%H:%M:%SZ").encode()
+    entries = [
+        (n, re.sub(rb"(<dcterms:modified[^>]*>)[^<]*(</dcterms:modified>)", rb"\g<1>" + stamp + rb"\g<2>", d)
+         if n == "docProps/core.xml" else d)
+        for n, d in entries
+    ]
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zout:
         for name, data in entries:

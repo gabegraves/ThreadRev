@@ -25,7 +25,7 @@
       "kind": "document",
       "id": "ks4-sim-inputs-v2-1.xlsx",
       "revision": "v2-1",
-      "sha256": "8e2419c7620047d5b80fa273828bd062fecbe50bd3404aed39dd2301d07e6ab4",
+      "sha256": "f9ce6b5def1327ac6e7b42a0b390c8b83cab8875b0e91961cd62cd9b23fc0e94",
       "locator": "sheet params, rows 2 to 5",
       "quote": "mass_kg 318, Crr 0.0048, CdA 0.12, pack_kWh 5.2"
     }
