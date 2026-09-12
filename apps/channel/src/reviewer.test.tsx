@@ -435,3 +435,49 @@ test("a second review in a thread does not inherit the first one's evidence", as
   assert.deepEqual(after.notices, [], "notices from the previous run must not carry over");
   assert.equal(after.trigger_ts, "200.000100");
 });
+
+import { extractQuantities, normalizeUnit } from "./workspace";
+
+test("a spelled-out unit indexes as the same quantity as its symbol", () => {
+  const symbol = extractQuantities("bus is now 820 uF");
+  const spelled = extractQuantities("bus is now 820 microfarad");
+  assert.deepEqual(
+    spelled.map((q) => [q.value, q.unit]),
+    symbol.map((q) => [q.value, q.unit]),
+    "820 microfarad and 820 uF must land in the same bucket",
+  );
+
+  assert.deepEqual(
+    extractQuantities("relay closes at 2.5 sec").map((q) => [q.value, q.unit]),
+    [[2.5, "s"]],
+  );
+  assert.deepEqual(
+    extractQuantities("pack is 5.2 kilowatt-hours").map((q) => [q.value, q.unit]),
+    [[5.2, "kWh"]],
+  );
+  assert.deepEqual(
+    extractQuantities("swap in the 560 ohms part").map((q) => [q.value, q.unit]),
+    [[560, "ohm"]],
+  );
+});
+
+test("prefixed spellings win over the units they contain", () => {
+  assert.deepEqual(extractQuantities("120 milliseconds").map((q) => q.unit), ["ms"]);
+  assert.deepEqual(extractQuantities("3 milliamps").map((q) => q.unit), ["mA"]);
+  assert.deepEqual(extractQuantities("2 kilowatt-hours").map((q) => q.unit), ["kWh"]);
+  assert.equal(normalizeUnit("MICROFARADS"), "uF");
+});
+
+test("a word that merely starts with a unit is not a quantity", () => {
+  assert.deepEqual(extractQuantities("see 3 sections below"), []);
+  assert.deepEqual(extractQuantities("part 4 variant"), []);
+});
+
+test("single-letter symbols stay case-sensitive so prose is not a quantity", () => {
+  // "5 a.m." must not read as 5 amperes, and "part 3 v2" must not read as volts.
+  assert.deepEqual(extractQuantities("standup at 5 a.m."), []);
+  assert.deepEqual(extractQuantities("we shipped 2 w of those"), []);
+  // The real symbols still work.
+  assert.deepEqual(extractQuantities("draws 5 A").map((q) => q.unit), ["A"]);
+  assert.deepEqual(extractQuantities("bus at 120 V").map((q) => q.unit), ["V"]);
+});

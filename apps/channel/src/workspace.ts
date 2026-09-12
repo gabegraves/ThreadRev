@@ -53,21 +53,63 @@ const UNIT_ALIASES: Record<string, string> = {
   "µf": "uF", uf: "uF", mf: "mF", nf: "nF", ohm: "ohm", ohms: "ohm", "ω": "ohm",
   kg: "kg", kwh: "kWh", wh: "Wh", v: "V", a: "A", ma: "mA", ms: "ms", s: "s",
   "m/s": "m/s", km: "km", mm: "mm", percent: "percent", "%": "percent", w: "W", usd: "USD",
+
+  // Spelled out. An engineer typing "bus is 820 microfarad" or "closes at 2.5
+  // sec" is stating the same quantity as "820 uF" and "2.5 s", and the index is
+  // the only thing standing between that message and a review that needs it.
+  // Exact match, not fuzzy: these are spellings of a unit, not similar words.
+  microfarad: "uF", microfarads: "uF", "micro-farad": "uF", "micro-farads": "uF",
+  millifarad: "mF", millifarads: "mF", nanofarad: "nF", nanofarads: "nF",
+  farad: "F", farads: "F",
+  kilogram: "kg", kilograms: "kg", kilo: "kg", kilos: "kg",
+  "kilowatt-hour": "kWh", "kilowatt-hours": "kWh", "kilowatt hour": "kWh", "kilowatt hours": "kWh",
+  "watt-hour": "Wh", "watt-hours": "Wh",
+  volt: "V", volts: "V", millivolt: "mV", millivolts: "mV",
+  ampere: "A", amperes: "A", amp: "A", amps: "A",
+  milliampere: "mA", milliamperes: "mA", milliamp: "mA", milliamps: "mA",
+  millisecond: "ms", milliseconds: "ms", msec: "ms", msecs: "ms",
+  second: "s", seconds: "s", sec: "s", secs: "s",
+  kilometre: "km", kilometres: "km", kilometer: "km", kilometers: "km",
+  millimetre: "mm", millimetres: "mm", millimeter: "mm", millimeters: "mm",
+  watt: "W", watts: "W", kilowatt: "kW", kilowatts: "kW",
+  dollar: "USD", dollars: "USD",
 };
-const UNIT_RE = /(\d+(?:\.\d+)?)\s*(µF|uF|mF|nF|ohms?|Ω|kg|kWh|Wh|V|mA|A|ms|m\/s|s|km|mm|percent|%|W|USD)(?![A-Za-z0-9/])/g;
-const DOC_RE = /\b([A-Za-z0-9._-]+\.(?:docx|xlsx|pdf))\b/g;
+
+/**
+ * Number followed by a unit, in two passes.
+ *
+ * Symbols stay case-sensitive, because single letters are ambiguous in prose:
+ * with a case-insensitive match "5 a.m." reads as 5 amperes and "part 3 v2" as
+ * 3 volts. Spelled-out units have no such collision, so those match in any
+ * case — someone starting a sentence with "Microfarads..." still counts.
+ *
+ * Within each alternation, every spelling sits before any spelling it is a
+ * prefix of: milli- before its bare unit, kilowatt-hour before watt-hour, mA
+ * before A. The trailing lookahead stops "3 sections" reading as 3 seconds.
+ */
+const SYMBOL_RE =
+  /(\d+(?:\.\d+)?)\s*(µF|uF|mF|nF|kWh|Wh|kW|kg|km|mm|mA|ms|m\/s|ohms?|Ω|percent|%|USD|V|A|W|s)(?![A-Za-z0-9/])/g;
+
+const WORD_RE =
+  /(\d+(?:\.\d+)?)\s*(micro-?farads?|millifarads?|nanofarads?|farads?|kilowatt[- ]hours?|watt[- ]hours?|kilowatts?|milliamperes?|milliamps?|amperes?|amps?|millivolts?|volts?|milliseconds?|msecs?|seconds?|secs?|kilograms?|kilometres?|kilometers?|millimetres?|millimeters?|watts?|dollars?|ohms?)(?![A-Za-z0-9/])/gi;
+
+const DOC_RE = /([A-Za-z0-9._-]+\.(?:docx|xlsx|pdf))/g;
 
 export function normalizeUnit(raw: string): string {
   return UNIT_ALIASES[raw.toLowerCase()] ?? raw;
 }
 
 export function extractQuantities(text: string): QuantityMention[] {
-  const out: QuantityMention[] = [];
-  for (const m of text.matchAll(UNIT_RE)) {
-    const before = text.slice(0, m.index).trim().split(/\s+/).slice(-4).join(" ").toLowerCase();
-    out.push({ value: Number(m[1]), unit: normalizeUnit(m[2]!), context: before });
+  const found = new Map<number, QuantityMention>();
+  for (const re of [SYMBOL_RE, WORD_RE]) {
+    for (const m of text.matchAll(re)) {
+      // Keyed by offset so a number matched by both passes is counted once.
+      if (found.has(m.index)) continue;
+      const before = text.slice(0, m.index).trim().split(/\s+/).slice(-4).join(" ").toLowerCase();
+      found.set(m.index, { value: Number(m[1]), unit: normalizeUnit(m[2]!), context: before });
+    }
   }
-  return out;
+  return [...found.entries()].sort((a, b) => a[0] - b[0]).map(([, q]) => q);
 }
 
 function basename(path: string) {
