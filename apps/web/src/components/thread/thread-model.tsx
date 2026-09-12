@@ -10,12 +10,18 @@ export type InlineItem =
   | { kind: "refused"; at: string; run_id: string; bound_revision: string; current_revision: string; reason: string }
   | { kind: "superseded"; at: string; finding_id: string; superseded_by: string };
 
+/** A message the reviewer found through search_workspace, not in the thread transcript. */
+export type WorkspaceHitItem = { ts: string; channel: string; from: string; text: string; is_change: boolean; at: string };
+
 export type ThreadModel = {
+  /** Thread transcript only: message_read events that came via the thread. */
   messages: ThreadMessage[];
   /** Every distinct trigger_ts in the log: a message that started any reviewer run. */
   triggers: Set<string>;
   docsByTs: Map<string, DocChip[]>;
   inlineByTs: Map<string, InlineItem[]>;
+  /** trigger_ts → messages read via workspace_search during that run, deduped by ts, oldest first. */
+  workspaceHitsByTrigger: Map<string, WorkspaceHitItem[]>;
 };
 
 function push<K, V>(map: Map<K, V[]>, key: K, value: V) {
@@ -23,16 +29,27 @@ function push<K, V>(map: Map<K, V[]>, key: K, value: V) {
 }
 
 export function buildThreadModel(events: EvidenceEvent[], graph: EvidenceGraph): ThreadModel {
-  const messages = threadMessages(events);
+  // Workspace hits are not part of the thread; the same ts can appear via both, so filter by event, not by ts.
+  const messages = threadMessages(events.filter((ev) => !(ev.kind === "message_read" && ev.via === "workspace_search")));
   const triggers = new Set<string>();
   const docsByTs = new Map<string, DocChip[]>();
   const inlineByTs = new Map<string, InlineItem[]>();
+  const workspaceHitsByTrigger = new Map<string, WorkspaceHitItem[]>();
   const seenDocs = new Set<string>();
   const seenCards = new Set<string>();
+  const seenHits = new Set<string>();
 
   for (const ev of events) {
     if (ev.trigger_ts) triggers.add(ev.trigger_ts);
     switch (ev.kind) {
+      case "message_read": {
+        if (ev.via !== "workspace_search" || !ev.trigger_ts) break;
+        const key = `${ev.trigger_ts}|${ev.ts}`;
+        if (seenHits.has(key)) break;
+        seenHits.add(key);
+        push(workspaceHitsByTrigger, ev.trigger_ts, { ts: ev.ts, channel: ev.channel ?? "—", from: ev.from, text: ev.text, is_change: ev.is_change, at: ev.at });
+        break;
+      }
       case "document_read": {
         if (!ev.named_in_ts) break;
         const key = `${ev.named_in_ts}|${ev.sha256}`;
@@ -75,5 +92,6 @@ export function buildThreadModel(events: EvidenceEvent[], graph: EvidenceGraph):
     }
   }
   for (const items of inlineByTs.values()) items.sort((a, b) => a.at.localeCompare(b.at));
-  return { messages, triggers, docsByTs, inlineByTs };
+  for (const hits of workspaceHitsByTrigger.values()) hits.sort((a, b) => Number(a.ts) - Number(b.ts));
+  return { messages, triggers, docsByTs, inlineByTs, workspaceHitsByTrigger };
 }

@@ -1,11 +1,12 @@
 "use client";
 
-import { BarChart3, FileText, GitBranch, LayoutDashboard, MessageSquare, MessagesSquare, PlayCircle, ShieldCheck } from "lucide-react";
+import { BarChart3, Database, FileText, GitBranch, LayoutDashboard, MessageSquare, MessagesSquare, PlayCircle, ShieldCheck } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { SidebarNav, SidebarShell, SidebarWhenCollapsed, SidebarWhenExpanded } from "@/civic-ui/components/SidebarShell";
+import { WORKSPACE_MESSAGE_COUNT } from "@/components/workspace/workspace-model";
 import { useEvidence } from "@/lib/demo/use-evidence";
 import { ScenarioSwitcher } from "./scenario-switcher";
-import { ThemeToggle } from "./theme-toggle";
+import { RailFooterCollapsed, RailFooterExpanded } from "./rail-footer";
 
 export function AppSidebar() {
   const pathname = usePathname();
@@ -19,6 +20,7 @@ export function AppSidebar() {
     { label: "Overview", href: "/", icon: LayoutDashboard, active: is("/") },
     { label: "Thread", href: "/thread", icon: MessagesSquare, active: is("/thread") },
     { label: "Documents", href: "/documents", icon: FileText, active: is("/documents"), count: docs },
+    { label: "Workspace", href: "/workspace", icon: Database, active: is("/workspace"), count: WORKSPACE_MESSAGE_COUNT },
     { label: "Findings", href: "/findings", icon: ShieldCheck, active: is("/findings"), count: live },
   ];
   const analysis = [
@@ -34,10 +36,10 @@ export function AppSidebar() {
       footer={
         <>
           <SidebarWhenExpanded>
-            <ThemeToggle className="h-8 w-full" />
+            <RailFooterExpanded />
           </SidebarWhenExpanded>
           <SidebarWhenCollapsed>
-            <ThemeToggle className="h-9 w-full" />
+            <RailFooterCollapsed />
           </SidebarWhenCollapsed>
         </>
       }

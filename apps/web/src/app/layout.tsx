@@ -26,11 +26,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="font-sans antialiased">
         <Providers>
-          <div className="flex min-h-dvh flex-col bg-background text-foreground md:flex-row">
+          <div className="flex min-h-[calc(100dvh/var(--app-zoom,1))] flex-col bg-background text-foreground md:flex-row">
             <MobileHeader />
             <AppSidebar />
-            <main className="min-w-0 flex-1">
-              <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-6 px-4 py-5 sm:px-6 lg:px-8">{children}</div>
+            <main className="flex min-w-0 flex-1 flex-col">
+              <div className="mx-auto flex w-full max-w-[1800px] flex-grow flex-col gap-5 px-3 pt-city-content pb-10 sm:px-4 lg:px-6">{children}</div>
             </main>
           </div>
         </Providers>

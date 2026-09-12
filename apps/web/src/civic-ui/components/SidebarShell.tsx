@@ -227,7 +227,7 @@ export function SidebarShell({
           // h-dvh resolves BEFORE the html zoom scales it (see --app-zoom in
           // globals.css) — divide it back out or the rail (and the map layout
           // that keys off it) paints 10% short, leaving a dead band.
-          "sticky top-0 z-30 hidden h-dvh shrink-0 flex-col border-r border-hairline bg-background md:flex",
+          "sticky top-0 z-30 hidden h-[calc(100dvh/var(--app-zoom,1))] shrink-0 flex-col border-r border-hairline bg-background md:flex",
           "transition-[width] duration-200 ease-out motion-reduce:transition-none",
           collapsed ? "w-14" : "w-56",
         )}

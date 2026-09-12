@@ -18,7 +18,7 @@ export type WorkspaceMessage = {
 
 /** Mirrors apps/channel/src/revision.ts. */
 export const CHANGE_PATTERN =
-  /(?:correction|corrected|instead of|is now|are now|changed?|changing|updated?|revis(?:ed|ion)|supersed\w*|scratch that|actually|bump(?:ed)? to|moving to|allows?|now,? not|not \d|now \d|will be r\d)/i;
+  /\b(?:correction|corrected|instead of|is now|are now|changed?|changing|updated?|revis(?:ed|ion)|supersed\w*|scratch that|actually|bump(?:ed)? to|moving to|allows?\b|now,? not|not \d|now \d|will be r\d)/i;
 
 export function tsNum(ts: string | undefined) {
   if (!ts) return -1;

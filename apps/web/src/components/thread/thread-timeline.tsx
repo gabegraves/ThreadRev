@@ -1,6 +1,7 @@
 "use client";
 
-import { ExternalLink, FileText } from "lucide-react";
+import { Database, ExternalLink, FileText } from "lucide-react";
+import Link from "next/link";
 import { useState } from "react";
 import type { EvidenceGraph } from "agent-core/shared";
 import { StatusPill } from "@/civic-ui/components/StatusPill";
@@ -8,7 +9,37 @@ import { cn } from "@/civic-ui/lib/cn";
 import { FindingCard } from "@/components/findings/finding-card";
 import { changeDownstream, fmtTime, type ThreadMessage } from "@/components/review-console/graph-utils";
 import { slackPermalink } from "@/lib/demo/status";
-import type { InlineItem, ThreadModel } from "./thread-model";
+import type { InlineItem, ThreadModel, WorkspaceHitItem } from "./thread-model";
+
+/** Messages the reviewer pulled in through search_workspace during the run this message triggered. */
+function WorkspaceHits({ hits }: { hits: WorkspaceHitItem[] }) {
+  return (
+    <div className="ml-11 flex flex-col gap-2 rounded-[var(--radius-md)] border border-hairline bg-overlay px-3 py-2.5">
+      <div className="flex flex-wrap items-center gap-2">
+        <Database className="size-3.5 text-faint" strokeWidth={1.75} aria-hidden />
+        <span className="font-mono text-[10.5px] font-medium uppercase tracking-[0.12em] text-faint">
+          Found in workspace · {hits.length} {hits.length === 1 ? "hit" : "hits"}
+        </span>
+        <Link href="/workspace" className="ml-auto font-mono text-[11px] text-accent-text underline-offset-2 hover:underline">
+          open the index →
+        </Link>
+      </div>
+      <ol className="flex flex-col gap-2">
+        {hits.map((h) => (
+          <li key={h.ts} className="flex flex-col gap-0.5 border-l-2 border-hairline-strong pl-3">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <span className="font-mono text-[11px] text-subtle">{h.channel}</span>
+              <span className="text-[12.5px] font-semibold text-foreground">{h.from}</span>
+              <time className="font-mono text-[11px] tabular-nums text-faint">{fmtTime(h.ts)}</time>
+              {h.is_change && <StatusPill tone="info">requirement change</StatusPill>}
+            </div>
+            <p className="whitespace-pre-wrap text-[12.5px] leading-relaxed text-foreground">{h.text}</p>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
 
 const SILENCE_LABEL: Record<"gate_closed" | "no_finding", string> = {
   gate_closed: "gate closed, reviewer did not run",
@@ -92,6 +123,7 @@ function Message({
   const [hover, setHover] = useState(false);
   const docs = model.docsByTs.get(m.ts) ?? [];
   const inline = model.inlineByTs.get(m.ts) ?? [];
+  const hits = model.workspaceHitsByTrigger.get(m.ts) ?? [];
   const isRoot = m.ts === graph.thread;
   return (
     <li className="flex flex-col gap-2">
@@ -149,6 +181,7 @@ function Message({
         </div>
         {hover && <InvalidatedPopover graph={graph} ts={m.ts} />}
       </div>
+      {hits.length > 0 && <WorkspaceHits hits={hits} />}
       {inline.map((item, i) =>
         item.kind === "card" ? (
           <FindingCard key={item.finding.finding_id} finding={item.finding} compact onOpen={onOpen} className="ml-11" />

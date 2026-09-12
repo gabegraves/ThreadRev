@@ -10,6 +10,7 @@ const LINKS = [
   { label: "Overview", href: "/" },
   { label: "Thread", href: "/thread" },
   { label: "Documents", href: "/documents" },
+  { label: "Workspace", href: "/workspace" },
   { label: "Findings", href: "/findings" },
   { label: "Graph", href: "/graph" },
   { label: "Runs", href: "/runs" },
