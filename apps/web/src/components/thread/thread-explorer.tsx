@@ -88,7 +88,7 @@ export function ThreadExplorer({
   const detail = message ? (
     <ThreadMessageDetail m={message} model={model} graph={graph} events={events} channelId={channelId} onOpen={onOpenFinding} />
   ) : (
-    <p className="text-[13px] text-faint">Select a message to see what the reviewer did with it.</p>
+    <p className="text-[13px] leading-relaxed text-subtle">Select a message to see what the reviewer did with it.</p>
   );
 
   return (

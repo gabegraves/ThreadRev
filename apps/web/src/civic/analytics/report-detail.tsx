@@ -1,9 +1,11 @@
 "use client";
 
-import { Clock, ImageOff, MapPin } from "lucide-react";
-import { useState } from "react";
+import { Clock, MapPin } from "lucide-react";
+import Link from "next/link";
 import {
+  getEvidence,
   getReasoning,
+  type ReportEvidence,
   type ReasoningResponse,
   type ReasoningSection,
 } from "@/lib/civic-adapters/reports";
@@ -172,37 +174,61 @@ function useReasoning(report: DashboardReport | null): ReasoningState {
    ReportDetail
    ================================================================== */
 
-/** Report photo with a graceful fallback. Some sources (CSP-blocked hosts,
-   dead links, missing uploads) won't load; rather than leave a 16:9 void we
-   swap in a neutral placeholder. Keyed by report id at the call site so the
-   error state resets on every selection. */
-function ReportImage({ src, alt }: { src: string; alt: string }) {
-  const [errored, setErrored] = useState(!src);
-
-  if (errored) {
+/** ThreadRev: no photos. The hero is the evidence itself: where this report
+   lives in the console (graph node, finding/run page, thread, documents) and
+   the log slice that produced it. */
+function EvidenceHero({ evidence }: { evidence: ReportEvidence | undefined }) {
+  if (!evidence) {
     return (
-      <div className="flex aspect-[16/9] w-full flex-col items-center justify-center gap-2 bg-overlay text-faint">
-        <ImageOff className="h-6 w-6" strokeWidth={1.5} aria-hidden />
-        <span className="text-[12px]">No attachment recorded</span>
+      <div className="flex min-h-[160px] w-full items-center justify-center bg-overlay text-faint">
+        <span className="text-[12px]">No evidence recorded</span>
       </div>
     );
   }
-
   return (
-    // eslint-disable-next-line @next/next/no-img-element
-    // biome-ignore lint/performance/noImgElement: dynamic external/resident photo URL, next/image impractical
-    <img
-      src={src}
-      alt={alt}
-      loading="lazy"
-      onError={() => setErrored(true)}
-      className="aspect-[16/9] w-full object-cover"
-    />
+    <div className="flex flex-col gap-4 p-4 pb-14">
+      <div className="flex flex-col gap-2">
+        <span className="text-[11px] font-medium uppercase tracking-[0.08em] text-faint">
+          Evidence
+        </span>
+        <div className="flex flex-wrap gap-1.5">
+          {evidence.links.map((l) => (
+            <Link
+              key={l.href}
+              href={l.href}
+              className={cn(
+                "inline-flex items-center rounded-md border border-hairline bg-surface px-2 py-1 text-[12px] font-medium text-foreground hover:border-foreground/40",
+                l.mono && "font-mono font-normal text-subtle",
+              )}
+            >
+              {l.label}
+            </Link>
+          ))}
+        </div>
+      </div>
+      <div className="flex flex-col gap-2">
+        <span className="text-[11px] font-medium uppercase tracking-[0.08em] text-faint">
+          Log · {evidence.log.length} event{evidence.log.length === 1 ? "" : "s"}
+        </span>
+        <ol className="max-h-[260px] divide-y divide-hairline overflow-y-auto rounded-[var(--radius-md)] border border-hairline bg-surface">
+          {evidence.log.map((row, i) => (
+            <li key={`${row.at}-${i}`} className="grid grid-cols-[64px_112px_1fr] gap-x-3 px-3 py-2">
+              <span className="font-mono text-[11px] tabular-nums text-faint">
+                {new Date(row.at).toLocaleTimeString("en-US", { timeZone: "America/New_York", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })}
+              </span>
+              <span className="truncate font-mono text-[11px] text-subtle">{row.kind}</span>
+              <span className="min-w-0 truncate text-[12px] text-foreground" title={row.text}>{row.text}</span>
+            </li>
+          ))}
+        </ol>
+      </div>
+    </div>
   );
 }
 
 export function ReportDetail({ report }: { report: DashboardReport | null }) {
   const reasoning = useReasoning(report);
+  const evidence = report ? getEvidence(report.id) : undefined;
 
   if (!report) {
     return (
@@ -223,16 +249,12 @@ export function ReportDetail({ report }: { report: DashboardReport | null }) {
       key={report.id}
       className="flex flex-col gap-5 sm:gap-7 animate-in fade-in slide-in-from-bottom-1 duration-200 motion-reduce:animate-none"
     >
-      {/* 1. Image with overlaid severity chip + status pill */}
-      <div className="relative overflow-hidden rounded-[var(--radius-lg)] border border-hairline bg-surface">
-        <ReportImage
-          key={report.id}
-          src={report.photo_public_url}
-          alt={`${meta.label} report at ${report.address}`}
-        />
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 bg-gradient-to-t from-black/70 via-black/20 to-transparent p-3">
+      {/* 1. Evidence hero with overlaid severity chip + status pill */}
+      <div className="relative overflow-hidden rounded-[var(--radius-lg)] border border-hairline bg-overlay">
+        <EvidenceHero evidence={evidence} />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 p-3">
           <span
-            className="inline-flex items-center gap-1.5 rounded-md bg-black/40 px-2 py-1 text-[12px] font-medium text-white backdrop-blur-sm"
+            className="inline-flex items-center gap-1.5 rounded-md border border-hairline bg-surface px-2 py-1 text-[12px] font-medium text-foreground"
             style={{
               boxShadow: `inset 0 0 0 1px color-mix(in srgb, ${sevColor} 40%, transparent)`,
             }}

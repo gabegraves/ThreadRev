@@ -31,16 +31,16 @@ export function NeedsAttention({ rows }: { rows: AttentionRow[] }) {
         <li key={r.finding.finding_id} className={cn(i > 0 && "border-t border-hairline")}>
           <Link
             href={hrefs.finding(r.finding.finding_id)}
-            className="-mx-2 flex items-center gap-2.5 rounded-md px-2 py-1.5 transition-colors hover:bg-overlay focus-visible:outline-2 focus-visible:outline-accent"
+            className="-mx-2 flex items-center gap-2.5 rounded-md px-2 py-2.5 transition-colors hover:bg-overlay focus-visible:outline-2 focus-visible:outline-accent"
           >
             <StatusPill tone={STATUS_TONE[r.tone]} className="shrink-0">
               {STATUS_LABEL[r.tone]}
             </StatusPill>
-            <span className="min-w-0 flex-1 truncate text-[13px] text-foreground">
+            <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-foreground">
               {r.finding.discrepancy === "none" ? headline(r.finding) : r.finding.discrepancy}
             </span>
-            <span className="shrink-0 font-mono text-[11px] text-faint">{r.finding.finding_id}</span>
-            <span className="shrink-0 font-mono text-[11px] tabular-nums text-faint" title={r.at}>
+            <span className="shrink-0 font-mono text-[12px] text-subtle">{r.finding.finding_id}</span>
+            <span className="shrink-0 font-mono text-[12px] tabular-nums text-faint" title={r.at}>
               {r.at ? timeAgo(r.at) : "—"}
             </span>
           </Link>

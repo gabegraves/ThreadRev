@@ -74,7 +74,11 @@ export function FindingCard({ finding: f, compact = false, onOpen, graphNodeIds,
     <article
       aria-label="Reviewer finding"
       data-kind={kind}
-      className={cn("rounded-[var(--radius-lg)] border border-hairline bg-surface p-4 shadow-[var(--shadow-card)]", stale && "opacity-80", className)}
+      className={cn(
+        "flex flex-col gap-5 rounded-[var(--radius-lg)] border border-hairline bg-surface p-4 shadow-[var(--shadow-card)]",
+        stale && "opacity-80",
+        className,
+      )}
     >
       <header className="flex flex-wrap items-center justify-between gap-2">
         <StatusPill tone={STATUS_TONE[toneKey]}>{STATUS_LABEL[toneKey]}</StatusPill>
@@ -92,19 +96,19 @@ export function FindingCard({ finding: f, compact = false, onOpen, graphNodeIds,
         </span>
       </header>
 
-      <p className="mt-2 text-[13px] font-medium leading-snug text-foreground">{f.discrepancy === "none" ? "No discrepancy found." : f.discrepancy}</p>
+      <p className="text-[15px] font-semibold leading-snug text-foreground">{f.discrepancy === "none" ? "No discrepancy found." : f.discrepancy}</p>
 
       {!compact && (
-        <section className="mt-3">
+        <section className="border-t border-hairline pt-4">
           <MicroLabel>Why it matters</MicroLabel>
-          <p className="mt-1 text-[13px] leading-relaxed text-subtle">{f.why_it_matters}</p>
+          <p className="mt-1.5 max-w-[68ch] text-[13px] leading-relaxed text-foreground">{f.why_it_matters}</p>
         </section>
       )}
 
       {f.reproduced.length > 0 && (
-        <section className="mt-3">
+        <section className={cn(!compact && "border-t border-hairline pt-4")}>
           {!compact && <MicroLabel>Reproduced by checker</MicroLabel>}
-          <ul className={cn("flex flex-col gap-1", !compact && "mt-1.5")}>
+          <ul className={cn("flex flex-col gap-1.5", !compact && "mt-1.5")}>
             {f.reproduced.map((r) => (
               <ReproducedRow key={r.label} r={r} />
             ))}
@@ -113,9 +117,9 @@ export function FindingCard({ finding: f, compact = false, onOpen, graphNodeIds,
       )}
 
       {!compact && f.inferred.length > 0 && (
-        <section className="mt-3 border-l-2 border-hairline-strong pl-3">
+        <section className="border-t border-hairline pt-4">
           <MicroLabel>Inferred, not recomputed</MicroLabel>
-          <ul className="mt-1 flex flex-col gap-1 text-[12px] italic leading-relaxed text-subtle">
+          <ul className="mt-1.5 flex flex-col gap-1.5 border-l-2 border-hairline-strong pl-3 text-[12px] italic leading-relaxed text-subtle">
             {f.inferred.map((i) => (
               <li key={i}>{i}</li>
             ))}
@@ -124,9 +128,9 @@ export function FindingCard({ finding: f, compact = false, onOpen, graphNodeIds,
       )}
 
       {!compact && (
-        <section className="mt-3">
+        <section className="border-t border-hairline pt-4">
           <MicroLabel>Sources</MicroLabel>
-          <ul className="mt-1.5 flex flex-col gap-1">
+          <ul className="mt-1.5 flex flex-col gap-1.5">
             {f.sources.map((s, i) => (
               // biome-ignore lint/suspicious/noArrayIndexKey: the same source can be cited twice with different locators
               <li key={`${s.kind}-${s.id}-${i}`} className="flex items-baseline gap-2 text-[12px]">
@@ -155,21 +159,21 @@ export function FindingCard({ finding: f, compact = false, onOpen, graphNodeIds,
       )}
 
       {!compact && f.question && (
-        <section className="mt-3 rounded-[var(--radius-md)] bg-accent-soft px-3 py-2.5">
+        <section className="rounded-[var(--radius-md)] bg-accent-soft px-3 py-2.5">
           <MicroLabel>Question for {f.question.to}</MicroLabel>
-          <p className="mt-1 text-[13px] leading-relaxed text-foreground">{f.question.ask}</p>
+          <p className="mt-1.5 max-w-[68ch] text-[13px] leading-relaxed text-foreground">{f.question.ask}</p>
         </section>
       )}
 
       {!compact && (
-        <section className="mt-3 grid grid-cols-1 gap-3 border-t border-hairline pt-3 sm:grid-cols-2">
+        <section className="grid grid-cols-1 gap-3 border-t border-hairline pt-4 sm:grid-cols-2">
           <div className="min-w-0">
             <MicroLabel>Resolves it</MicroLabel>
-            <p className="mt-1 text-[12px] leading-relaxed text-foreground">{f.resolution}</p>
+            <p className="mt-1.5 text-[13px] leading-relaxed text-foreground">{f.resolution}</p>
           </div>
           <div className="min-w-0">
             <MicroLabel>Bound to revision</MicroLabel>
-            <Link href={hrefs.thread(f.requirements_revision)} className={cn("mt-1 block whitespace-nowrap font-mono text-[12px] tabular-nums", LINK_CLASS)}>
+            <Link href={hrefs.thread(f.requirements_revision)} className={cn("mt-1.5 block whitespace-nowrap font-mono text-[12px] tabular-nums text-subtle", LINK_CLASS)}>
               {f.requirements_revision}
             </Link>
           </div>
@@ -177,7 +181,7 @@ export function FindingCard({ finding: f, compact = false, onOpen, graphNodeIds,
       )}
 
       {!compact && (
-        <footer className="mt-3 border-t border-hairline pt-2.5 font-mono text-[11px] leading-relaxed text-faint">
+        <footer className="border-t border-hairline pt-3 font-mono text-[11px] leading-relaxed text-faint">
           <span>
             {f.checker_run.checker} v{f.checker_run.version} · run{" "}
             <Link href={hrefs.run(f.checker_run.run_id)} className={LINK_CLASS}>

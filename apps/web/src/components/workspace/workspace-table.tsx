@@ -21,7 +21,7 @@ export function MarkPill({ mark }: { mark: HitMark }) {
 
 function Chip({ children, title }: { children: React.ReactNode; title?: string }) {
   return (
-    <span title={title} className="inline-flex items-center rounded-[var(--radius-sm)] border border-hairline bg-overlay px-1.5 py-0.5 font-mono text-[11px] tabular-nums text-subtle">
+    <span title={title} className="inline-flex items-center rounded-[var(--radius-sm)] border border-hairline bg-overlay px-1.5 py-0.5 font-mono text-[12px] tabular-nums text-subtle">
       {children}
     </span>
   );
@@ -34,7 +34,8 @@ const BASE: Column<WorkspaceRow>[] = [
     header: "Author",
     cell: (r) => (
       <span className="whitespace-nowrap">
-        {r.user_name} <span className="font-mono text-[11px] text-faint">#{r.channel_name}</span>
+        <span className="text-[13px] font-medium text-foreground">{r.user_name}</span>{" "}
+        <span className="font-mono text-[12px] text-subtle">#{r.channel_name}</span>
       </span>
     ),
   },

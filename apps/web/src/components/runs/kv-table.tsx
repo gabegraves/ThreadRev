@@ -7,6 +7,7 @@
  * value's shape decides the table.
  */
 import Link from "next/link";
+import { Fragment } from "react";
 import type { EvidenceEvent } from "agent-core/shared";
 import { LINK_CLASS, hrefs } from "@/lib/demo/links";
 
@@ -48,16 +49,16 @@ export function KvTable({ data, emptyMessage = "Nothing recorded." }: { data: Re
   const rows = data ? flatten(data) : [];
   if (rows.length === 0) return <p className="text-[12px] text-faint">{emptyMessage}</p>;
   return (
-    <dl className="flex flex-col">
+    <dl className="grid grid-cols-[128px_1fr] gap-x-4 gap-y-2">
       {rows.map(([k, v]) => (
-        <div key={k} className="flex items-baseline justify-between gap-3 border-b border-hairline py-1 last:border-0">
-          <dt className="min-w-0 shrink-0 max-w-[55%] truncate font-mono text-[11px] uppercase tracking-[0.06em] text-faint" title={k}>
+        <Fragment key={k}>
+          <dt className="min-w-0 truncate font-mono text-[12px] text-faint" title={k}>
             {k}
           </dt>
-          <dd className="min-w-0 truncate font-mono text-[12px] tabular-nums text-foreground" title={v}>
+          <dd className="min-w-0 truncate font-mono text-[13px] tabular-nums text-foreground" title={v}>
             {v}
           </dd>
-        </div>
+        </Fragment>
       ))}
     </dl>
   );
@@ -83,7 +84,7 @@ export function ChecksTable({ checks }: { checks: Check[] }) {
               {c.name}
             </td>
             <td
-              className="w-[40%] truncate py-1.5 text-right font-mono text-[11px] tabular-nums text-subtle"
+              className="w-[40%] truncate py-1.5 text-right font-mono text-[11px] tabular-nums font-medium text-subtle"
               title={`actual ${fmtVal(c.actual)} · expected ${fmtVal(c.expected)}`}
             >
               {fmtVal(c.actual)} <span className="text-faint">/ {fmtVal(c.expected)}</span>
@@ -104,7 +105,7 @@ export function CheckBar({ passed, total }: { passed: number; total: number }) {
   const pct = total === 0 ? 0 : (passed / total) * 100;
   return (
     <span className="inline-flex items-center gap-2">
-      <span className="font-mono text-[12px] tabular-nums">{passed}/{total}</span>
+      <span className="font-mono text-[12px] tabular-nums font-medium">{passed}/{total}</span>
       <span className="relative h-1.5 w-14 overflow-hidden rounded-full bg-overlay-strong" aria-hidden>
         <span
           className="absolute inset-y-0 left-0 rounded-full"

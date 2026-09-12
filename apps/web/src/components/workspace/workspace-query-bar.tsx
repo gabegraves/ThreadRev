@@ -75,7 +75,7 @@ export function WorkspaceQueryBar({
           </button>
         )}
         {isFiltered(filters) && <ResetChip label={active.length > 2 ? `${active.length} fields` : active.join(" · ")} onClick={() => onChange(EMPTY_FILTERS)} />}
-        <span className="whitespace-nowrap font-mono text-[11px] tabular-nums text-faint">
+        <span className="whitespace-nowrap font-mono text-[12px] tabular-nums text-subtle">
           {result.hits.length}/{result.total}
           {result.cutoff && <> · cutoff {fmtTime(result.cutoff)}</>}
         </span>

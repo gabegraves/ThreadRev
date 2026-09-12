@@ -30,8 +30,8 @@ const COLUMNS: Column<DocRow>[] = [
     cell: (r) =>
       r.named_in_ts ? (
         <span>
-          <span className="text-foreground">{r.named_by ?? "—"}</span>
-          <span className="ml-2 font-mono text-[11px] tabular-nums text-faint">{fmtTime(r.named_in_ts)}</span>
+          <span className="text-[13px] font-medium text-foreground">{r.named_by ?? "—"}</span>
+          <span className="ml-2 font-mono text-[12px] tabular-nums text-faint">{fmtTime(r.named_in_ts)}</span>
         </span>
       ) : (
         "—"

@@ -40,7 +40,7 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
 
 function WhatChanged({ before, after }: { before: Finding; after: Finding }) {
   return (
-    <section className="flex flex-col gap-2">
+    <section className="flex flex-col gap-2 border-t border-hairline pt-4">
       <SectionTitle>What changed</SectionTitle>
       <div className="rounded-[var(--radius-md)] border border-hairline">
         <table className="w-full table-fixed border-collapse text-[12px]">
@@ -123,13 +123,13 @@ export function FindingDetail({ finding, graph, events }: { finding: Finding; gr
       <FindingCard finding={finding} graphNodeIds={graphNodeIds} />
       {before && <WhatChanged before={before} after={finding} />}
       {history.length > 0 && (
-        <section className="flex flex-col gap-2">
+        <section className="flex flex-col gap-2 border-t border-hairline pt-4">
           <SectionTitle>History</SectionTitle>
-          <ul className="flex flex-col gap-1.5 text-[12px] text-subtle">
+          <ul className="flex flex-col gap-2 text-[13px] text-foreground">
             {history.map((h) => (
-              <li key={h.key} className="flex gap-2">
-                <span className="shrink-0 font-mono text-[11px] tabular-nums text-faint">{new Date(h.at).toLocaleString("en-US", { timeZone: "America/New_York",  month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
-                <span className="min-w-0">{h.text}</span>
+              <li key={h.key} className="flex flex-col gap-0.5">
+                <span className="font-mono text-[11px] tabular-nums text-faint">{new Date(h.at).toLocaleString("en-US", { timeZone: "America/New_York",  month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
+                <span className="min-w-0 leading-relaxed">{h.text}</span>
               </li>
             ))}
           </ul>
