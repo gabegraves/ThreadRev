@@ -89,7 +89,7 @@ def cell_text(c, strings):
         index = int(v.text)
         return strings[index].strip() if index < len(strings) else ""
     if kind == "str":
-        v = c.find(S + "f/..")  # formula result lives in <v> alongside <f>
+        # A formula's cached result lives in <v> alongside its <f>.
         v = c.find(S + "v")
         return (v.text or "").strip() if v is not None else ""
     v = c.find(S + "v")

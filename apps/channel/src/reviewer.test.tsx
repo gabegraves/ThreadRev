@@ -977,3 +977,13 @@ test("superseding a card persists its stale status, not just the Slack edit", as
   assert.equal(prior?.finding.status, "stale", "the replaced card must be stale in thread state, not only in Slack");
   assert.equal(cards.filter((c) => c.finding.status === "live").length, 1, "exactly one live card after superseding");
 });
+
+test("a document name glued to more text is not a document", () => {
+  // DOC_RE lost its \b anchors when corrupted bytes were stripped instead of
+  // restored, so "report.docxfile" yielded "report.docx". main has the anchors.
+  const glued = indexMessage({
+    ts: "3", channel: "C", channel_name: "c", user: "u", user_name: "U",
+    thread_ts: null, text: "see report.docxfile for context", files: [],
+  });
+  assert.deepEqual(glued.documents, []);
+});
