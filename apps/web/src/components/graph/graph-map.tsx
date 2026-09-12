@@ -152,6 +152,12 @@ type Props = {
   graph: EvidenceGraph;
   selected: string | null;
   onSelect: (id: string | null) => void;
+  /** Fill the parent's height instead of the fixed MIN_H card. */
+  fill?: boolean;
+  /** Display-only label overrides (local edits), keyed by node id. */
+  labels?: Record<string, string>;
+  /** Node ids that carry a local note — drawn with a small dot marker. */
+  noted?: Set<string>;
 };
 
 export function EvidenceGraphMap(props: Props) {
@@ -167,7 +173,7 @@ export function EvidenceGraphMap(props: Props) {
   return <MapCanvas {...props} />;
 }
 
-function MapCanvas({ graph, selected, onSelect }: Props) {
+function MapCanvas({ graph, selected, onSelect, fill = false, labels, noted }: Props) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const [hover, setHover] = useState<string | null>(null);
@@ -254,11 +260,27 @@ function MapCanvas({ graph, selected, onSelect }: Props) {
     ev.currentTarget.releasePointerCapture(ev.pointerId);
   };
 
-  const lit = useMemo(() => {
+  // Hover lights everything downstream; a selection lights the node plus
+  // every node it touches (edges in and out). Hovering another node wins;
+  // hovering the selected node itself keeps the selection lit.
+  const hoverLit = useMemo(() => {
     if (!hover) return null;
     const d = downstreamOf(graph, hover);
     return { nodes: d.nodes, edges: new Set(d.edges) };
   }, [hover, graph]);
+  const selLit = useMemo(() => {
+    if (!selected) return null;
+    const nodes = new Set<string>([selected]);
+    const edges = new Set<GraphEdge>();
+    for (const e of graph.edges) {
+      if (e.from !== selected && e.to !== selected) continue;
+      edges.add(e);
+      nodes.add(e.from);
+      nodes.add(e.to);
+    }
+    return { nodes, edges };
+  }, [selected, graph]);
+  const lit = hover && hover !== selected ? hoverLit : (selLit ?? hoverLit);
 
   const toggle = (id: string) => onSelect(selected === id ? null : id);
 
@@ -274,7 +296,7 @@ function MapCanvas({ graph, selected, onSelect }: Props) {
     <div
       ref={wrapRef}
       className="relative w-full overflow-hidden rounded-[var(--radius-lg)] border border-hairline bg-surface shadow-[var(--shadow-card)]"
-      style={{ minHeight: MIN_H, height: MIN_H }}
+      style={fill ? { minHeight: 0, height: "100%" } : { minHeight: MIN_H, height: MIN_H }}
     >
       <svg
         ref={svgRef}
@@ -333,11 +355,12 @@ function MapCanvas({ graph, selected, onSelect }: Props) {
             const r = sim.radius.get(node.id) ?? 6;
             const dim = lit !== null && !lit.nodes.has(node.id);
             const isSel = selected === node.id;
+            const label = labels?.[node.id] ?? node.label;
             return (
               <g
                 key={node.id}
                 transform={`translate(${p.x},${p.y})`}
-                opacity={dim ? 0.2 : 1}
+                opacity={dim ? 0.25 : 1}
                 style={{ cursor: "pointer", transition: "opacity 120ms linear", outline: "none" }}
                 tabIndex={0}
                 role="button"
@@ -354,7 +377,7 @@ function MapCanvas({ graph, selected, onSelect }: Props) {
                   }
                 }}
               >
-                <title>{`${node.kind} · ${node.status} · ${node.label}`}</title>
+                <title>{`${node.kind} · ${node.status} · ${label}`}</title>
                 {isSel && <circle r={r + 5} fill="none" stroke="var(--foreground)" strokeWidth={1.5 / view.k} strokeDasharray={`${3 / view.k} ${3 / view.k}`} />}
                 <circle
                   r={r}
@@ -362,6 +385,11 @@ function MapCanvas({ graph, selected, onSelect }: Props) {
                   stroke={STATUS_RING[node.status]}
                   strokeWidth={(node.status === "neutral" ? 1 : 2.5) / view.k}
                 />
+                {noted?.has(node.id) && (
+                  <circle cx={r * 0.75} cy={-r * 0.75} r={3 / view.k} fill="var(--color-warning)" stroke="var(--surface)" strokeWidth={1.2 / view.k}>
+                    <title>has a note</title>
+                  </circle>
+                )}
                 {labelled(node) && (
                   <text
                     y={r + 12 / view.k}
@@ -371,7 +399,7 @@ function MapCanvas({ graph, selected, onSelect }: Props) {
                     className={node.kind === "finding" ? "text-foreground" : "text-subtle"}
                     style={{ fill: "currentColor", pointerEvents: "none", paintOrder: "stroke", stroke: "var(--surface)", strokeWidth: 3 / view.k, strokeLinejoin: "round" }}
                   >
-                    {clip(node.label, 28)}
+                    {clip(label, 28)}
                   </text>
                 )}
               </g>

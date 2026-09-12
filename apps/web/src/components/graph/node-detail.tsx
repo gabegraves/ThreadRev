@@ -1,10 +1,12 @@
 "use client";
 
-import type { EvidenceGraph, Finding, GraphNode } from "agent-core/shared";
+import type { EvidenceEvent, EvidenceGraph, Finding, GraphNode } from "agent-core/shared";
+import { useEffect, useMemo, useState } from "react";
 import { Badge } from "@/civic-ui/components/Badge";
 import { DetailPanel, DetailSection, Field, FieldGrid } from "@/civic-ui/components/DetailPanel";
 import { StatusPill } from "@/civic-ui/components/StatusPill";
-import { fmtTime } from "@/components/review-console/graph-utils";
+import { TraceTimeline } from "@/components/graph/trace-timeline";
+import { fmtTime, runTraces } from "@/components/review-console/graph-utils";
 import { asArr, asChecks, asNum, asRec, asRefs, asStr, ChecksTable, isRec, KvTable, RefChips } from "@/components/runs/kv-table";
 import { RefusalBlock } from "@/components/runs/run-detail";
 import { STATUS_LABEL, STATUS_TONE } from "@/lib/demo/status";
@@ -194,12 +196,124 @@ function RevisionFields({ graph, node, onPick }: { graph: EvidenceGraph; node: G
   );
 }
 
-export function NodeDetail({ graph, node, onPick }: { graph: EvidenceGraph; node: GraphNode | null; onPick: (id: string) => void }) {
-  if (!node) return <DetailPanel emptyMessage="Click a node to see what the log recorded for it." />;
+const INPUT =
+  "w-full rounded-[var(--radius-md)] border border-hairline bg-overlay px-2.5 py-1.5 text-[13px] text-foreground placeholder:text-faint focus:border-hairline-strong focus:outline-none";
+const BUTTON =
+  "inline-flex h-7 items-center gap-1.5 rounded-md border border-hairline bg-overlay px-2.5 text-[12px] font-medium text-subtle transition-colors hover:border-hairline-strong hover:text-foreground disabled:cursor-default disabled:opacity-50";
+
+/** Local, display-only edits: label override + free-text note. The drafts are
+ *  keyed on node.id by the caller (`key={node.id}`) so switching nodes resets them. */
+function NodeEditor({
+  node,
+  label,
+  note,
+  onSaveLabel,
+  onSaveNote,
+}: {
+  node: GraphNode;
+  label: string | undefined;
+  note: string | undefined;
+  onSaveLabel: (id: string, label: string) => void;
+  onSaveNote: (id: string, note: string) => void;
+}) {
+  const [labelDraft, setLabelDraft] = useState(label ?? node.label);
+  const [noteDraft, setNoteDraft] = useState(note ?? "");
+  useEffect(() => setLabelDraft(label ?? node.label), [label, node.label]);
+  useEffect(() => setNoteDraft(note ?? ""), [note]);
+  const labelDirty = labelDraft !== (label ?? node.label);
+  const noteDirty = noteDraft !== (note ?? "");
+  return (
+    <>
+      <DetailSection title="Label">
+        <div className="flex items-center gap-2">
+          <input aria-label="Node label" value={labelDraft} onChange={(e) => setLabelDraft(e.target.value)} className={INPUT} />
+          <button type="button" disabled={!labelDirty} onClick={() => onSaveLabel(node.id, labelDraft)} className={BUTTON}>
+            Save
+          </button>
+        </div>
+        {label !== undefined && (
+          <p className="text-[11px] text-faint">
+            Logged as <span className="text-subtle">{node.label}</span> ·{" "}
+            <button type="button" onClick={() => onSaveLabel(node.id, "")} className="underline underline-offset-2 hover:text-foreground">
+              reset
+            </button>
+          </p>
+        )}
+      </DetailSection>
+      <DetailSection title="Notes">
+        <textarea
+          aria-label="Node note"
+          value={noteDraft}
+          onChange={(e) => setNoteDraft(e.target.value)}
+          rows={4}
+          placeholder="Add a note for this node — stored in this browser only."
+          className={`${INPUT} resize-y leading-relaxed`}
+        />
+        <div className="flex items-center gap-2">
+          <button type="button" disabled={!noteDirty} onClick={() => onSaveNote(node.id, noteDraft)} className={BUTTON}>
+            Save note
+          </button>
+          {note && (
+            <button type="button" onClick={() => onSaveNote(node.id, "")} className={BUTTON}>
+              Delete note
+            </button>
+          )}
+        </div>
+      </DetailSection>
+    </>
+  );
+}
+
+/** The reviewer run a run / finding node belongs to, as the same event
+ *  timeline the page used to show for the whole log. */
+function NodeRun({ node, events, onPick }: { node: GraphNode; events: EvidenceEvent[]; onPick: (id: string) => void }) {
+  const trace = useMemo(() => {
+    const trig =
+      node.kind === "run"
+        ? asStr(node.data.trigger_ts)
+        : events.find((ev) => ev.kind === "finding_published" && ev.finding.finding_id === node.id)?.trigger_ts;
+    return trig ? runTraces(events).find((t) => t.trigger_ts === trig) : undefined;
+  }, [node, events]);
+  if (!trace) return null;
+  return (
+    <DetailSection title="Reviewer run">
+      <p className="text-[12px] text-faint">
+        {trace.label} · {trace.events.length} events
+      </p>
+      <TraceTimeline trace={trace} onPick={onPick} />
+    </DetailSection>
+  );
+}
+
+export function NodeDetail({
+  graph,
+  events,
+  node,
+  onPick,
+  className,
+  label,
+  note,
+  onSaveLabel,
+  onSaveNote,
+}: {
+  graph: EvidenceGraph;
+  events: EvidenceEvent[];
+  node: GraphNode | null;
+  onPick: (id: string) => void;
+  className?: string;
+  /** Local label override for this node, if any. */
+  label?: string;
+  /** Local note for this node, if any. */
+  note?: string;
+  onSaveLabel: (id: string, label: string) => void;
+  onSaveNote: (id: string, note: string) => void;
+}) {
+  if (!node) return <DetailPanel emptyMessage="Click a node to see what the log recorded for it." className={className} />;
   const d = node.data;
   return (
     <DetailPanel
-      title={node.label}
+      className={className}
+      title={label ?? node.label}
       subtitle={<span className="font-mono">{node.id}</span>}
       actions={
         <>
@@ -208,13 +322,23 @@ export function NodeDetail({ graph, node, onPick }: { graph: EvidenceGraph; node
         </>
       }
     >
+      <FieldGrid>
+        <Field label="kind" value={node.kind} />
+        <Field label="status" value={STATUS_LABEL[node.status]} />
+        <Field label="at" value={node.at ? new Date(node.at).toLocaleString() : "—"} hint={node.at} />
+      </FieldGrid>
       {node.kind === "message" && <MessageFields d={d} />}
       {node.kind === "document" && <DocumentFields d={d} />}
       {node.kind === "run" && <RunFields d={d} onPick={onPick} />}
       {node.kind === "finding" && <FindingFields node={node} d={d} onPick={onPick} />}
       {node.kind === "revision" && <RevisionFields graph={graph} node={node} onPick={onPick} />}
-      <DetailSection title="Edges">
+      <DetailSection title="Connected nodes">
         <Neighbours graph={graph} id={node.id} onPick={onPick} />
+      </DetailSection>
+      <NodeEditor key={node.id} node={node} label={label} note={note} onSaveLabel={onSaveLabel} onSaveNote={onSaveNote} />
+      {(node.kind === "run" || node.kind === "finding") && <NodeRun node={node} events={events} onPick={onPick} />}
+      <DetailSection title="All fields">
+        <KvTable data={d} />
       </DetailSection>
     </DetailPanel>
   );

@@ -99,19 +99,41 @@ export function EvidenceGraphSvg({
   graph,
   selected,
   onSelect,
+  labels,
+  noted,
 }: {
   graph: EvidenceGraph;
   selected: string | null;
   onSelect: (id: string | null) => void;
+  /** Display-only label overrides (local edits), keyed by node id. */
+  labels?: Record<string, string>;
+  /** Node ids that carry a local note — drawn with a small dot marker. */
+  noted?: Set<string>;
 }) {
   const [hover, setHover] = useState<string | null>(null);
   const { columns, placed, width, height } = useMemo(() => layout(graph), [graph]);
 
-  const lit = useMemo(() => {
+  // Hover lights everything downstream; a selection lights the node plus
+  // every node it touches (edges in and out). Hovering another node wins;
+  // hovering the selected node itself keeps the selection lit.
+  const hoverLit = useMemo(() => {
     if (!hover) return null;
     const d = downstreamOf(graph, hover);
     return { nodes: d.nodes, edges: new Set(d.edges) };
   }, [hover, graph]);
+  const selLit = useMemo(() => {
+    if (!selected) return null;
+    const nodes = new Set<string>([selected]);
+    const edges = new Set<GraphEdge>();
+    for (const e of graph.edges) {
+      if (e.from !== selected && e.to !== selected) continue;
+      edges.add(e);
+      nodes.add(e.from);
+      nodes.add(e.to);
+    }
+    return { nodes, edges };
+  }, [selected, graph]);
+  const lit = hover && hover !== selected ? hoverLit : (selLit ?? hoverLit);
 
   const toggle = (id: string) => onSelect(selected === id ? null : id);
 
@@ -176,6 +198,7 @@ export function EvidenceGraphSvg({
         {[...placed.values()].map(({ node, x, y }) => {
           const dim = lit !== null && !lit.nodes.has(node.id);
           const isSel = selected === node.id;
+          const label = labels?.[node.id] ?? node.label;
           return (
             <g
               key={node.id}
@@ -197,7 +220,7 @@ export function EvidenceGraphSvg({
                 }
               }}
             >
-              <title>{`${node.kind} · ${node.status} · ${node.label}`}</title>
+              <title>{`${node.kind} · ${node.status} · ${label}`}</title>
               <rect
                 width={NODE_W}
                 height={NODE_H}
@@ -219,8 +242,13 @@ export function EvidenceGraphSvg({
                 {node.status !== "neutral" ? ` · ${node.status}` : ""}
               </text>
               <text x={10} y={30} fill="var(--foreground)" fontSize={12} fontWeight={500}>
-                {clip(node.label, 22)}
+                {clip(label, 22)}
               </text>
+              {noted?.has(node.id) && (
+                <circle cx={NODE_W - 8} cy={8} r={3} fill="var(--color-warning)" stroke="var(--surface)" strokeWidth={1.2}>
+                  <title>has a note</title>
+                </circle>
+              )}
             </g>
           );
         })}

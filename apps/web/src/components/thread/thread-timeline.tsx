@@ -107,7 +107,7 @@ function InvalidatedPopover({ graph, ts }: { graph: EvidenceGraph; ts: string })
   );
 }
 
-function Message({
+export function Message({
   m,
   model,
   graph,
