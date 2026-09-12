@@ -20,6 +20,7 @@ export const exampleRcInputs = () =>
   (JSON.parse(readFileSync(join(examples, "checker-rc-request.json"), "utf8")) as { inputs: unknown }).inputs;
 
 export const readThread: ToolCall = { name: "read_thread", args: {} };
+export const searchWorkspace = (args: Record<string, unknown>): ToolCall => ({ name: "search_workspace", args });
 export const readEvidence = (document: string): ToolCall => ({ name: "read_evidence", args: { document } });
 export const rcCheck = (inputs: unknown): ToolCall => ({ name: "run_check", args: { checker: "rc", inputs } });
 export const routeCheck = (inputs: unknown): ToolCall => ({ name: "run_route_check", args: { inputs } });
@@ -87,6 +88,80 @@ function scenarioA(messages: FixtureMessage[]): Script {
           inferred: [],
           resolution: model.resolution,
           question: model.question,
+        });
+      },
+      () => undefined,
+    ],
+  };
+}
+
+/** Workspace hits as the scripted reviewer sees them (see WorkspaceHit in ../workspace). */
+const workspaceHits = (ctx: ScriptContext) => {
+  const r = ctx.results.find((x) => x && typeof x === "object" && "hits" in (x as object)) as
+    | { hits: Array<{ ts: string; channel: string; from: string; text: string; is_change: boolean; values: Array<{ value: number; unit: string }> }> }
+    | undefined;
+  assert.ok(r, "no search_workspace result in context");
+  return r.hits;
+};
+const rcTimes = (res: CheckerResponse) =>
+  res.outputs.per_capacitance as Record<string, { t_threshold_s: number; fraction_at_timer: number }>;
+
+/**
+ * Scenario A, cross-channel: the thread is the r2 seed, Tam, and Juno's
+ * trigger. Dara's 820 uF correction was posted two weeks earlier in
+ * #ks4-purchasing. The r2 document ignores it. The reviewer must find it
+ * with search_workspace, not from the thread.
+ */
+function scenarioACross(messages: FixtureMessage[]): Script {
+  const t = trigger(messages);
+  const seed = messages[0]!;
+  return {
+    steps: [
+      () => readThread,
+      () => searchWorkspace({ unit: "uF", quantity: "bus capacitance snubber" }),
+      (ctx) => {
+        const hits = workspaceHits(ctx);
+        const correction = hits.find((h) => h.values.some((v) => v.value === 820 && v.unit === "uF"));
+        assert.ok(correction, `search_workspace did not return the 820 uF correction: ${JSON.stringify(hits.map((h) => h.text))}`);
+        assert.equal(correction.channel, "#ks4-purchasing");
+        return readEvidence("precharge-review-r2.docx");
+      },
+      () =>
+        rcCheck({
+          R_ohm: 470,
+          threshold: 0.999,
+          timer_s: 2.5,
+          capacitances: [
+            { label: "680uF_text", C_F: 0.00068 },
+            { label: "750uF_diagram", C_F: 0.00075 },
+            { label: "820uF_purchasing", C_F: 0.00082 },
+            { label: "2mF_example", C_F: 0.002 },
+          ],
+          printed: [
+            { label: "printed_2.435", value_s: 2.435, against: ["680uF_text", "750uF_diagram", "820uF_purchasing"] },
+            { label: "printed_6.91", value_s: 6.91, against: ["2mF_example"] },
+          ],
+        }),
+      (ctx) => {
+        const doc = ctx.evidence[0]!;
+        const hits = workspaceHits(ctx);
+        const correction = hits.find((h) => h.values.some((v) => v.value === 820 && v.unit === "uF"))!;
+        const times = rcTimes(ctx.checker!);
+        const t820 = times["820uF_purchasing"]!;
+        return publish({
+          run_id: ctx.checker!.run_id,
+          requirements_revision: t.ts,
+          discrepancy: `Section 3 states 680 uF, the section 2 diagram states 750 uF, and the printed 2.435 s reproduces only with 750 uF. Neither is the project's current bus: Dara's 2026-08-05 message in #ks4-purchasing added a 140 uF snubber bank, bus 820 uF, and r2 does not mention it. At 820 uF t_99.9 = ${t820.t_threshold_s} s, later than the 2.5 s relay timer. Section 4 prints 6.91 s; recomputed ${times["2mF_example"]!.t_threshold_s} s.`,
+          why_it_matters: `If the snubber bank is on the bus, the relay closes at 2.5 s with the bus at ${(t820.fraction_at_timer * 100).toFixed(2)} percent, short of the 99.9 percent criterion. The review cannot be signed against r2's stated basis.`,
+          sources: [
+            docSource(doc, /Bus capacitance C = 750 uF/),
+            docSource(doc, /t_99\.9 = -470 \* 750e-6/),
+            { kind: "message", id: seed.ts, locator: "#ks4-electrical", quote: "Dropped one film cap, bus is now 680 uF." },
+            { kind: "message", id: correction.ts, locator: correction.channel, quote: correction.text.slice(0, 300) },
+          ],
+          inferred: ["That the snubber bank is on the precharged bus is read from Dara's purchasing message, not from a schematic."],
+          resolution: "Dara confirms whether the 820 uF bus with the snubber bank is what r2 should describe, and updates the diagram, section 3, and section 4. If 820 uF stands, the timer question goes to Tam.",
+          question: { to: "Dara Voss", ask: "Is the bus 820 uF with the snubber bank from PO-2261, as your August 5 message in #ks4-purchasing says, or 680 uF as r2 states?" },
         });
       },
       () => undefined,
@@ -254,6 +329,7 @@ function silent(): Script {
 
 const SCRIPTS: Record<string, (messages: FixtureMessage[]) => Script> = {
   "scenario-a": scenarioA,
+  "scenario-a-cross": scenarioACross,
   "scenario-b": scenarioB,
   "rc1-clean": rc1Clean,
   "rc2-conflict": rc2Conflict,

@@ -4,9 +4,9 @@
 
 ![Agents, Everywhere hackathon — OpenAI, CopilotKit, OpenRouter, Exa, Auth0, and Ambiguous AI](assets/banner.png)
 
-**A Slack-native engineering change reviewer. It reads the thread, recomputes the numbers, and marks its own findings stale when the inputs change.**
+**A Slack-native engineering change reviewer. It reads the thread, searches the rest of the workspace by document and unit, recomputes the numbers, and marks its own findings stale when the inputs change.**
 
-[What it does](#what-it-does) · [Demo](#the-demo-scenario-a) · [How it works](#how-it-works) · [Status](#status) · [Run it](#run-it) · [Repo map](#repo-map) · [Team](#team-and-working-rules)
+[What it does](#what-it-does) · [Demo](#the-demo-scenario-a) · [How it works](#how-it-works) · [Why search, not RAG](#why-search-by-identifier-not-rag) · [Status](#status) · [Run it](#run-it) · [Repo map](#repo-map) · [Team](#team-and-working-rules)
 
 </div>
 
@@ -16,7 +16,7 @@ Built during the [Agents, Everywhere](https://aitinkerers.org/hackathons/global/
 
 Engineering teams make decisions in Slack threads and then write documents that quietly disagree with them. A review document prints a result computed from a capacitance the thread already replaced. A simulation request pulls parameters from a sheet that a correction message superseded three weeks earlier. Nobody catches it because nobody rereads the thread.
 
-ThreadRev lives in the channel. When someone asks it to check a document, or when a message changes an input that an earlier finding depended on, it posts one card in the thread:
+ThreadRev lives in the channel. When someone asks it to check a document, or when a message changes an input that an earlier finding depended on, it reads the thread, searches every other channel for the document and the values it rests on, and posts one card in the thread:
 
 1. **Discrepancy.** What the document says versus what the thread decided, with the exact line.
 2. **Why it matters.** The engineering consequence, in the team's own units.
@@ -42,6 +42,8 @@ A fictional solar-car team, channel `#ks4-electrical`, precharge RC timing. Fixt
 5. Dara: "Bus is 820 uF, not 680. Doc will be r3."
 6. **Card 1 goes stale. Card 2.** At 820 uF, t_99.9 = 2.662 s, later than the 2.5 s relay timer. The bus reaches 99.85 percent at 2.5 s. The timer or the resistor must change. Bound to Dara's message, because r3 does not exist yet. [`finding-scenario-a-superseding.json`](contracts/examples/finding-scenario-a-superseding.json).
 
+**Scenario A, cross-channel** ([`scenario-a-cross.json`](fixtures/slack/scenario-a-cross.json)). Same thread, but Dara's 820 uF correction was posted two weeks earlier in `#ks4-purchasing`, as an order for a snubber bank, and r2 never mentions it. The thread alone cannot catch this. The reviewer calls `search_workspace` with unit `uF`, gets every capacitance message in the workspace up to the trigger, oldest first, and the card cites the purchasing message by channel and timestamp. Recorded run: [`evals/records/scripted/scenario-a-cross.1.json`](evals/records/scripted/scenario-a-cross.1.json).
+
 Scenario B (stale simulation inputs, `#ks4-strategy-sim`) and three replay cases are also built: a clean control that must produce no discrepancy, a conflicting-evidence case where the reviewer must ask instead of choose, and a mid-run revision where the first result must be refused before it posts. All four have finding examples under [`contracts/examples/`](contracts/examples/).
 
 ## How it works
@@ -50,9 +52,13 @@ Scenario B (stale simulation inputs, `#ks4-strategy-sim`) and three replay cases
 Slack thread ──▶ CopilotKit Channels ──▶ review gate (is this a review moment?)
                                               │
                                               ▼
-                                   reviewer agent, four tools
-                        read_thread · read_evidence · run_check · publish_result
-                                              │                 │
+                                   reviewer agent, five tools
+        read_thread · search_workspace · read_evidence · run_check · publish_result
+                           │                  │                 │
+                           ▼                  │                 │
+              workspace index (every channel, │                 │
+              keyed by document, unit,        │                 │
+              quantity words, author)         │                 │
                                               ▼                 ▼
                               checkers/check_rc.py       finding card (Block Kit)
                               checkers/check_route.py    posted in thread, updated
@@ -62,7 +68,8 @@ Slack thread ──▶ CopilotKit Channels ──▶ review gate (is this a revi
                                   evidence log (JSONL) ──▶ evidence graph ──▶ web console
 ```
 
-- **Reviewer tools** in [`apps/channel/src/reviewer-tools.tsx`](apps/channel/src/reviewer-tools.tsx). `read_thread` reads the Slack history; `read_evidence` extracts document text and hashes; `run_check` invokes a checker and records the run; `publish_result` is the only path to a card and refuses a result whose requirement revision is no longer current.
+- **Reviewer tools** in [`apps/channel/src/reviewer-tools.tsx`](apps/channel/src/reviewer-tools.tsx). `read_thread` reads the Slack history; `search_workspace` queries the workspace index outside the thread; `read_evidence` extracts document text and hashes; `run_check` invokes a checker and records the run; `publish_result` is the only path to a card and refuses a result whose requirement revision is no longer current.
+- **Workspace index** in [`workspace.ts`](apps/channel/src/workspace.ts). Built once from a Slack export ([`fixtures/workspace/kestrel-workspace.json`](fixtures/workspace/kestrel-workspace.json), five channels, March to August; `WORKSPACE_EXPORT` points at a real export). Every message is indexed by the documents it names, the values it states with their units, the quantity words around them, whether it reads as a change, and its author. A query returns every match at or before the trigger message, oldest first. No embeddings, no ranking, no cap that can drop a correction.
 - **Review gate and silence filter** in [`review-moment.ts`](apps/channel/src/review-moment.ts) and [`agent.ts`](apps/channel/src/agent.ts). Most messages get nothing.
 - **Revision tracking** in [`revision.ts`](apps/channel/src/revision.ts): a requirement-change message becomes the revision every later card binds to.
 - **Checkers** in [`checkers/`](checkers/), contract in [`contracts/checker-io.md`](contracts/checker-io.md). `check_rc.py` does first-order RC timing; `check_route.py` does the constant-speed route energy model. No network, no file writes, no imports outside the standard library.
@@ -70,6 +77,16 @@ Slack thread ──▶ CopilotKit Channels ──▶ review gate (is this a revi
 - **Evidence log and graph** in [`packages/agent-core/src/evidence/`](packages/agent-core/src/evidence/). Every message read, document hashed, checker run, card published, and silence decision is appended as an event. The graph builder turns the log into message, document, run, finding, and revision nodes with a downstream walk, so "what did this change invalidate" is a query.
 - **Replay harness** in [`apps/channel/src/replay/`](apps/channel/src/replay/). Replays a fixture Slack script through the real channel handlers and real checkers offline, with a scripted agent standing in for the model, and asserts the card that gets posted. This is the contract test for the checker-to-card seam and the scorecard for the three replay cases.
 - **Web review console** in [`apps/web/src/components/review-console/`](apps/web/src/components/review-console/), served by [`/api/evidence`](apps/web/src/app/api/evidence/route.ts). A browser view of the thread, the cards, and the evidence graph, polling the live log and falling back to the Scenario A sample. Secondary surface; Slack is the product.
+
+## Why search by identifier, not RAG
+
+Retrieval-augmented generation stores chunks with embeddings, ranks them by similarity to the question, and puts the top few in the prompt. That is the right tool when the corpus is too large to read and the question is open-ended. It is the wrong tool for a reviewer, for three reasons that shaped this design.
+
+1. **A ranking can drop the one message that matters.** The correction that invalidates a document is a short message, often in the wrong channel, that says "820, not 680." Nothing about it is semantically close to "check section 3 of the r2 doc." ThreadRev searches by the identifiers an engineer would actually grep for: the document name, the unit, the words that name the quantity, the author. It returns every match up to the trigger, so the correction is in the set or it is not in the workspace. There is no similarity score to lose it to.
+2. **The model never computes a number.** RAG hands retrieved text to the model and the model reasons over it, arithmetic included. Here the model extracts candidate values, a stdlib Python checker recomputes them, and `publish_result` copies the checker's numbers onto the card. What the model retrieves affects which inputs get checked, never what a result is.
+3. **Answers are bound to a revision and go stale.** A RAG answer stands until someone asks again. A ThreadRev card is bound to the timestamp of the latest change it was computed against. When a later message changes that input, the card is marked stale in place and a new one is posted. The evidence log records every message read, including the ones found by search, so "what did this change invalidate" is a graph query.
+
+The workspace index is retrieval. It is retrieval by exact match over a structured index, with a cutoff, with the numbers verified afterward and the result tied to a revision. If two channels describe the same quantity in different words, a synonym layer over the quantity table is the next step, behind the exact match, not in front of it.
 
 ## Status
 
@@ -135,6 +152,7 @@ Baseline commit is `9ed46e0`. `git diff --name-only 9ed46e0..HEAD` is the author
 | Area | Where |
 |---|---|
 | Reviewer tools, review gate, silence filter, revision tracking, evidence recorder | `apps/channel/src/reviewer-tools.tsx`, `review-moment.ts`, `agent.ts`, `revision.ts`, `evidence.ts` |
+| Workspace index and `search_workspace`, workspace export fixture and generator | `apps/channel/src/workspace.ts`, `fixtures/workspace/`, `fixtures/generate_workspace.py` |
 | Finding card and welcome message | `apps/channel/src/finding-card.tsx` |
 | Reviewer system prompt | `packages/agent-core/src/reviewer-prompt.ts` |
 | Finding, evidence, and checker contracts with examples and tests | `packages/agent-core/src/contracts/`, `contracts/` |
@@ -158,7 +176,7 @@ apps/web/              Web review console and /api/evidence
 packages/agent-core/   Contracts, evidence log and graph, prompts, model config
 checkers/              Trusted Python checkers and their tests
 contracts/             Checker I/O contract and example findings, requests, logs
-fixtures/              Synthetic documents and Slack scripts for Scenario A, B, RC1 to RC3
+fixtures/              Synthetic documents, Slack scripts (A, A-cross, B, RC1 to RC3), workspace export
 extractors/            Document text extraction
 research/              Research, fixture spec, design decisions, lane handoffs
 AGENTS.md              Lane ownership, workspace rules, conventions for coding agents

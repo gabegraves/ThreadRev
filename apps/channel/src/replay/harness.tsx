@@ -20,6 +20,7 @@ import {
   readThread,
   rememberRun,
   runCheck,
+  searchWorkspace,
 } from "../reviewer-tools";
 import { ManagedGateway, preparedDelivery } from "../testing/managed-gateway";
 import { splitAtCutoff, toTranscript, type FixtureMessage } from "./fixture-loader";
@@ -261,6 +262,7 @@ export async function runReplay(options: ReplayOptions): Promise<ReplayResult> {
     agent: () => new ScriptedReviewer(options.steps),
     tools: [
       readThread,
+      searchWorkspace,
       readEvidence,
       recordingRunCheck(state, options),
       publishResult,

@@ -1,0 +1,439 @@
+[
+  {
+    "ts": "1772460300.000501",
+    "channel": "C00SYN01",
+    "channel_name": "ks4-electrical",
+    "user": "U00SYN01",
+    "user_name": "Dara Voss",
+    "thread_ts": null,
+    "text": "KS-4 HV architecture kickoff. Bus nominal 120 V, precharge through a 470 ohm 10 W resistor. Draft schematic by Friday.",
+    "files": [],
+    "role": "seed"
+  },
+  {
+    "ts": "1772461800.000501",
+    "channel": "C00SYN04",
+    "channel_name": "ks4-purchasing",
+    "user": "U00SYN04",
+    "user_name": "Rowan Pike",
+    "thread_ts": null,
+    "text": "Budget for spring is 18,400 USD. Post quotes here before ordering anything over 200 USD.",
+    "files": [],
+    "role": "seed"
+  },
+  {
+    "ts": "1772651400.000501",
+    "channel": "C00SYN05",
+    "channel_name": "ks4-firmware",
+    "user": "U00SYN05",
+    "user_name": "Tam Holloway",
+    "thread_ts": null,
+    "text": "CAN ids for KS-4 are in the wiki. BMS on 0x100 to 0x11F, motor controller 0x200 to 0x21F.",
+    "files": [],
+    "role": "seed"
+  },
+  {
+    "ts": "1773072000.000501",
+    "channel": "C00SYN02",
+    "channel_name": "ks4-strategy-sim",
+    "user": "U00SYN02",
+    "user_name": "Milo Trent",
+    "thread_ts": null,
+    "text": "Route sim v1-0 is up. Mass 280 kg placeholder until the chassis is weighed, Crr 0.0040 from the KS-3 tires.",
+    "files": [],
+    "role": "seed"
+  },
+  {
+    "ts": "1773697500.000501",
+    "channel": "C00SYN03",
+    "channel_name": "ks4-suspension",
+    "user": "U00SYN03",
+    "user_name": "Ines Calder",
+    "thread_ts": null,
+    "text": "Front bracket rev A drawings posted. Shock travel 45 mm.",
+    "files": [],
+    "role": "seed"
+  },
+  {
+    "ts": "1773854400.000501",
+    "channel": "C00SYN01",
+    "channel_name": "ks4-electrical",
+    "user": "U00SYN05",
+    "user_name": "Tam Holloway",
+    "thread_ts": null,
+    "text": "Lunch at 12:30? I'll grab the 470 ohm resistors from the stockroom on the way.",
+    "files": [],
+    "role": "seed"
+  },
+  {
+    "ts": "1775488500.000501",
+    "channel": "C00SYN01",
+    "channel_name": "ks4-electrical",
+    "user": "U00SYN01",
+    "user_name": "Dara Voss",
+    "thread_ts": null,
+    "text": "Bus capacitance for KS-4: three 250 uF film caps, 750 uF total. Precharge to 99.9 percent needs t = R * C * 6.907755 = 2.435 s at 470 ohm.",
+    "files": [],
+    "role": "seed"
+  },
+  {
+    "ts": "1775490000.000501",
+    "channel": "C00SYN05",
+    "channel_name": "ks4-firmware",
+    "user": "U00SYN05",
+    "user_name": "Tam Holloway",
+    "thread_ts": null,
+    "text": "Precharge relay timer in firmware set to 2.0 s for bench testing. Will bump to match Dara's number once the bus is final.",
+    "files": [],
+    "role": "seed"
+  },
+  {
+    "ts": "1775656800.000501",
+    "channel": "C00SYN04",
+    "channel_name": "ks4-purchasing",
+    "user": "U00SYN01",
+    "user_name": "Dara Voss",
+    "thread_ts": null,
+    "text": "Quote for 3 x 250 uF 450 V film caps: 312 USD from Arlen Components. OK to order?",
+    "files": [],
+    "role": "seed"
+  },
+  {
+    "ts": "1775658300.000501",
+    "channel": "C00SYN04",
+    "channel_name": "ks4-purchasing",
+    "user": "U00SYN04",
+    "user_name": "Rowan Pike",
+    "thread_ts": null,
+    "text": "Approved, PO-2207.",
+    "files": [],
+    "role": "seed"
+  },
+  {
+    "ts": "1776198600.000501",
+    "channel": "C00SYN02",
+    "channel_name": "ks4-strategy-sim",
+    "user": "U00SYN02",
+    "user_name": "Milo Trent",
+    "thread_ts": null,
+    "text": "Sim v1-1: added the array shading model. Lap energy at 22 m/s is 3.9 kWh on the 220 km segment, mass still 280 kg.",
+    "files": [],
+    "role": "seed"
+  },
+  {
+    "ts": "1776874200.000501",
+    "channel": "C00SYN03",
+    "channel_name": "ks4-suspension",
+    "user": "U00SYN03",
+    "user_name": "Ines Calder",
+    "thread_ts": null,
+    "text": "Bracket rev B. Moved the lower mount 6 mm inboard for tire clearance.",
+    "files": [],
+    "role": "seed"
+  },
+  {
+    "ts": "1778004000.000501",
+    "channel": "C00SYN05",
+    "channel_name": "ks4-firmware",
+    "user": "U00SYN05",
+    "user_name": "Tam Holloway",
+    "thread_ts": null,
+    "text": "Changed the precharge relay timer from 2.0 s to 2.5 s. Gives 65 ms margin over the 2.435 s number at 750 uF.",
+    "files": [],
+    "role": "seed"
+  },
+  {
+    "ts": "1778004720.000501",
+    "channel": "C00SYN05",
+    "channel_name": "ks4-firmware",
+    "user": "U00SYN01",
+    "user_name": "Dara Voss",
+    "thread_ts": null,
+    "text": "Good. Keep 2.5 s until the bus changes.",
+    "files": [],
+    "role": "seed"
+  },
+  {
+    "ts": "1778598000.000501",
+    "channel": "C00SYN01",
+    "channel_name": "ks4-electrical",
+    "user": "U00SYN01",
+    "user_name": "Dara Voss",
+    "thread_ts": null,
+    "text": "Precharge review doc r1 posted. Bus 750 uF, R 470 ohm, t_99.9 2.435 s.",
+    "files": [
+      "documents/precharge-review-r1.docx"
+    ],
+    "role": "seed"
+  },
+  {
+    "ts": "1778600700.000501",
+    "channel": "C00SYN01",
+    "channel_name": "ks4-electrical",
+    "user": "U00SYN06",
+    "user_name": "Juno Marsh",
+    "thread_ts": null,
+    "text": "Reading r1 now. Is the 2 mF test bank example still in section 4?",
+    "files": [],
+    "role": "seed"
+  },
+  {
+    "ts": "1779201000.000501",
+    "channel": "C00SYN04",
+    "channel_name": "ks4-purchasing",
+    "user": "U00SYN04",
+    "user_name": "Rowan Pike",
+    "thread_ts": null,
+    "text": "Reminder: spring budget has 6,100 USD left. Motor controller deposit is due June 1.",
+    "files": [],
+    "role": "seed"
+  },
+  {
+    "ts": "1779833100.000501",
+    "channel": "C00SYN02",
+    "channel_name": "ks4-strategy-sim",
+    "user": "U00SYN02",
+    "user_name": "Milo Trent",
+    "thread_ts": null,
+    "text": "Sim v1-2. Nothing changed in inputs, fixed the SoC clamp bug.",
+    "files": [],
+    "role": "seed"
+  },
+  {
+    "ts": "1780502400.000501",
+    "channel": "C00SYN03",
+    "channel_name": "ks4-suspension",
+    "user": "U00SYN03",
+    "user_name": "Ines Calder",
+    "thread_ts": null,
+    "text": "Chassis on the scale: 271 kg dry without driver. Suspension swap to the KS-4 arms is scheduled for July 20 to 22.",
+    "files": [],
+    "role": "seed"
+  },
+  {
+    "ts": "1780503600.000501",
+    "channel": "C00SYN02",
+    "channel_name": "ks4-strategy-sim",
+    "user": "U00SYN02",
+    "user_name": "Milo Trent",
+    "thread_ts": null,
+    "text": "Updating sim mass to 290 kg (271 dry plus ballast allowance) for v2-0. Crr stays 0.0040 until the swap.",
+    "files": [],
+    "role": "seed"
+  },
+  {
+    "ts": "1781120400.000501",
+    "channel": "C00SYN05",
+    "channel_name": "ks4-firmware",
+    "user": "U00SYN05",
+    "user_name": "Tam Holloway",
+    "thread_ts": null,
+    "text": "Display firmware 0.4.1 flashed. GPIO map unchanged.",
+    "files": [],
+    "role": "seed"
+  },
+  {
+    "ts": "1781705400.000501",
+    "channel": "C00SYN01",
+    "channel_name": "ks4-electrical",
+    "user": "U00SYN01",
+    "user_name": "Dara Voss",
+    "thread_ts": null,
+    "text": "Standup: HV harness routing done, BMS interface doc next week.",
+    "files": [],
+    "role": "seed"
+  },
+  {
+    "ts": "1782334800.000501",
+    "channel": "C00SYN04",
+    "channel_name": "ks4-purchasing",
+    "user": "U00SYN04",
+    "user_name": "Rowan Pike",
+    "thread_ts": null,
+    "text": "Summer budget approved: 9,800 USD.",
+    "files": [],
+    "role": "seed"
+  },
+  {
+    "ts": "1783092000.000501",
+    "channel": "C00SYN02",
+    "channel_name": "ks4-strategy-sim",
+    "user": "U00SYN02",
+    "user_name": "Milo Trent",
+    "thread_ts": null,
+    "text": "Sim inputs v2-0 posted. mass 290 kg, Crr 0.0040, CdA 0.12, pack 5.2 kWh.",
+    "files": [
+      "documents/ks4-sim-inputs-v2-0.xlsx"
+    ],
+    "role": "seed"
+  },
+  {
+    "ts": "1784752200.000501",
+    "channel": "C00SYN03",
+    "channel_name": "ks4-suspension",
+    "user": "U00SYN03",
+    "user_name": "Ines Calder",
+    "thread_ts": null,
+    "text": "Suspension swap done. Corner weights Tuesday: 318 kg with driver. New tires measure Crr 0.0048 on the drum.",
+    "files": [],
+    "role": "seed"
+  },
+  {
+    "ts": "1784904480.000501",
+    "channel": "C00SYN02",
+    "channel_name": "ks4-strategy-sim",
+    "user": "U00SYN02",
+    "user_name": "Milo Trent",
+    "thread_ts": null,
+    "text": "Correction: sim inputs v2-1 posted. mass 318 kg, Crr 0.0048 after the KS-4 suspension swap. Use v2-1 for anything after today.",
+    "files": [
+      "documents/ks4-sim-inputs-v2-1.xlsx"
+    ],
+    "role": "seed"
+  },
+  {
+    "ts": "1784905500.000501",
+    "channel": "C00SYN02",
+    "channel_name": "ks4-strategy-sim",
+    "user": "U00SYN03",
+    "user_name": "Ines Calder",
+    "thread_ts": null,
+    "text": "Confirmed, corner weights from Tuesday add up to 318 with driver.",
+    "files": [],
+    "role": "seed"
+  },
+  {
+    "ts": "1785427200.000501",
+    "channel": "C00SYN02",
+    "channel_name": "ks4-strategy-sim",
+    "user": "U00SYN02",
+    "user_name": "Milo Trent",
+    "thread_ts": null,
+    "text": "v2-1 mass may be 8 kg high, the ballast was on the scale. Re-weigh pending.",
+    "files": [],
+    "role": "seed"
+  },
+  {
+    "ts": "1785771000.000501",
+    "channel": "C00SYN05",
+    "channel_name": "ks4-firmware",
+    "user": "U00SYN05",
+    "user_name": "Tam Holloway",
+    "thread_ts": null,
+    "text": "Motor controller firmware 2.3 has the regen ramp. Needs the snubber bank Dara mentioned before we enable it.",
+    "files": [],
+    "role": "seed"
+  },
+  {
+    "ts": "1785946800.000501",
+    "channel": "C00SYN04",
+    "channel_name": "ks4-purchasing",
+    "user": "U00SYN01",
+    "user_name": "Dara Voss",
+    "thread_ts": null,
+    "text": "Rowan, please add a 140 uF snubber bank on the motor controller side to the August order. With it the HV bus is 820 uF, not 680. I will fold it into the precharge doc.",
+    "files": [],
+    "role": "seed"
+  },
+  {
+    "ts": "1785947640.000501",
+    "channel": "C00SYN04",
+    "channel_name": "ks4-purchasing",
+    "user": "U00SYN04",
+    "user_name": "Rowan Pike",
+    "thread_ts": null,
+    "text": "Added. PO-2261, 2 x 70 uF film. Ships in 10 days.",
+    "files": [],
+    "role": "seed"
+  },
+  {
+    "ts": "1785948000.000501",
+    "channel": "C00SYN04",
+    "channel_name": "ks4-purchasing",
+    "user": "U00SYN01",
+    "user_name": "Dara Voss",
+    "thread_ts": null,
+    "text": "Thanks. That is the last HV order before the review.",
+    "files": [],
+    "role": "seed"
+  },
+  {
+    "ts": "1786472100.000501",
+    "channel": "C00SYN02",
+    "channel_name": "ks4-strategy-sim",
+    "user": "U00SYN06",
+    "user_name": "Juno Marsh",
+    "thread_ts": null,
+    "text": "@reviewer can you run the 220 km segment at 22 m/s for end SoC 40 percent? I grabbed the params from the July 3 sheet.",
+    "files": [],
+    "role": "seed"
+  },
+  {
+    "ts": "1786543200.000501",
+    "channel": "C00SYN03",
+    "channel_name": "ks4-suspension",
+    "user": "U00SYN03",
+    "user_name": "Ines Calder",
+    "thread_ts": null,
+    "text": "Rear bracket rev C released. No mass change.",
+    "files": [],
+    "role": "seed"
+  },
+  {
+    "ts": "1787062320.000100",
+    "channel": "C00SYN01",
+    "channel_name": "ks4-electrical",
+    "user": "U00SYN01",
+    "user_name": "Dara Voss",
+    "thread_ts": null,
+    "text": "Precharge board r2 review doc is up. Dropped one film cap, bus is now 680 uF.",
+    "files": [
+      "documents/precharge-review-r2.docx"
+    ],
+    "role": "seed"
+  },
+  {
+    "ts": "1787064000.000500",
+    "channel": "C00SYN01",
+    "channel_name": "ks4-electrical",
+    "user": "U00SYN05",
+    "user_name": "Tam Holloway",
+    "thread_ts": "1787062320.000100",
+    "text": "Relay close timer in firmware is 2.5 s, matches the doc.",
+    "files": [],
+    "role": "seed"
+  },
+  {
+    "ts": "1787166300.000600",
+    "channel": "C00SYN01",
+    "channel_name": "ks4-electrical",
+    "user": "U00SYN06",
+    "user_name": "Juno Marsh",
+    "thread_ts": "1787062320.000100",
+    "text": "@reviewer can you check section 3 of the r2 doc before I sign the review?",
+    "files": [],
+    "role": "trigger"
+  },
+  {
+    "ts": "1787238000.000501",
+    "channel": "C00SYN04",
+    "channel_name": "ks4-purchasing",
+    "user": "U00SYN04",
+    "user_name": "Rowan Pike",
+    "thread_ts": null,
+    "text": "PO-2261 snubber bank delivered, 2 x 70 uF. Dara has them.",
+    "files": [],
+    "role": "evaluator_only"
+  },
+  {
+    "ts": "1787321700.000501",
+    "channel": "C00SYN01",
+    "channel_name": "ks4-electrical",
+    "user": "U00SYN01",
+    "user_name": "Dara Voss",
+    "thread_ts": null,
+    "text": "r3 will state 820 uF. Drafting it now.",
+    "files": [],
+    "role": "evaluator_only"
+  }
+]

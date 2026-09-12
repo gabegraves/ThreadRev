@@ -54,6 +54,36 @@ it("scenario A: real checker into a posted card that matches the contract exampl
   assert.equal(terminal?.status, "complete");
 });
 
+it("scenario A cross-channel: the 820 uF correction lives in #ks4-purchasing and is found by search_workspace, not the thread", { timeout: 20_000 }, async () => {
+  const messages = loadFixture("scenario-a-cross");
+  const trigger = messages.find((m) => m.role === "trigger")!;
+  const result = await replay("scenario-a-cross");
+  assert.equal(result.failure, undefined);
+  const thread = JSON.stringify(result.agentMessages);
+  // The thread itself never says 820. The workspace search did, from another channel, before the cutoff.
+  assert.doesNotMatch(JSON.stringify(messages), /820/);
+  assert.match(thread, /#ks4-purchasing/);
+  assert.match(thread, /HV bus is 820 uF, not 680/);
+  // Post-trigger workspace messages did not leak into the search result.
+  assert.doesNotMatch(thread, /r3 will state 820|snubber bank delivered/);
+  const search = result.agentMessages.find((m) => m.role === "assistant" && m.toolCalls?.some((c) => c.function.name === "search_workspace"));
+  assert.ok(search, "search_workspace was not called");
+
+  assert.equal(result.postedCards.length, 1, JSON.stringify(result.payloads));
+  const card = result.postedCards[0]!;
+  const run = result.state.checkerRuns[0]!;
+  assert.equal(card.headline, "Review check: needs a decision");
+  assert.equal(card.runId, run.run_id);
+  assert.equal(card.revision, trigger.ts);
+  assert.match(card.text, /#ks4-purchasing/);
+  assert.match(card.text, /2\.6622/);
+  assert.equal(card.question, "Dara Voss");
+  // Four printed comparisons in checker order: 680 no, 750 yes, 820 no, 2 mF no.
+  assert.deepEqual(card.matches.filter((m) => m !== undefined), [false, true, false, false]);
+  // The card cites the cross-channel message by ts.
+  assert.match(card.text, /1785946800\.000501/);
+});
+
 it("RC1 clean control: discrepancy none, every value reproduces, no component change suggested", { timeout: 20_000 }, async () => {
   const result = await replay("rc1-clean");
   assert.equal(result.failure, undefined);

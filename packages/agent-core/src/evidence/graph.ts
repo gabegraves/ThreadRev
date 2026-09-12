@@ -198,6 +198,9 @@ export function buildEvidenceGraph(events: EvidenceEvent[], opts: { thread?: str
       case "silence":
         // Applied after the loop so the trigger message exists regardless of order.
         break;
+      case "workspace_search":
+        // Hits are message_read events with via: "workspace_search"; nothing extra to draw.
+        break;
     }
   }
 

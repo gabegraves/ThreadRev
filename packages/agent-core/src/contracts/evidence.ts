@@ -40,6 +40,22 @@ export const messageRead = z.object({
   text: z.string().max(2000),
   /** True when latestRevision() classified this message as a change. */
   is_change: z.boolean(),
+  /** Channel the message lives in, when it is outside the current thread. */
+  channel: z.string().optional(),
+  /** How the reviewer got it: the thread transcript or a workspace search. */
+  via: z.enum(["thread", "workspace_search"]).optional(),
+});
+
+/** The reviewer searched the workspace index. Hits are recorded as message_read events. */
+export const workspaceSearch = z.object({
+  ...base,
+  kind: z.literal("workspace_search"),
+  query: z.record(z.string(), z.unknown()),
+  cutoff: ts.optional(),
+  total: z.number().int().nonnegative(),
+  returned: z.number().int().nonnegative(),
+  /** ts of every hit returned to the reviewer. */
+  hit_ts: z.array(ts),
 });
 
 /** A document the reviewer read through read_evidence. */
@@ -115,6 +131,7 @@ export const evidenceEvent = z.discriminatedUnion("kind", [
   findingSuperseded,
   publishRefused,
   silence,
+  workspaceSearch,
 ]);
 export type EvidenceEvent = z.infer<typeof evidenceEvent>;
 
