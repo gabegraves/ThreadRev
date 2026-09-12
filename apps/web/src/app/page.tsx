@@ -10,6 +10,7 @@ import { AppControl } from "@/components/app-control";
 import { findIncident, incidents, workspaceContext } from "@/lib/incidents";
 import { useWorkplace } from "@/lib/use-workplace";
 import { WorkplaceFollowups } from "@/components/workplace-followups";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 export default function Home() {
   const [selectedId, setSelectedId] = useState<string>(incidents[0].id);
@@ -58,7 +59,10 @@ export default function Home() {
               Pick an incident. Ask your assistant. Review a follow-up.
             </p>
           </div>
-          <span className="ck-tag">Sample data</span>
+          <div className="ck-workspace-actions">
+            <span className="ck-tag">Sample data</span>
+            <ThemeToggle />
+          </div>
         </header>
 
         <div className="ck-workspace-grid">
