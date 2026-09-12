@@ -1,78 +1,52 @@
 "use client";
 
 /**
- * Evidence graph page body: canvas (map or columns) on the left filling the
- * page height, node detail on the right. Selecting a node lights it and every
- * node it touches; the panel carries the node's fields, its edges, a local
- * label override + note (this browser only), and — for run / finding nodes —
- * the reviewer run's event timeline.
+ * Evidence graph page body: the d3 canvas fills the frame, the node detail
+ * sits in a fixed right column. One question: what did this change
+ * invalidate. Selecting a node lights it and everything it touches; the panel
+ * carries its edges, its logged fields, a local note (this browser only) and
+ * — for run / finding nodes — the reviewer run's trace.
  */
 import { Maximize2, Minimize2 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { PillGroup } from "@/civic-ui/components/Tile";
-import { cn } from "@/civic-ui/lib/cn";
-import { EvidenceGraphNetwork, MapLegend } from "@/components/graph/graph-network";
-import { EdgeLegend, EvidenceGraphSvg } from "@/components/graph/graph-svg";
+import { EvidenceGraphNetwork, KindLegend } from "@/components/graph/graph-network";
 import { NodeDetail } from "@/components/graph/node-detail";
 import { PageHeader } from "@/components/shell/page-header";
 import { useEvidence } from "@/lib/demo/use-evidence";
 
-type GraphView = "columns" | "map";
-const VIEW_KEY = "threadrev.graph-view";
 const NOTES_KEY = "threadrev.graph-notes";
-const LABELS_KEY = "threadrev.graph-labels";
 
-type LocalMap = Record<string, string>;
-
-function readMap(key: string): LocalMap {
-  try {
-    const raw = localStorage.getItem(key);
-    const parsed: unknown = raw ? JSON.parse(raw) : {};
-    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-      return Object.fromEntries(Object.entries(parsed as Record<string, unknown>).filter(([, v]) => typeof v === "string")) as LocalMap;
-    }
-  } catch {}
-  return {};
-}
+type Notes = Record<string, string>;
 
 /** {nodeId: text} in localStorage; empty text deletes the entry. Read after
  *  mount so SSR and hydration agree. */
-function useLocalMap(key: string): [LocalMap, (id: string, value: string) => void] {
-  const [map, setMap] = useState<LocalMap>({});
-  useEffect(() => setMap(readMap(key)), [key]);
-  const set = useCallback(
-    (id: string, value: string) => {
-      setMap((prev) => {
-        const next = { ...prev };
-        if (value.trim()) next[id] = value;
-        else delete next[id];
-        try {
-          localStorage.setItem(key, JSON.stringify(next));
-        } catch {}
-        return next;
-      });
-    },
-    [key],
-  );
+function useNotes(): [Notes, (id: string, value: string) => void] {
+  const [map, setMap] = useState<Notes>({});
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(NOTES_KEY);
+      const parsed: unknown = raw ? JSON.parse(raw) : {};
+      if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+        setMap(Object.fromEntries(Object.entries(parsed as Record<string, unknown>).filter(([, v]) => typeof v === "string")) as Notes);
+      }
+    } catch {}
+  }, []);
+  const set = useCallback((id: string, value: string) => {
+    setMap((prev) => {
+      const next = { ...prev };
+      if (value.trim()) next[id] = value;
+      else delete next[id];
+      try {
+        localStorage.setItem(NOTES_KEY, JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  }, []);
   return [map, set];
 }
 
 export function GraphExplorer() {
-  const [view, setView] = useState<GraphView>("map");
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem(VIEW_KEY);
-      if (saved === "columns" || saved === "map") setView(saved);
-    } catch {}
-  }, []);
-  const pickView = (v: GraphView) => {
-    setView(v);
-    try {
-      localStorage.setItem(VIEW_KEY, v);
-    } catch {}
-  };
-
   const { graph, events } = useEvidence();
 
   // `?node=` ↔ selection. The canvas / panel write the URL through `select`;
@@ -98,10 +72,8 @@ export function GraphExplorer() {
   );
   const node = selected ? (graph.nodes.find((n) => n.id === selected) ?? null) : null;
 
-  const [notes, setNote] = useLocalMap(NOTES_KEY);
-  const [labels, setLabel] = useLocalMap(LABELS_KEY);
+  const [notes, setNote] = useNotes();
   const noted = useMemo(() => new Set(Object.keys(notes)), [notes]);
-  const hasEdits = noted.size > 0 || Object.keys(labels).length > 0;
 
   // Fullscreen covers the canvas + detail row, so a node picked while
   // fullscreen still shows its panel. Escape exits natively.
@@ -113,11 +85,8 @@ export function GraphExplorer() {
     return () => document.removeEventListener("fullscreenchange", sync);
   }, []);
   const toggleFullscreen = () => {
-    if (document.fullscreenElement) {
-      void document.exitFullscreen().catch(() => {});
-    } else {
-      void stageRef.current?.requestFullscreen().catch(() => {});
-    }
+    if (document.fullscreenElement) void document.exitFullscreen().catch(() => {});
+    else void stageRef.current?.requestFullscreen().catch(() => {});
   };
 
   return (
@@ -127,68 +96,45 @@ export function GraphExplorer() {
       <div className="px-3 pt-4 pb-3 sm:px-4 lg:px-6">
         <PageHeader
           title="Evidence graph"
-          subtitle="Built from the append-only event log by agent-core. Click a node to inspect what the log recorded and light everything it touches."
+          subtitle="What did this change invalidate?"
+          actions={
+            <>
+              {noted.size > 0 && (
+                <span
+                  className="inline-flex items-center gap-1.5 rounded-[var(--radius-md)] border border-hairline bg-overlay px-2.5 py-1 text-[11px] font-medium text-[var(--status-warning-fg)]"
+                  title="Notes are stored in this browser only. They are not saved to the database."
+                >
+                  <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-warning)]" />
+                  Edits not saved
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={toggleFullscreen}
+                aria-pressed={fullscreen}
+                aria-label={fullscreen ? "Exit full screen" : "Full screen"}
+                title={fullscreen ? "Exit full screen (Esc)" : "Full screen"}
+                className="inline-flex h-7 items-center gap-1.5 rounded-md border border-hairline bg-overlay px-2 text-[12px] font-medium text-subtle transition-colors hover:border-hairline-strong hover:text-foreground"
+              >
+                {fullscreen ? <Minimize2 className="h-3.5 w-3.5" strokeWidth={2} /> : <Maximize2 className="h-3.5 w-3.5" strokeWidth={2} />}
+                {fullscreen ? "Exit" : "Full screen"}
+              </button>
+            </>
+          }
         />
       </div>
 
-      <div ref={stageRef} className="flex min-h-0 flex-1 flex-col border-t border-hairline bg-background">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-hairline px-3 py-2 sm:px-4 lg:px-6">
-          <p className="font-mono text-[10.5px] font-medium uppercase tracking-[0.12em] text-faint">
-            {graph.nodes.length} nodes · {graph.edges.length} edges
-          </p>
-          <div className="ml-auto flex flex-wrap items-center gap-2">
-            {hasEdits && (
-              <span
-                className="inline-flex items-center gap-1.5 rounded-[var(--radius-md)] border border-hairline bg-overlay px-2.5 py-1 text-[11px] font-medium text-[var(--status-warning-fg)]"
-                title="Labels and notes are stored in this browser only. Changes are not saved to the database."
-              >
-                <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-warning)]" />
-                Edits not saved to database
-              </span>
-            )}
-            <PillGroup<GraphView> options={[{ value: "columns", label: "Columns" }, { value: "map", label: "Map" }]} value={view} onChange={pickView} />
-            <button
-              type="button"
-              onClick={toggleFullscreen}
-              aria-pressed={fullscreen}
-              aria-label={fullscreen ? "Exit full screen" : "Full screen"}
-              title={fullscreen ? "Exit full screen (Esc)" : "Full screen"}
-              className="inline-flex h-7 items-center gap-1.5 rounded-md border border-hairline bg-overlay px-2 text-[12px] font-medium text-subtle transition-colors hover:border-hairline-strong hover:text-foreground"
-            >
-              {fullscreen ? <Minimize2 className="h-3.5 w-3.5" strokeWidth={2} /> : <Maximize2 className="h-3.5 w-3.5" strokeWidth={2} />}
-              {fullscreen ? "Exit" : "Full screen"}
-            </button>
+      <div ref={stageRef} className="flex min-h-0 flex-1 border-t border-hairline bg-background">
+        <section className="flex min-w-0 flex-1 flex-col">
+          <div className="min-h-0 flex-1">
+            <EvidenceGraphNetwork graph={graph} selected={selected} onSelect={select} noted={noted} />
           </div>
-        </div>
+          <KindLegend />
+        </section>
 
-        <div className="flex min-h-0 flex-1">
-          <section className="flex min-w-0 flex-1 flex-col gap-2 p-3 sm:p-4 lg:px-6">
-            <div className={cn("min-h-0 flex-1", view === "columns" && "overflow-y-auto custom-scrollbar")}>
-              {view === "map" ? (
-                <EvidenceGraphNetwork graph={graph} selected={selected} onSelect={select} labels={labels} noted={noted} />
-              ) : (
-                <EvidenceGraphSvg graph={graph} selected={selected} onSelect={select} labels={labels} noted={noted} />
-              )}
-            </div>
-            <div className="flex flex-wrap items-center justify-between gap-3 px-1">
-              {view === "map" ? <MapLegend /> : <EdgeLegend />}
-            </div>
-          </section>
-
-          <aside className="custom-scrollbar hidden w-[360px] shrink-0 overflow-y-auto border-l border-hairline bg-surface lg:block">
-            <NodeDetail
-              graph={graph}
-              events={events}
-              node={node}
-              onPick={select}
-              className="min-h-full rounded-none border-0 shadow-none"
-              label={node ? labels[node.id] : undefined}
-              note={node ? notes[node.id] : undefined}
-              onSaveLabel={setLabel}
-              onSaveNote={setNote}
-            />
-          </aside>
-        </div>
+        <aside className="custom-scrollbar hidden w-[380px] shrink-0 overflow-y-auto border-l border-hairline bg-surface lg:block">
+          <NodeDetail graph={graph} events={events} node={node} onPick={select} note={node ? notes[node.id] : undefined} onSaveNote={setNote} />
+        </aside>
       </div>
     </div>
   );
