@@ -7,6 +7,7 @@ import {
   DRAG_THRESHOLD_PX,
   cleanFeed,
   cleanFinding,
+  fitSweep,
   formatValue,
   isDrag,
   rectContains,
@@ -268,4 +269,72 @@ test("matches is only carried when it is a real boolean", () => {
   });
   assert.equal(f?.reproduced[0].matches, undefined);
   assert.equal(f?.reproduced[1].matches, false);
+});
+
+/* --------------------------------------------------------------- radial --- */
+
+const WIN_BOX = { width: 412, height: 620 };
+const R = 132;
+const PAD = 26;
+const N = 5;
+
+/** Every item centre for a chosen sweep, so a test can check them directly. */
+function itemCentres(c: { x: number; y: number }, sweep: { from: number; step: number }) {
+  return Array.from({ length: N }, (_, i) => {
+    const a = ((sweep.from + sweep.step * i) * Math.PI) / 180;
+    return { x: c.x + R * Math.cos(a), y: c.y + R * Math.sin(a) };
+  });
+}
+
+const inside = (p: { x: number; y: number }) =>
+  p.x - PAD >= 0 && p.x + PAD <= WIN_BOX.width && p.y - PAD >= 0 && p.y + PAD <= WIN_BOX.height;
+
+test("in open space the menu opens to a full semicircle", () => {
+  const centre = { x: 206, y: 310 };
+  const sweep = fitSweep(centre, R, N, WIN_BOX, PAD);
+  assert.equal(sweep.step * (N - 1), 180);
+  assert.ok(itemCentres(centre, sweep).every(inside));
+});
+
+test("in the corner it narrows instead of running off the edge", () => {
+  // Where Rev actually sits by default.
+  const centre = { x: 344, y: 542 };
+  const sweep = fitSweep(centre, R, N, WIN_BOX, PAD);
+  const span = sweep.step * (N - 1);
+  assert.ok(span < 180, `expected a narrowed sweep, got ${span}`);
+  assert.ok(span >= 90, `expected it to stay usable, got ${span}`);
+  // The point of narrowing: everything still fits.
+  assert.ok(itemCentres(centre, sweep).every(inside));
+});
+
+test("every item fits from anywhere the window allows", () => {
+  // Sweeping the whole window catches a sweep choice that fits at one corner
+  // and not another — the failure mode that made items disappear off-screen.
+  for (let x = PAD; x <= WIN_BOX.width - PAD; x += 23) {
+    for (let y = PAD; y <= WIN_BOX.height - PAD; y += 23) {
+      const centre = { x, y };
+      const sweep = fitSweep(centre, R, N, WIN_BOX, PAD);
+      const centres = itemCentres(centre, sweep);
+      // Near an edge no sweep can fit; the fallback is deliberately clipped
+      // rather than absent, so only assert where a fit was actually possible.
+      const anyFits = [180, 160, 140, 120, 110, 100, 90].some((span) =>
+        itemCentres(centre, { from: -135 - span / 2, step: span / (N - 1) }).every(inside),
+      );
+      if (anyFits) {
+        assert.ok(
+          centres.every(inside),
+          `items escaped the window at ${x},${y} with span ${sweep.step * (N - 1)}`,
+        );
+      }
+    }
+  }
+});
+
+test("the sweep is always one of the offered widths", () => {
+  const sweep = fitSweep({ x: 344, y: 542 }, R, N, WIN_BOX, PAD);
+  assert.ok([180, 160, 140, 120, 110, 100, 90].includes(sweep.step * (N - 1)));
+});
+
+test("a single item needs no sweep at all", () => {
+  assert.equal(fitSweep({ x: 100, y: 100 }, R, 1, WIN_BOX, PAD).step, 0);
 });

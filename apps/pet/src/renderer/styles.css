@@ -40,9 +40,15 @@
    * the Raycast/Linear move. A heavy drop shadow on a transparent window also
    * costs DWM a large blurred region every frame.
    */
+  /*
+   * Three layers: a contact shadow that sits right under the edge, a mid falloff
+   * that gives it mass, and a wide ambient one at very low alpha. A single big
+   * blur — which this was — reads as a grey smudge rather than depth.
+   */
   --shadow:
-    0 16px 40px rgb(0 0 0 / 0.5),
-    0 2px 6px rgb(0 0 0 / 0.35),
+    0 1px 2px rgb(0 0 0 / 0.4),
+    0 6px 12px rgb(0 0 0 / 0.26),
+    0 20px 44px rgb(0 0 0 / 0.2),
     inset 0 1px 0 rgb(255 255 255 / 0.07);
 
   /* One spacing ladder, so nothing is spaced by feel. */
@@ -90,7 +96,7 @@ body {
   height: 192px;
   /* Bleed past the corner so Rev reads as peeking in, not placed. */
   transform: translate(14px, 18px);
-  transition: transform 260ms var(--ease-spring);
+  transition: transform 220ms var(--ease-out);
 }
 
 .pet[data-dragging="true"] {
@@ -98,14 +104,22 @@ body {
 }
 
 /*
- * The small hover lift, but only while the menu is closed. `:hover` carries more
- * specificity than `.pet[data-menu="true"]`, so without excluding it here Rev
- * stayed put under the cursor that had just opened the menu — and the arc,
- * which does move, ended up centred somewhere Rev was not.
+ * Rev does not move. It sits where it is put, and the menu opens around it.
+ *
+ * Everything here used to shift the whole character — an 8px hover lift, a
+ * 60px step out of the corner when the menu opened — and a companion that
+ * lurches whenever the cursor passes is a companion you want to close. The
+ * aperture and the ring carry the state instead; the body holds still.
+ *
+ * Hover is a 1px settle, enough to feel responsive and not enough to read as
+ * motion.
  */
-.pet:not([data-dragging="true"]):not([data-menu="true"]):hover,
-.pet[data-open="true"]:not([data-menu="true"]) {
-  transform: translate(6px, 4px);
+/*
+ * Hover changes the lens, never the position. Even a one-pixel settle reads as
+ * twitchiness on something that sits in your vision all day.
+ */
+.pet:not([data-dragging="true"]):hover .pet__rim {
+  stroke: color-mix(in srgb, var(--tone, var(--accent)) 70%, white);
 }
 
 .pet__hit {
@@ -132,9 +146,12 @@ body {
   width: 100%;
   height: 100%;
   overflow: visible;
-  filter: drop-shadow(0 10px 18px rgb(0 0 0 / 0.5));
+  filter:
+    drop-shadow(0 1px 1px rgb(0 0 0 / 0.5))
+    drop-shadow(0 4px 6px rgb(0 0 0 / 0.28))
+    drop-shadow(0 12px 22px rgb(0 0 0 / 0.18));
   /* The whole creature breathes; individual parts animate on top of this. */
-  animation: breathe 4.2s ease-in-out infinite;
+  animation: breathe 7s ease-in-out infinite;
   transform-origin: 70px 110px;
 }
 
@@ -300,7 +317,7 @@ body {
   --tone: var(--alert);
 }
 .pet[data-state="found"] .pet__svg {
-  animation: alert 1.8s ease-in-out infinite;
+  animation: alert 2.6s ease-in-out infinite;
 }
 
 .pet[data-state="clear"] {
@@ -341,7 +358,7 @@ body {
 
 /* Click: squash on press, snap open on release. */
 .pet[data-press="true"] .pet__svg {
-  transform: scale(0.93, 0.9);
+  transform: scale(0.975);
   animation: none;
 }
 
@@ -946,51 +963,55 @@ body {
 
 /* =========================================================== animation === */
 
+/*
+ * A breath. The amplitude is deliberately near the threshold of perception —
+ * enough that Rev does not read as a dead sticker, not enough to catch the eye
+ * of someone trying to work. The previous version travelled 3px every 4.2s,
+ * which in peripheral vision is a flicker that never stops.
+ */
 @keyframes breathe {
   0%,
   100% {
-    transform: translateY(0) scale(1);
+    transform: scale(1);
   }
   50% {
-    transform: translateY(-3px) scale(1.012);
+    transform: scale(1.005);
   }
 }
 
 @keyframes doze {
   0%,
   100% {
-    transform: translateY(0) rotate(0deg);
+    transform: scale(1);
   }
   50% {
-    transform: translateY(2px) rotate(-1.6deg);
+    transform: scale(0.994);
   }
 }
 
+/*
+ * Findings waiting. A hop drags the eye away from whatever you are reading; the
+ * ring and the amber iris already say it. This is a slow swell, and the badge
+ * does the rest.
+ */
 @keyframes alert {
   0%,
   100% {
-    transform: translateY(0);
-  }
-  12% {
-    transform: translateY(-7px);
-  }
-  26% {
-    transform: translateY(0);
-  }
-  38% {
-    transform: translateY(-3px);
+    transform: scale(1);
   }
   50% {
-    transform: translateY(0);
+    transform: scale(1.02);
   }
 }
 
+/* A press and release. It used to squash to 0.9 and overshoot to 1.06, which
+   on a 164px character is a visible lurch. */
 @keyframes pop {
   0% {
-    transform: scale(0.93, 0.9);
+    transform: scale(0.975);
   }
   45% {
-    transform: scale(1.06, 1.04);
+    transform: scale(1.015);
   }
   100% {
     transform: scale(1);
@@ -1120,14 +1141,9 @@ body[data-reduced-motion="true"] *::after {
   --sweep-from: -225deg;
   --sweep-step: 45deg;
 
-  /* Travels with Rev, so the arc stays centred on it. */
-  transform: translate(0, 0);
-  transition: transform 420ms var(--ease-spring);
 }
 
-.radial[data-open="true"] {
-  transform: translate(-60px, -74px);
-}
+/* The arc is centred on Rev, and Rev does not move, so neither does this. */
 
 .radial[data-open="true"] {
   pointer-events: auto;
@@ -1155,11 +1171,13 @@ body[data-reduced-motion="true"] *::after {
 }
 
 .radial[data-open="true"] .radial__arc {
-  opacity: 0.5;
+  opacity: 0.45;
   stroke-dashoffset: 0;
+  /* Draws ahead of the items, so they appear to travel along a path that is
+     already there rather than dragging one behind them. */
   transition:
-    stroke-dashoffset 420ms var(--ease-out) 40ms,
-    opacity 200ms ease;
+    stroke-dashoffset 360ms var(--ease-out),
+    opacity 160ms ease;
 }
 
 /* --- items --------------------------------------------------------------- */
@@ -1190,10 +1208,10 @@ body[data-reduced-motion="true"] *::after {
   --a: calc(var(--sweep-from) + var(--i) * var(--sweep-step));
 
   position: absolute;
-  left: -24px;
-  top: -24px;
-  width: 48px;
-  height: 48px;
+  left: -27px;
+  top: -27px;
+  width: 54px;
+  height: 54px;
   padding: 0;
   display: grid;
   place-items: center;
@@ -1202,36 +1220,40 @@ body[data-reduced-motion="true"] *::after {
   background: color-mix(in srgb, var(--panel-bg) 96%, transparent);
   backdrop-filter: blur(14px) saturate(1.2);
   box-shadow:
-    0 8px 20px rgb(0 0 0 / 0.45),
-    inset 0 1px 0 rgb(255 255 255 / 0.08);
+    0 1px 2px rgb(0 0 0 / 0.45),
+    0 4px 10px rgb(0 0 0 / 0.3),
+    0 12px 26px rgb(0 0 0 / 0.18),
+    inset 0 1px 0 rgb(255 255 255 / 0.1);
   color: var(--panel-text);
   cursor: pointer;
 
   /* Closed: collapsed into Rev. */
-  transform: rotate(var(--a)) translate(0) rotate(calc(-1 * var(--a))) scale(0.35);
+  transform: rotate(var(--a)) translate(calc(var(--r) * 0.18)) rotate(calc(-1 * var(--a)))
+    scale(0.5);
   opacity: 0;
   transition:
-    transform 420ms var(--ease-spring),
-    opacity 160ms ease,
+    transform 460ms var(--ease-spring),
+    opacity 200ms var(--ease-out),
+    box-shadow 160ms ease,
     color 140ms ease,
     border-color 140ms ease,
     background 140ms ease;
-  /* Reverse the stagger on the way in so the arc collapses toward Rev. */
-  transition-delay: calc((4 - var(--i)) * 26ms);
+  /* Collapse inward in reverse, so the menu gathers into Rev. */
+  transition-delay: calc((4 - var(--i)) * 22ms);
 }
 
 .radial[data-open="true"] .radial__item {
   transform: rotate(var(--a)) translate(var(--r)) rotate(calc(-1 * var(--a))) scale(1);
   opacity: 1;
-  transition-delay: calc(var(--i) * 34ms);
+  transition-delay: calc(var(--i) * 40ms);
 }
 
 .radial__item svg {
-  width: 21px;
-  height: 21px;
+  width: 23px;
+  height: 23px;
   fill: none;
   stroke: currentColor;
-  stroke-width: 1.6;
+  stroke-width: 1.75;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
@@ -1249,18 +1271,20 @@ body[data-reduced-motion="true"] *::after {
   outline: none;
 }
 
-/* Lift the hovered item slightly further out; it reads as reaching toward you. */
+/* The hovered item reaches out of the arc toward the cursor. */
 .radial[data-open="true"] .radial__item:hover,
 .radial[data-open="true"] .radial__item:focus-visible {
-  transform: rotate(var(--a)) translate(calc(var(--r) + 7px)) rotate(calc(-1 * var(--a)))
-    scale(1.09);
+  transform: rotate(var(--a)) translate(calc(var(--r) + 9px)) rotate(calc(-1 * var(--a)))
+    scale(1.12);
   transition-delay: 0ms;
+  transition-duration: 200ms;
 }
 
 .radial__item:focus-visible {
   box-shadow:
     0 0 0 2px var(--focus),
-    0 8px 20px rgb(0 0 0 / 0.45);
+    0 1px 2px rgb(0 0 0 / 0.45),
+    0 6px 14px rgb(0 0 0 / 0.3);
 }
 
 /* Unread count rides the findings item. */
@@ -1287,11 +1311,16 @@ body[data-reduced-motion="true"] *::after {
  * competing for the gaps between icons. At this radius the items are ~59px
  * apart; their own labels would collide.
  */
+/*
+ * Positioned from script, just outside the middle of the arc. It used to sit at
+ * a fixed offset below the anchor — which is Rev's own centre, so Rev's body
+ * covered it and the menu looked unlabelled.
+ */
 .radial__label {
   position: absolute;
-  left: 50%;
-  top: 26px;
-  transform: translate(-50%, 4px);
+  left: 0;
+  top: 0;
+  transform: translate(calc(-50% + var(--lx, 0px)), calc(-50% + var(--ly, 0px) + 4px));
   padding: 4px 10px;
   border: 1px solid var(--panel-line);
   border-radius: 999px;
@@ -1305,26 +1334,26 @@ body[data-reduced-motion="true"] *::after {
   opacity: 0;
   pointer-events: none;
   transition:
-    opacity 140ms ease,
-    transform 200ms var(--ease-spring);
+    opacity 160ms ease,
+    transform 220ms var(--ease-spring);
 }
 
 .radial__label[data-show="true"] {
   opacity: 1;
-  transform: translate(-50%, 0);
+  transform: translate(calc(-50% + var(--lx, 0px)), calc(-50% + var(--ly, 0px)));
+}
+
+/* Dimmed while it is only naming the default item rather than a hovered one. */
+.radial__label[data-hint="true"] {
+  color: var(--panel-dim);
 }
 
 /*
- * Rev steps out of the corner to present the menu, and settles back after.
- * This is what buys the full semicircle: in the corner the arc can only open
- * about 110 degrees before the right-hand items run off the screen edge.
+ * With the menu open Rev holds position exactly. The arc sizes itself to the
+ * space available instead, so nothing has to move out of the way.
  */
-.pet[data-menu="true"] {
-  transform: translate(-46px, -56px);
-}
-
 .pet[data-menu="true"] .pet__svg {
-  transform: scale(0.92);
+  animation: none;
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -301,3 +301,67 @@ export const DRAG_THRESHOLD_PX = 4;
 export function isDrag(fromX: number, fromY: number, toX: number, toY: number): boolean {
   return Math.hypot(toX - fromX, toY - fromY) > DRAG_THRESHOLD_PX;
 }
+
+/* ---------------------------------------------------------------- radial --- */
+
+export interface Bounds {
+  width: number;
+  height: number;
+}
+
+export interface Sweep {
+  /** Angle of the first item, in degrees clockwise from due east. */
+  from: number;
+  /** Angle between adjacent items. */
+  step: number;
+}
+
+/** Widest first: the menu opens as far as the space allows, then narrows. */
+const SWEEP_CHOICES = [180, 160, 140, 120, 110, 100, 90] as const;
+
+/** The arc's midpoint — up and to the left, where a corner-dwelling pet has room. */
+const SWEEP_CENTRE = -135;
+
+/**
+ * Choose how wide the radial menu can open without any item leaving the window.
+ *
+ * The character holds still, so the menu has to fit around wherever it happens
+ * to be. In the bottom-right corner there is only room for about 120 degrees;
+ * drag it toward the middle and the same menu opens as a full semicircle.
+ *
+ * Adapting is what lets the character stay put. The alternative — and what this
+ * replaced — was shifting it sixty pixels out of the corner every time the menu
+ * opened, which is a lurch, and the whole point of a desktop companion is that
+ * it does not yank your attention around.
+ */
+export function fitSweep(
+  centre: { x: number; y: number },
+  radius: number,
+  count: number,
+  bounds: Bounds,
+  pad: number,
+): Sweep {
+  if (count < 2) return { from: SWEEP_CENTRE, step: 0 };
+
+  const fits = (from: number, span: number): boolean => {
+    const step = span / (count - 1);
+    for (let i = 0; i < count; i++) {
+      const a = ((from + step * i) * Math.PI) / 180;
+      const x = centre.x + radius * Math.cos(a);
+      const y = centre.y + radius * Math.sin(a);
+      if (x - pad < 0 || x + pad > bounds.width) return false;
+      if (y - pad < 0 || y + pad > bounds.height) return false;
+    }
+    return true;
+  };
+
+  for (const span of SWEEP_CHOICES) {
+    const from = SWEEP_CENTRE - span / 2;
+    if (fits(from, span)) return { from, step: span / (count - 1) };
+  }
+
+  // Nothing fit. Return the narrowest rather than nothing, so the menu is still
+  // usable — clipped is recoverable, absent is not.
+  const span = SWEEP_CHOICES[SWEEP_CHOICES.length - 1];
+  return { from: SWEEP_CENTRE - span / 2, step: span / (count - 1) };
+}

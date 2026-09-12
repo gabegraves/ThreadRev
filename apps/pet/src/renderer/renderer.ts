@@ -21,7 +21,14 @@ import {
   type PetFinding,
   type Reproduced,
 } from "./findings.js";
-import { applyFilter, formatValue, isDrag, unreadCount, type Filter } from "../logic.js";
+import {
+  applyFilter,
+  fitSweep,
+  formatValue,
+  isDrag,
+  unreadCount,
+  type Filter,
+} from "../logic.js";
 import { WEB_ORIGIN } from "./findings.js";
 
 import type { PetSettings } from "../preload.js";
@@ -288,17 +295,11 @@ const MENU: Record<string, { label: string; run: () => void }> = {
   },
   console: {
     label: "Review console",
-    run: () => {
-      setMenuOpen(false);
-      window.pet.openExternal(`${WEB_ORIGIN}/`);
-    },
+    run: () => openOutside(`${WEB_ORIGIN}/`, "Opening review console"),
   },
   voice: {
     label: "Voice review",
-    run: () => {
-      setMenuOpen(false);
-      window.pet.openExternal(`${WEB_ORIGIN}/voice`);
-    },
+    run: () => openOutside(`${WEB_ORIGIN}/voice`, "Opening voice review"),
   },
   settings: {
     label: "Settings",
@@ -317,18 +318,28 @@ const MENU: Record<string, { label: string; run: () => void }> = {
 };
 
 /**
- * Draw the guide arc through the item centres.
- *
- * Measured from the same radius and sweep the CSS uses, so the stroke lands
- * under the items rather than near them. Reading the values back from the
- * computed style keeps one source of truth in the stylesheet.
+ * Draw the guide arc through the item centres, using the same radius and sweep
+ * the items use so the stroke lands under them rather than near them.
  */
 function drawArc(): void {
   const css = getComputedStyle(radialEl);
   const r = parseFloat(css.getPropertyValue("--r"));
-  const from = parseFloat(css.getPropertyValue("--sweep-from"));
-  const step = parseFloat(css.getPropertyValue("--sweep-step"));
-  if (!Number.isFinite(r) || !Number.isFinite(from) || !Number.isFinite(step)) return;
+  if (!Number.isFinite(r)) return;
+
+  const pet = petEl.getBoundingClientRect();
+  const { from, step } = fitSweep(
+    { x: pet.left + pet.width / 2, y: pet.top + pet.height / 2 },
+    r,
+    radialItems.length,
+    { width: window.innerWidth, height: window.innerHeight },
+    // Half an item, so the whole circle clears the edge.
+    26,
+  );
+  radialEl.style.setProperty("--sweep-from", `${from}deg`);
+  radialEl.style.setProperty("--sweep-step", `${step}deg`);
+
+  // Remembered so the label can be parked beside whichever item it names.
+  itemAngles = radialItems.map((_, i) => ((from + step * i) * Math.PI) / 180);
 
   const last = from + step * (radialItems.length - 1);
   const rad = (deg: number) => (deg * Math.PI) / 180;
@@ -341,9 +352,55 @@ function drawArc(): void {
   radialEl.style.setProperty("--arc-len", String(Math.ceil(radialArc.getTotalLength())));
 }
 
-function showMenuLabel(text: string | null): void {
+/** Where each item sits on the arc, in radians. Filled in by drawArc. */
+let itemAngles: number[] = [];
+
+/**
+ * Name an item, with the label parked just outside that item.
+ *
+ * A single shared label is the only thing that fits — at this radius the items
+ * are about 68px apart and five labels would collide — but it has to appear
+ * beside whatever it is describing, or it reads as a caption for the wrong icon.
+ */
+function showMenuLabel(item: HTMLElement | null, hint = false): void {
+  if (!item) {
+    radialLabel.dataset.show = "false";
+    return;
+  }
+  const text = item.getAttribute("aria-label");
   if (text) radialLabel.textContent = text;
-  radialLabel.dataset.show = String(Boolean(text));
+
+  const i = radialItems.indexOf(item as HTMLButtonElement);
+  const angle = itemAngles[i];
+  if (angle !== undefined) {
+    const r = parseFloat(getComputedStyle(radialEl).getPropertyValue("--r")) + 48;
+    radialLabel.style.setProperty("--lx", `${(r * Math.cos(angle)).toFixed(1)}px`);
+    radialLabel.style.setProperty("--ly", `${(r * Math.sin(angle)).toFixed(1)}px`);
+  }
+  radialLabel.dataset.show = "true";
+  radialLabel.dataset.hint = String(hint);
+}
+
+/** Used for the transient "Opening…" acknowledgement, which has no item. */
+function flashMenuLabel(text: string): void {
+  radialLabel.textContent = text;
+  radialLabel.dataset.show = "true";
+  radialLabel.dataset.hint = "false";
+}
+
+/**
+ * Open a page in the real browser and say so.
+ *
+ * The effect of these two items happens in another application, which may take
+ * a second to surface and may land behind this window. Without an acknowledgement
+ * the click reads as having done nothing, and the natural response is to click
+ * again.
+ */
+function openOutside(url: string, message: string): void {
+  window.pet.openExternal(url);
+  flashMenuLabel(`${message}…`);
+  announce(`${message} in your browser.`);
+  window.setTimeout(() => setMenuOpen(false), 620);
 }
 
 function setMenuOpen(next: boolean): void {
@@ -360,7 +417,11 @@ function setMenuOpen(next: boolean): void {
     // The panel and the menu are two ways to look at the same thing; showing
     // both at once would put the arc on top of the cards.
     if (open) setOpen(false);
-    window.setTimeout(() => radialItems[0]?.focus(), 160);
+    const first = radialItems[0];
+    if (first) {
+      showMenuLabel(first, true);
+      window.setTimeout(() => first.focus(), 160);
+    }
   } else {
     showMenuLabel(null);
   }
@@ -375,10 +436,16 @@ for (const item of radialItems) {
   item.setAttribute("aria-label", entry.label);
   item.title = entry.label;
   item.addEventListener("click", entry.run);
-  item.addEventListener("mouseenter", () => showMenuLabel(entry.label));
-  item.addEventListener("focus", () => showMenuLabel(entry.label));
-  item.addEventListener("mouseleave", () => showMenuLabel(null));
-  item.addEventListener("blur", () => showMenuLabel(null));
+  item.addEventListener("mouseenter", () => showMenuLabel(item));
+  item.addEventListener("focus", () => showMenuLabel(item));
+  const restoreHint = () => {
+    if (!menuOpen) return;
+    const focused = document.activeElement as HTMLElement | null;
+    const named = focused?.closest<HTMLElement>(".radial__item");
+    showMenuLabel(named ?? item, !named);
+  };
+  item.addEventListener("mouseleave", restoreHint);
+  item.addEventListener("blur", restoreHint);
 }
 
 /** Arrows walk the arc; the arc is a line, so Up/Left and Down/Right pair up. */
