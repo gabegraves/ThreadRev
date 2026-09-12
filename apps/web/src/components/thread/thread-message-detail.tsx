@@ -47,7 +47,7 @@ export function ThreadMessageDetail({
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-        <code className="font-mono text-[11px] text-faint">{m.ts}</code>
+        <code className="font-mono text-[12px] text-subtle">{m.ts}</code>
         <Link href={graphHref(m.ts)} className={LINK}>
           <Waypoints className="size-3.5" strokeWidth={1.75} aria-hidden />
           Open in graph
@@ -56,8 +56,8 @@ export function ThreadMessageDetail({
       <ol aria-label="Message" className="flex flex-col gap-1">
         <Message m={m} model={model} graph={graph} channelId={channelId} onOpen={onOpen} />
       </ol>
-      <section className="flex flex-col gap-2">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+      <section className="flex flex-col gap-2 border-t border-hairline pt-4">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
           <SectionTitle>Reviewer run</SectionTitle>
           {runIds.map((id) => (
             <Link key={id} href={`/runs?id=${encodeURIComponent(id)}`} className={LINK}>

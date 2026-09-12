@@ -14,7 +14,7 @@ export function WorkspaceDetailBody({ row }: { row: WorkspaceRow }) {
   return (
     <>
       <DetailSection title="Text">
-        <blockquote className="whitespace-pre-wrap border-l-2 border-hairline-strong pl-3 text-[13px] leading-relaxed text-foreground">{row.text}</blockquote>
+        <blockquote className="max-w-[68ch] whitespace-pre-wrap border-l-2 border-hairline-strong pl-3 text-[13px] leading-relaxed text-foreground">{row.text}</blockquote>
       </DetailSection>
       <DetailSection title="Quantities">
         {row.quantities.length === 0 ? (
@@ -24,10 +24,10 @@ export function WorkspaceDetailBody({ row }: { row: WorkspaceRow }) {
             {row.quantities.map((q, i) => (
               // biome-ignore lint/suspicious/noArrayIndexKey: the same value+unit can occur twice in one message
               <li key={`${q.value}${q.unit}${i}`} className="flex items-baseline gap-2 text-[12px]">
-                <span className="whitespace-nowrap font-mono tabular-nums text-foreground">
+                <span className="whitespace-nowrap font-mono font-medium tabular-nums text-foreground">
                   {q.value} {q.unit}
                 </span>
-                <span className="min-w-0 truncate font-mono text-[11px] text-faint" title={q.context}>
+                <span className="min-w-0 truncate font-mono text-[12px] text-subtle" title={q.context}>
                   {q.context}
                 </span>
               </li>
@@ -60,7 +60,7 @@ export function WorkspaceDetailBody({ row }: { row: WorkspaceRow }) {
                 <Link
                   href={`/findings?id=${encodeURIComponent(c.finding_id)}`}
                   onClick={() => setScenario(c.scenario_id)}
-                  className="truncate whitespace-nowrap font-mono text-[11px] text-accent-text underline-offset-2 hover:underline"
+                  className="truncate whitespace-nowrap font-mono text-[12px] text-accent-text underline-offset-2 hover:underline"
                 >
                   {c.finding_id}
                 </Link>
@@ -76,7 +76,7 @@ export function WorkspaceDetailBody({ row }: { row: WorkspaceRow }) {
 export function WorkspaceDetailPanel({ row, className }: { row: WorkspaceRow | null; className?: string }) {
   if (!row) return <DetailPanel emptyMessage="Select a message." className={className} />;
   return (
-    <DetailPanel title={`${row.user_name} · #${row.channel_name}`} subtitle={`${fmtTime(row.ts)} · ${row.ts}`} actions={<MarkPill mark={row.mark} />} className={className}>
+    <DetailPanel title={`${row.user_name} · #${row.channel_name}`} subtitle={fmtTime(row.ts)} actions={<MarkPill mark={row.mark} />} className={className}>
       <WorkspaceDetailBody row={row} />
     </DetailPanel>
   );

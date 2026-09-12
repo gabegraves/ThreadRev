@@ -32,9 +32,18 @@ export interface ReasoningResponse {
   scoringExplanation: ReasoningSection[];
 }
 
+/** Where a report's evidence lives in the console, plus the log slice that produced it. */
+export interface ReportEvidence {
+  /** Graph node id (finding_id or run_id) to highlight on /graph. */
+  nodeId: string;
+  links: { label: string; href: string; mono?: boolean }[];
+  log: { at: string; kind: EvidenceEvent["kind"]; text: string }[];
+}
+
 export interface AnalyticsCorpus {
   reports: DashboardReport[];
   reasoning: Map<string, ReasoningResponse>;
+  evidence: Map<string, ReportEvidence>;
   /** Reference "now": one hour after the latest recorded event. */
   now: number;
 }
@@ -97,6 +106,39 @@ function checkSections(run: CheckRun | undefined): ReasoningSection[] {
     : [{ title: "Checks", value: "No checker run recorded" }];
 }
 
+function logLine(e: EvidenceEvent): string {
+  switch (e.kind) {
+    case "message_read":
+      return `${e.is_bot ? "bot" : e.from}: ${e.text.slice(0, 90)}${e.text.length > 90 ? "…" : ""}`;
+    case "workspace_search":
+      return `workspace search · ${e.returned} of ${e.total} hit${e.total === 1 ? "" : "s"}`;
+    case "document_read":
+      return `read ${e.document}${e.revision ? ` ${e.revision}` : ""} · ${e.sha256.slice(0, 8)}`;
+    case "check_run":
+      return `${e.checker} ${e.version} · ${e.checks.filter((c) => !c.pass).length} of ${e.checks.length} failing`;
+    case "finding_published":
+      return `published ${e.finding.finding_id} · ${e.finding.discrepancy}`;
+    case "finding_superseded":
+      return `superseded ${e.finding_id}`;
+    case "publish_refused":
+      return `refused · ${e.reason}`;
+    case "silence":
+      return `silent · ${e.reason}`;
+    case "edit_proposed":
+      return `edit proposed against ${e.source_sha256.slice(0, 8)}`;
+    case "edit_decided":
+      return `edit ${e.decision}`;
+    case "edit_applied":
+      return `edit applied · ${e.sha256.slice(0, 8)}`;
+  }
+}
+
+function traceLog(events: EvidenceEvent[], triggerTs: string | undefined, until: string): ReportEvidence["log"] {
+  return events
+    .filter((e) => (triggerTs ? e.trigger_ts === triggerTs : e.at <= until))
+    .map((e) => ({ at: e.at, kind: e.kind, text: logLine(e) }));
+}
+
 function buildReasoning(
   id: string,
   finding: Finding,
@@ -129,6 +171,7 @@ export function buildCorpus(
 ): AnalyticsCorpus {
   const reports: DashboardReport[] = [];
   const reasoning = new Map<string, ReasoningResponse>();
+  const evidence = new Map<string, ReportEvidence>();
   let latest = 0;
 
   for (const scenario of scenarios) {
@@ -191,6 +234,19 @@ export function buildCorpus(
           completed_at,
         });
         reasoning.set(id, buildReasoning(id, f, run));
+        evidence.set(id, {
+          nodeId: f.finding_id,
+          links: [
+            { label: "Graph", href: `/graph?node=${encodeURIComponent(f.finding_id)}` },
+            { label: "Finding", href: `/findings?id=${encodeURIComponent(f.finding_id)}` },
+            { label: "Run", href: `/runs?id=${encodeURIComponent(f.checker_run.run_id)}` },
+            ...(e.trigger_ts ? [{ label: "Thread", href: `/thread?ts=${encodeURIComponent(e.trigger_ts)}` }] : []),
+            ...f.sources
+              .filter((s) => s.kind === "document" && s.sha256)
+              .map((s) => ({ label: s.id, href: `/documents?id=${encodeURIComponent(s.sha256 as string)}`, mono: true })),
+          ],
+          log: traceLog(events, e.trigger_ts, e.at),
+        });
       } else if (e.kind === "publish_refused") {
         const id = `${scenario.id}/${e.run_id}`;
         const run = runs.get(e.run_id);
@@ -212,6 +268,18 @@ export function buildCorpus(
           assigned_team: team,
           ai_reasoning: e.reason,
         });
+        evidence.set(id, {
+          nodeId: e.run_id,
+          links: [
+            { label: "Graph", href: `/graph?node=${encodeURIComponent(e.run_id)}` },
+            { label: "Run", href: `/runs?id=${encodeURIComponent(e.run_id)}` },
+            ...(e.trigger_ts ? [{ label: "Thread", href: `/thread?ts=${encodeURIComponent(e.trigger_ts)}` }] : []),
+            ...(run?.evidence_refs ?? [])
+              .filter((r) => r.kind === "document")
+              .map((r) => ({ label: r.id.slice(0, 8), href: `/documents?id=${encodeURIComponent(r.id)}`, mono: true })),
+          ],
+          log: traceLog(events, e.trigger_ts, e.at),
+        });
         reasoning.set(id, {
           reportId: id,
           reasoning: e.reason,
@@ -230,7 +298,7 @@ export function buildCorpus(
   }
 
   reports.sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at));
-  return { reports, reasoning, now: latest + HOUR_MS };
+  return { reports, reasoning, evidence, now: latest + HOUR_MS };
 }
 
 /** Every recorded scenario, built once. Static data: identical on server and client. */
@@ -238,4 +306,8 @@ export const ANALYTICS_CORPUS: AnalyticsCorpus = buildCorpus();
 
 export function getReasoning(reportId: string): ReasoningResponse | undefined {
   return ANALYTICS_CORPUS.reasoning.get(reportId);
+}
+
+export function getEvidence(reportId: string): ReportEvidence | undefined {
+  return ANALYTICS_CORPUS.evidence.get(reportId);
 }

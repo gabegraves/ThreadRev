@@ -25,7 +25,7 @@ export function RefusalBlock({ bound, current, reason }: { bound: string; curren
         <Field label="bound revision" value={<ThreadLink ts={bound} />} mono hint={fmtTime(bound)} />
         <Field label="current revision" value={<ThreadLink ts={current} />} mono hint={fmtTime(current)} />
       </FieldGrid>
-      <p className="mt-3 text-[12px] leading-relaxed text-subtle">{reason}</p>
+      <p className="mt-3 text-[13px] leading-relaxed text-subtle max-w-[68ch]">{reason}</p>
     </div>
   );
 }
@@ -68,7 +68,7 @@ export function RunDetail({ row, graph, className }: { row: RunRow | null; graph
 
       {run.error && (
         <DetailSection title="Error">
-          <p className="text-[12px] leading-relaxed text-[var(--status-danger-fg)]">{run.error}</p>
+          <p className="text-[13px] leading-relaxed text-[var(--status-danger-fg)] max-w-[68ch]">{run.error}</p>
         </DetailSection>
       )}
 

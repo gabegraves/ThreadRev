@@ -45,7 +45,7 @@ function Citation({ c }: { c: DocCitation }) {
     <li className="flex flex-col gap-1.5">
       <div className="flex flex-wrap items-center gap-2">
         <StatusPill tone={STATUS_TONE[c.finding_status]}>{STATUS_LABEL[c.finding_status]}</StatusPill>
-        <Link href={hrefs.finding(c.finding_id)} className={cn("font-mono text-[11px]", LINK_CLASS)}>
+        <Link href={hrefs.finding(c.finding_id)} className={cn("font-mono text-[12px]", LINK_CLASS)}>
           {c.finding_id}
         </Link>
         <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-faint">{c.locator ?? "—"}</span>
@@ -68,8 +68,8 @@ function Citation({ c }: { c: DocCitation }) {
 export function DocumentDetailBody({ row, graphNodeIds }: { row: DocRow; graphNodeIds: Set<string> }) {
   return (
     <>
-      <div className="flex flex-col gap-1">
-        <span className="text-[11px] uppercase tracking-wider text-faint">sha256</span>
+      <div className="flex flex-col gap-1.5">
+        <span className="text-[11px] font-medium uppercase tracking-[0.08em] text-faint">sha256</span>
         <span className="flex items-center gap-2">
           <span className="min-w-0 truncate font-mono text-[13px] text-foreground" title={row.sha256 ?? undefined}>
             {row.sha256 ?? "—"}

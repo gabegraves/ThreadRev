@@ -28,9 +28,9 @@ export function StatsStrip({ cards }: { cards: LinkedStat[] }) {
           >
             <div className="mb-2.5 flex items-center justify-between gap-2">
               <span className="font-mono text-[11px] font-medium uppercase leading-none tracking-[0.08em] text-faint">{card.label}</span>
-              {card.hint && <span className="font-mono text-[11px] tabular-nums text-faint">{card.hint}</span>}
+              {card.hint && <span className="text-[12px] tabular-nums text-subtle">{card.hint}</span>}
             </div>
-            <p key={card.value} className="stat-val text-[28px] font-semibold leading-none tracking-tight tabular-nums text-foreground">
+            <p key={card.value} className="stat-val text-2xl font-semibold leading-none tabular-nums text-foreground">
               {card.value}
             </p>
           </Link>

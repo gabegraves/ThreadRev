@@ -17,8 +17,8 @@ import { STATUS_LABEL, STATUS_TONE } from "@/lib/demo/status";
 
 const isFinding = (v: unknown): v is Finding => isRec(v) && typeof v.finding_id === "string" && typeof v.discrepancy === "string";
 
-const LABEL = "text-[11px] uppercase tracking-wide text-faint";
-const SECTION = "flex flex-col gap-2 border-t border-hairline px-4 py-3";
+const LABEL = "text-[11px] font-medium uppercase tracking-[0.08em] text-faint";
+const SECTION = "flex flex-col gap-1.5 border-t border-hairline px-4 pt-4";
 
 function shortId(id: string): string {
   return id.length > 24 ? `${id.slice(0, 12)}…${id.slice(-8)}` : id;
@@ -28,7 +28,7 @@ function shortId(id: string): string {
 function IdChip({ id }: { id: string }) {
   return (
     <span className="inline-flex min-w-0 items-center gap-1">
-      <span className="truncate font-mono text-[11px] text-faint" title={id}>
+      <span className="truncate font-mono text-[12px] text-subtle" title={id}>
         {shortId(id)}
       </span>
       <button
@@ -48,7 +48,7 @@ function NodeLink({ id, onPick }: { id: string; onPick: (id: string) => void }) 
     <button
       type="button"
       onClick={() => onPick(id)}
-      className="max-w-full truncate text-left font-mono text-[11px] text-foreground underline decoration-hairline-strong underline-offset-2 hover:decoration-[var(--foreground)]"
+      className="max-w-full truncate text-left font-mono text-[12px] text-foreground underline decoration-hairline-strong underline-offset-2 hover:decoration-[var(--foreground)]"
     >
       {shortId(id)}
     </button>
@@ -59,11 +59,11 @@ type Row = { k: string; v: ReactNode };
 
 function Rows({ rows }: { rows: Row[] }) {
   return (
-    <dl className="grid grid-cols-[76px_1fr] gap-x-3 gap-y-1.5">
+    <dl className="grid grid-cols-[128px_1fr] gap-x-4 gap-y-2">
       {rows.map((r) => (
         <Fragment key={r.k}>
-          <dt className={LABEL}>{r.k}</dt>
-          <dd className="min-w-0 break-words text-[12px] leading-snug text-foreground">{r.v}</dd>
+          <dt className="text-[12px] text-faint">{r.k}</dt>
+          <dd className="min-w-0 break-words text-[13px] leading-relaxed text-foreground">{r.v}</dd>
         </Fragment>
       ))}
     </dl>
@@ -87,13 +87,13 @@ function fieldsFor(node: GraphNode, graph: EvidenceGraph, onPick: (id: string) =
       if (d.is_change) add("change", "created a new revision");
       if (d.is_bot) add("bot", "yes");
       const silences = asNum(d.silence_count) ?? 0;
-      if (silences > 0) add("silences", String(silences));
+      if (silences > 0) add("silences", <span className="tabular-nums font-medium">{silences}</span>);
       break;
     }
     case "document":
       add("document", asStr(d.document));
       add("revision", asStr(d.revision));
-      add("lines", asNum(d.line_count) !== undefined ? String(d.line_count) : undefined);
+      add("lines", asNum(d.line_count) !== undefined ? <span className="tabular-nums font-medium">{d.line_count as number}</span> : undefined);
       add("named in", asStr(d.named_in_ts) ? fmtTime(asStr(d.named_in_ts) as string) : undefined);
       break;
     case "run": {
@@ -102,7 +102,13 @@ function fieldsFor(node: GraphNode, graph: EvidenceGraph, onPick: (id: string) =
       add("checker", asStr(d.checker));
       add("version", asStr(d.version));
       add("trigger", asStr(d.trigger_ts) ? fmtTime(asStr(d.trigger_ts) as string) : undefined);
-      if (checks.length > 0) add("checks", `${checks.filter((c) => c.pass).length} / ${checks.length} pass`);
+      if (checks.length > 0)
+        add(
+          "checks",
+          <span className="tabular-nums font-medium">
+            {checks.filter((c) => c.pass).length} / {checks.length} pass
+          </span>,
+        );
       if (checks.some((c) => !c.pass))
         add(
           "failed",
@@ -121,7 +127,6 @@ function fieldsFor(node: GraphNode, graph: EvidenceGraph, onPick: (id: string) =
     }
     case "finding": {
       const f = isFinding(d.finding) ? d.finding : null;
-      add("status", STATUS_LABEL[node.status]);
       if (!f) {
         add("note", "Referenced by a supersedes edge; never published in this log.");
       } else {
@@ -140,8 +145,8 @@ function fieldsFor(node: GraphNode, graph: EvidenceGraph, onPick: (id: string) =
       add("at", asStr(d.ts) ? fmtTime(asStr(d.ts) as string) : undefined);
       add("created by", link(graph.edges.find((e) => e.kind === "changes" && e.to === node.id)?.from));
       const count = (kind: string) => graph.edges.filter((e) => e.kind === kind && e.to === node.id).length;
-      if (count("bound_to") > 0) add("cards bound", String(count("bound_to")));
-      if (count("refused_by") > 0) add("runs refused", String(count("refused_by")));
+      if (count("bound_to") > 0) add("cards bound", <span className="tabular-nums font-medium">{count("bound_to")}</span>);
+      if (count("refused_by") > 0) add("runs refused", <span className="tabular-nums font-medium">{count("refused_by")}</span>);
       break;
     }
   }
@@ -161,7 +166,7 @@ function Connected({ graph, id, onPick }: { graph: EvidenceGraph; id: string; on
       {rows.map((r) => (
         <li key={r.key} className="flex items-baseline gap-2">
           <span className={`w-[11ch] shrink-0 ${LABEL}`}>{r.kind}</span>
-          <button type="button" onClick={() => onPick(r.other)} className="min-w-0 truncate text-left text-[12px] text-foreground hover:underline">
+          <button type="button" onClick={() => onPick(r.other)} className="min-w-0 truncate text-left text-[13px] leading-relaxed text-foreground hover:underline">
             {r.label}
           </button>
         </li>
@@ -239,19 +244,23 @@ export function NodeDetail({
   }
   const fields = fieldsFor(node, graph, onPick);
   return (
-    <div className="flex flex-col">
+    <div className="flex flex-col gap-5 pb-4">
       <header className="flex flex-col gap-1.5 px-4 py-3">
         <div className="flex items-baseline justify-between gap-2">
-          <h3 className="min-w-0 truncate text-[13px] font-semibold tracking-tight text-foreground">{node.label}</h3>
-          <span className="flex shrink-0 items-center gap-1.5">
-            <span className={LABEL}>{node.kind}</span>
-            {node.status !== "neutral" && <StatusPill tone={STATUS_TONE[node.status]}>{STATUS_LABEL[node.status]}</StatusPill>}
-          </span>
+          <h3 className="min-w-0 truncate text-[15px] font-semibold leading-snug text-foreground">{node.label}</h3>
+          {node.status !== "neutral" && (
+            <span className="shrink-0">
+              <StatusPill tone={STATUS_TONE[node.status]}>{STATUS_LABEL[node.status]}</StatusPill>
+            </span>
+          )}
         </div>
-        <div className="flex items-baseline justify-between gap-2">
-          <IdChip id={node.id} />
+        <div className="flex min-w-0 items-baseline justify-between gap-2 text-[12px] text-subtle">
+          <span className="flex min-w-0 items-baseline gap-2">
+            <span className="shrink-0">{node.kind}</span>
+            <IdChip id={node.id} />
+          </span>
           {node.at && (
-            <time dateTime={node.at} className="shrink-0 font-mono text-[11px] tabular-nums text-faint">
+            <time dateTime={node.at} className="shrink-0 font-mono text-[12px] tabular-nums text-subtle">
               {new Date(node.at).toLocaleString("en-US", { timeZone: "America/New_York", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
             </time>
           )}

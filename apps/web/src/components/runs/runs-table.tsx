@@ -67,7 +67,7 @@ export function RunsTable({ rows, selected, onSelect, loading }: { rows: RunRow[
           <span>
             {r.triggerFrom}{" "}
             {r.run.trigger_ts && (
-              <Link href={hrefs.thread(r.run.trigger_ts)} onClick={(e) => e.stopPropagation()} className={`font-mono text-[11px] ${LINK_CLASS}`}>
+              <Link href={hrefs.thread(r.run.trigger_ts)} onClick={(e) => e.stopPropagation()} className={`font-mono text-[12px] ${LINK_CLASS}`}>
                 {r.run.trigger_ts}
               </Link>
             )}

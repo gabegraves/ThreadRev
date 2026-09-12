@@ -30,7 +30,7 @@ const TONE: Partial<Record<EvidenceEvent["kind"], string>> = {
 /** The one line under each event's label: who / what, no nested cards. */
 function summary(ev: EvidenceEvent, onPick: (id: string) => void): ReactNode {
   const link = (id: string, text?: string) => (
-    <button type="button" onClick={() => onPick(id)} className="font-mono text-[11px] text-foreground underline decoration-hairline-strong underline-offset-2 hover:decoration-[var(--foreground)]">
+    <button type="button" onClick={() => onPick(id)} className="font-mono text-[12px] text-foreground underline decoration-hairline-strong underline-offset-2 hover:decoration-[var(--foreground)]">
       {text ?? id}
     </button>
   );
@@ -80,18 +80,18 @@ function summary(ev: EvidenceEvent, onPick: (id: string) => void): ReactNode {
 export function TraceTimeline({ trace, onPick }: { trace: RunTrace | undefined; onPick: (id: string) => void }) {
   if (!trace) return <p className="text-[12px] text-faint">No events in this log.</p>;
   return (
-    <ol className="flex flex-col gap-2">
+    <ol className="flex flex-col divide-y divide-hairline">
       {trace.events.map((ev) => (
-        <li key={ev.event_id} className="flex gap-2">
-          <span className="mt-[5px] size-2 shrink-0 rounded-full border border-hairline-strong" style={{ background: TONE[ev.kind] ?? "var(--elevated)" }} aria-hidden />
+        <li key={ev.event_id} className="flex gap-3 py-2.5">
+          <time dateTime={ev.at} className="mt-px w-14 shrink-0 font-mono text-[11px] tabular-nums text-faint">
+            {new Date(ev.at).toLocaleTimeString("en-US", { timeZone: "America/New_York" })}
+          </time>
           <div className="min-w-0 flex-1">
-            <p className="flex items-baseline gap-2">
-              <span className="text-[11px] uppercase tracking-wide text-faint">{KIND_LABEL[ev.kind]}</span>
-              <time dateTime={ev.at} className="font-mono text-[11px] tabular-nums text-faint">
-                {new Date(ev.at).toLocaleTimeString("en-US", { timeZone: "America/New_York" })}
-              </time>
+            <p className="flex items-center gap-1.5">
+              <span className="size-1.5 shrink-0 rounded-full border border-hairline-strong" style={{ background: TONE[ev.kind] ?? "var(--elevated)" }} aria-hidden />
+              <span className="text-[13px] font-semibold text-foreground">{KIND_LABEL[ev.kind]}</span>
             </p>
-            <p className="truncate text-[12px] leading-snug text-subtle">{summary(ev, onPick)}</p>
+            <p className="truncate text-[13px] leading-relaxed text-foreground">{summary(ev, onPick)}</p>
           </div>
         </li>
       ))}

@@ -18,13 +18,13 @@ export function ActivityFeed({ events, limit = 8 }: { events: EvidenceEvent[]; l
           <>
             <span aria-hidden className={cn("size-1.5 shrink-0 rounded-full", TONE_DOT_CLASS[kindTone(ev.kind)])} />
             <span className="shrink-0 font-mono text-[11px] uppercase tracking-[0.08em] text-faint">{KIND_LABEL[ev.kind]}</span>
-            <span className="min-w-0 flex-1 truncate text-[13px] text-foreground">{eventSubject(ev)}</span>
-            <time dateTime={ev.at} className="shrink-0 font-mono text-[11px] tabular-nums text-faint">
+            <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-foreground">{eventSubject(ev)}</span>
+            <time dateTime={ev.at} className="shrink-0 font-mono text-[12px] tabular-nums text-faint">
               {fmtAt(ev.at)}
             </time>
           </>
         );
-        const cls = "flex items-center gap-2.5 py-1.5";
+        const cls = "flex items-center gap-2.5 py-2.5";
         return (
           <li key={ev.event_id} className={cn(i > 0 && "border-t border-hairline")}>
             {href ? (

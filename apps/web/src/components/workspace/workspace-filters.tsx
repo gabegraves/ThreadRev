@@ -118,7 +118,7 @@ function PickFilter({
       {(close) => (
         <div className="w-[16rem] p-0.5">
           <div className="flex items-center justify-between px-2 pb-1.5 pt-1">
-            <span className="text-[11px] uppercase tracking-wide text-faint">{label}</span>
+            <span className="text-[11px] font-medium uppercase tracking-[0.08em] text-faint">{label}</span>
             {value && (
               <button
                 type="button"
