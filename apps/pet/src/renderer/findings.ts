@@ -25,6 +25,8 @@ export type Connection =
 export const PET_ENDPOINT = "http://localhost:3000/api/pet/findings";
 
 const POLL_MS = 3000;
+/** Shorter than the poll, so a stalled request cannot outlive its own interval. */
+const REQUEST_TIMEOUT_MS = 2500;
 
 /**
  * Sample content, used only when the reviewer is unreachable. Drawn from the
@@ -87,7 +89,12 @@ export function watchFindings(onUpdate: (state: Connection) => void): () => void
 
   const tick = async (): Promise<void> => {
     try {
-      const res = await fetch(PET_ENDPOINT, { cache: "no-store" });
+      // Without a deadline a half-open socket parks the await forever and the
+            // poll chain stops: Rev freezes on its last state and never recovers.
+      const res = await fetch(PET_ENDPOINT, {
+        cache: "no-store",
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       // Coerced, never trusted: see cleanFeed. A malformed payload degrades to
       // fewer findings, never to a blank panel.

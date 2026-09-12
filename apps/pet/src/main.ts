@@ -63,6 +63,9 @@ const DEFAULTS: Settings = {
   reducedMotion: false,
 };
 
+const isRecord = (v: unknown): v is Record<string, unknown> =>
+  typeof v === "object" && v !== null;
+
 let win: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let settings: Settings = { ...DEFAULTS };
@@ -307,6 +310,7 @@ function createWindow(): BrowserWindow {
     if (process.argv.includes("--open")) target.webContents.send("pet:open");
     // `--state=<name>` pins Rev to one state. For verifying each look without
     // having to reproduce the agent phase that produces it.
+    // The renderer owns the list of valid names and rejects anything else.
     const pinned = process.argv.find((a) => a.startsWith("--state="));
     if (pinned) target.webContents.send("pet:force-state", pinned.slice("--state=".length));
   });
@@ -331,10 +335,17 @@ function createWindow(): BrowserWindow {
 
 /* ----------------------------------------------------------------- boot --- */
 
-// Only one companion, or two Revs fight over the same corner.
+/**
+ * Only one companion, or two Revs fight over the same corner.
+ *
+ * The loser quits without registering anything: wiring up a dozen IPC handlers
+ * in a process whose only remaining job is to exit is work that can only
+ * confuse the next reader.
+ */
 if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
+  registerIpc();
   app.on("second-instance", () => win?.showInactive());
 
   app.whenReady().then(() => {
@@ -349,7 +360,7 @@ if (!app.requestSingleInstanceLock()) {
     const reposition = () => {
       if (win && !win.isDestroyed()) place(win);
     };
-    setInterval(pollCursor, 60);
+    pollTimer = setInterval(pollCursor, 60);
 
     screen.on("display-metrics-changed", reposition);
     screen.on("display-added", reposition);
@@ -371,10 +382,10 @@ if (!app.requestSingleInstanceLock()) {
  * overlay that silently stops being clickable is the worst possible failure.
  */
 let regions: Rect[] = [];
-
-ipcMain.on("pet:regions", (_e, payload: unknown) => {
-  regions = Array.isArray(payload) ? (payload as Rect[]) : [];
-});
+let interactive = false;
+let dragging = false;
+let lastDragAt = 0;
+let pollTimer: ReturnType<typeof setInterval> | undefined;
 
 /**
  * Poll the OS cursor and flip click-through accordingly.
@@ -385,6 +396,7 @@ ipcMain.on("pet:regions", (_e, payload: unknown) => {
  */
 function pollCursor(): void {
   if (!win || win.isDestroyed()) return;
+
   if (!win.isVisible()) {
     // Reset, or re-showing restores whatever the flag happened to be.
     if (interactive) {
@@ -393,67 +405,81 @@ function pollCursor(): void {
     }
     return;
   }
-  const b = win.getBounds();
-  const c = screen.getCursorScreenPoint();
-  const x = c.x - b.x;
-  const y = c.y - b.y;
+
   // A drag with no movement for a beat is over, whatever the renderer said.
   // Trusting drag-end alone means one lost message leaves the overlay
   // permanently interactive, killing that corner of the screen.
   if (dragging && Date.now() - lastDragAt > 1200) dragging = false;
-  const over = shouldCapture(regions, x, y, dragging);
+
+  const b = win.getBounds();
+  const c = screen.getCursorScreenPoint();
+  const over = shouldCapture(regions, c.x - b.x, c.y - b.y, dragging);
   if (over === interactive) return;
   interactive = over;
   win.setIgnoreMouseEvents(!over, { forward: true });
 }
 
-let interactive = false;
-let dragging = false;
-let lastDragAt = 0;
+/** Registered only by the instance that won the single-instance lock. */
+function registerIpc(): void {
+  ipcMain.on("pet:regions", (_e, payload: unknown) => {
+    regions = Array.isArray(payload) ? (payload as Rect[]) : [];
+  });
 
-/**
- * Drag. The renderer cannot move the window itself, and `-webkit-app-region:
- * drag` is unusable here: it would make the dragged element swallow clicks, and
- * the pet must stay clickable. So the renderer reports the grab offset and we
- * follow the OS cursor.
- */
-ipcMain.on("pet:drag", (_e, payload: unknown) => {
-  if (!win || win.isDestroyed()) return;
-  dragging = true;
-  lastDragAt = Date.now();
-  const { dx, dy } = payload as { dx: number; dy: number };
-  const cursor = screen.getCursorScreenPoint();
-  const { x, y } = clamp(cursor.x - dx, cursor.y - dy);
-  win.setBounds({ x, y, width: WINDOW.width, height: WINDOW.height });
-});
+  /**
+   * Drag. The renderer cannot move the window itself, and `-webkit-app-region:
+   * drag` is unusable here: it would make the dragged element swallow clicks,
+   * and the pet must stay clickable. So the renderer reports the grab offset
+   * and we follow the OS cursor.
+   */
+  ipcMain.on("pet:drag", (_e, payload: unknown) => {
+    if (!win || win.isDestroyed()) return;
+    // NaN survives every comparison in clamp and reaches setBounds, where
+    // Windows does something undefined with it.
+    if (!isRecord(payload)) return;
+    const { dx, dy } = payload;
+    if (typeof dx !== "number" || typeof dy !== "number") return;
+    if (!Number.isFinite(dx) || !Number.isFinite(dy)) return;
 
-ipcMain.on("pet:drag-end", () => {
-  dragging = false;
-  if (!win || win.isDestroyed()) return;
-  const b = win.getBounds();
-  settings.x = b.x;
-  settings.y = b.y;
-  saveSettings();
-});
+    dragging = true;
+    lastDragAt = Date.now();
+    const cursor = screen.getCursorScreenPoint();
+    const { x, y } = clamp(cursor.x - dx, cursor.y - dy);
+    win.setBounds({ x, y, width: WINDOW.width, height: WINDOW.height });
+  });
 
-/** Rev's state drives the tray glyph, so attention is visible with the pet hidden. */
-ipcMain.on("pet:state", (_e, state: unknown) => {
-  if (!tray || tray.isDestroyed()) return;
-  tray.setImage(trayImage(state === "found"));
-  tray.setToolTip(`ThreadRev — ${String(state)}`);
-});
+  ipcMain.on("pet:drag-end", () => {
+    dragging = false;
+    if (!win || win.isDestroyed()) return;
+    const b = win.getBounds();
+    settings.x = b.x;
+    settings.y = b.y;
+    saveSettings();
+  });
 
-ipcMain.on("pet:context-menu", () => {
-  buildMenu().popup({ window: win ?? undefined });
-});
+  /** Rev's state drives the tray glyph, so attention shows with the pet hidden. */
+  ipcMain.on("pet:state", (_e, state: unknown) => {
+    if (!tray || tray.isDestroyed()) return;
+    tray.setImage(trayImage(state === "found"));
+    tray.setToolTip(`ThreadRev — ${String(state)}`);
+  });
 
-ipcMain.on("pet:hide", () => {
-  win?.hide();
-  tray?.setContextMenu(buildMenu());
-});
+  ipcMain.on("pet:context-menu", () => {
+    buildMenu().popup({ window: win ?? undefined });
+  });
 
-ipcMain.on("pet:quit", () => app.quit());
+  ipcMain.on("pet:hide", () => {
+    win?.hide();
+    tray?.setContextMenu(buildMenu());
+  });
 
-ipcMain.on("pet:open-external", (_e, url: unknown) => openExternally(url));
+  ipcMain.on("pet:quit", () => app.quit());
 
-app.on("window-all-closed", () => app.quit());
+  ipcMain.on("pet:open-external", (_e, url: unknown) => openExternally(url));
+
+  app.on("before-quit", () => {
+    if (pollTimer) clearInterval(pollTimer);
+    pollTimer = undefined;
+  });
+
+  app.on("window-all-closed", () => app.quit());
+}

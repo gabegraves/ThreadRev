@@ -2,7 +2,9 @@
   "compilerOptions": {
     "target": "ES2022",
     "lib": [
-      "ES2023"
+      "ES2023",
+      "DOM",
+      "DOM.Iterable"
     ],
     "module": "esnext",
     "moduleResolution": "bundler",
@@ -11,15 +13,11 @@
     "noEmit": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true,
-    "types": [
-      "node"
-    ]
+    "types": []
   },
   "include": [
+    "src/renderer",
     "src/logic.ts",
-    "src/logic.test.ts",
-    "src/main.ts",
     "src/preload.ts"
   ]
 }

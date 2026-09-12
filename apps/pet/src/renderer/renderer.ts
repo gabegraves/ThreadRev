@@ -23,11 +23,7 @@ import {
 } from "./findings.js";
 import { applyFilter, formatValue, isDrag, unreadCount, type Filter } from "../logic.js";
 
-interface PetSettings {
-  alwaysOnTop: boolean;
-  sleepAfterMin: number;
-  reducedMotion: boolean;
-}
+import type { PetSettings } from "../preload.js";
 
 declare global {
   interface Window {
@@ -47,18 +43,33 @@ declare global {
   }
 }
 
-type PetState =
-  | "idle"
-  | "reading"
-  | "searching"
-  | "checking"
-  | "found"
-  | "clear"
-  | "stale"
-  | "asleep";
+const PET_STATES = [
+  "idle",
+  "reading",
+  "searching",
+  "checking",
+  "found",
+  "clear",
+  "stale",
+  "asleep",
+] as const;
 
-const $ = <T extends HTMLElement>(id: string): T =>
-  document.getElementById(id) as T;
+type PetState = (typeof PET_STATES)[number];
+
+/**
+ * Look up a required element, failing loudly at startup.
+ *
+ * The previous cast through `unknown` hid a null, so an id typo or an HTML edit
+ * surfaced later as "cannot set properties of null" from whichever handler
+ * happened to touch it first.
+ */
+function need<T extends Element>(id: string): T {
+  const node = document.getElementById(id);
+  if (!node) throw new Error(`Rev: missing required element #${id}`);
+  return node as unknown as T;
+}
+
+const $ = <T extends HTMLElement>(id: string): T => need<T>(id);
 
 const petEl = $("pet");
 const hitEl = $<HTMLButtonElement>("pet-hit");
@@ -66,12 +77,12 @@ const panelEl = $("panel");
 const bodyEl = $("panel-body");
 const subEl = $("panel-sub");
 const revChip = $("rev-chip");
-const petRev = document.getElementById("pet-rev") as unknown as SVGTextElement;
+const petRev = need<SVGTextElement>("pet-rev");
 const countEl = $("pet-count");
 const connEl = $("conn");
 const connLabel = $("conn-label");
 const threadEl = $("thread");
-const threadPath = document.getElementById("thread-path") as unknown as SVGPathElement;
+const threadPath = need<SVGPathElement>("thread-path");
 const liveRegion = $("live-region");
 const liveCount = $("count-live");
 const staleCount = $("count-stale");
@@ -108,12 +119,25 @@ let pinnedState: PetState | null = null;
  * feel broken. Main polls the OS cursor against these, so click-through keeps
  * working even when forwarded mouse events stop arriving.
  */
+let lastRegions = "";
+
 function publishRegions(): void {
   const r = (el: Element) => {
     const b = el.getBoundingClientRect();
-    return { left: b.left, top: b.top, right: b.right, bottom: b.bottom };
+    return {
+      left: Math.round(b.left),
+      top: Math.round(b.top),
+      right: Math.round(b.right),
+      bottom: Math.round(b.bottom),
+    };
   };
-  window.pet.setRegions(open ? [r(petEl), r(panelEl)] : [r(petEl)]);
+  const regions = open ? [r(petEl), r(panelEl)] : [r(petEl)];
+  // Rounded and compared, so the 500ms safety sweep is silent while nothing
+  // moves instead of posting an identical message twice a second forever.
+  const key = JSON.stringify(regions);
+  if (key === lastRegions) return;
+  lastRegions = key;
+  window.pet.setRegions(regions);
 }
 
 /* ----------------------------------------------------------------- gaze --- */
@@ -170,9 +194,10 @@ window.addEventListener("mouseup", endDrag);
 // drag would never end: the overlay would stay permanently interactive and eat
 // every click in that corner of the screen.
 window.addEventListener("blur", endDrag);
-document.addEventListener("mouseleave", () => {
-  if (dragging && moved) endDrag();
-});
+// Any exit ends the press. Guarding this on `moved` left a sub-threshold press
+// armed: the release happened over the desktop, no blur fired, and the next
+// time the cursor came back the stale press position made it a drag.
+document.addEventListener("mouseleave", () => endDrag());
 
 hitEl.addEventListener("contextmenu", (e) => {
   e.preventDefault();
@@ -198,14 +223,19 @@ const SUBTITLE: Record<PetState, string> = {
   asleep: "dozing",
 };
 
-function setState(next: PetState): void {
-  if (pinnedState) next = pinnedState;
-  if (next === state) return;
+/** Write a state to the DOM unconditionally. */
+function applyState(next: PetState): void {
   state = next;
   petEl.dataset.state = next;
   subEl.textContent = SUBTITLE[next];
   hitEl.setAttribute("aria-label", `Rev, ${SUBTITLE[next]}. ${open ? "Close" : "Open"} findings.`);
   window.pet.reportState(next);
+}
+
+function setState(next: PetState): void {
+  if (pinnedState) next = pinnedState;
+  if (next === state) return;
+  applyState(next);
 }
 
 /** Blink on a randomised cadence. A creature that never blinks reads as dead. */
@@ -523,6 +553,19 @@ function renderEmpty(title: string, detail: string): void {
 }
 
 let everConnected = false;
+let lastSignature = "";
+
+/**
+ * Identity of what the list is currently showing. Cheap to compute and stable
+ * across polls that return the same findings, which is the common case.
+ */
+function feedSignature(items: readonly PetFinding[], f: Filter, sample: boolean): string {
+  return [
+    f,
+    sample ? "s" : "l",
+    ...items.map((x) => `${x.finding_id}:${x.status}:${x.discrepancy.length}`),
+  ].join("|");
+}
 let lastAnnounced = "";
 
 /**
@@ -538,6 +581,7 @@ function announce(message: string): void {
 }
 
 function renderList(): void {
+  lastSignature = feedSignature(findings, filter, isSample);
   const shown = applyFilter(findings, filter);
 
   announce(
@@ -584,7 +628,6 @@ function recomputeState(): void {
 }
 
 function render(conn: Connection): void {
-  const wasSample = isSample;
   isSample = conn.kind === "offline";
 
   if (conn.kind === "offline") {
@@ -601,7 +644,10 @@ function render(conn: Connection): void {
     connLabel.textContent = "connected to reviewer";
     const rev = conn.feed.revision ?? findings[0]?.requirements_revision ?? "—";
     revChip.textContent = rev;
-    petRev.textContent = rev.length <= 3 ? rev : rev.slice(0, 3);
+      // Spread, not slice: slice cuts UTF-16 units and would split a surrogate
+    // pair into a replacement character.
+    const glyphs = [...rev];
+    petRev.textContent = glyphs.length <= 3 ? rev : glyphs.slice(0, 3).join("");
   }
 
   liveCount.textContent = String(findings.filter((f) => f.status === "live").length);
@@ -616,8 +662,15 @@ function render(conn: Connection): void {
 
   if (isSample) seen = new Set(findings.map((f) => f.finding_id));
   renderBadge();
-  if (wasSample !== isSample || !bodyEl.childElementCount) renderList();
-  else renderList();
+
+  // Only rebuild when the content actually changed. The feed polls every 3s and
+  // replaceChildren() destroys the cards, so re-rendering unconditionally
+  // collapsed whatever the user had expanded, mid-read, on a timer.
+  const signature = feedSignature(findings, filter, isSample);
+  if (signature !== lastSignature || !bodyEl.childElementCount) {
+    lastSignature = signature;
+    renderList();
+  }
   if (open) drawThread();
 }
 
@@ -640,14 +693,22 @@ window.setInterval(publishRegions, 500);
 
 window.pet.onOpen(() => setOpen(true));
 window.pet.onForceState((s) => {
+  if (!(PET_STATES as readonly string[]).includes(s)) {
+    // An unknown name would set a data-state no CSS matches and print
+    // "undefined" as the subtitle — the opposite of what the flag is for.
+    console.warn(`--state: unknown state "${s}". Expected one of ${PET_STATES.join(", ")}.`);
+    return;
+  }
   pinnedState = s as PetState;
-  state = "idle";
-  setState(pinnedState);
+  applyState(pinnedState);
 });
 
 setState("idle");
 renderEmpty("Starting up", "Looking for the reviewer…");
-watchFindings(render);
+const stopWatching = watchFindings(render);
+// The renderer dies with the window, but holding the handle means a reload
+// cannot leave two poll loops racing to render different responses.
+window.addEventListener("pagehide", stopWatching);
 window.addEventListener("resize", () => {
   if (open) drawThread();
 });

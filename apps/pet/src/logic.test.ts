@@ -4,9 +4,11 @@ import assert from "node:assert/strict";
 import {
   applyFilter,
   clampOrigin,
+  DRAG_THRESHOLD_PX,
   cleanFeed,
   cleanFinding,
   formatValue,
+  isDrag,
   rectContains,
   shouldCapture,
   unreadCount,
@@ -188,4 +190,82 @@ test("duplicate ids are collapsed so the badge cannot lie", () => {
 
 test("an unknown phase is ignored rather than pinning a bogus state", () => {
   assert.equal(cleanFeed({ findings: [], phase: "hacking" }).phase, undefined);
+});
+
+/* ----------------------------------------------------------------- drag --- */
+
+test("isDrag ignores the tremor of pressing the button", () => {
+  // The whole reason the pet would not open: `moved` used to flip on the first
+  // mousemove, and pressing a mouse button moves it a pixel or two.
+  assert.equal(isDrag(100, 100, 100, 100), false);
+  assert.equal(isDrag(100, 100, 102, 101), false);
+  assert.equal(isDrag(100, 100, 103, 0 + 100), false);
+});
+
+test("isDrag fires once past the threshold, in any direction", () => {
+  assert.equal(isDrag(100, 100, 105, 100), true);
+  assert.equal(isDrag(100, 100, 100, 105), true);
+  assert.equal(isDrag(100, 100, 95, 95), true);
+  assert.equal(isDrag(100, 100, 100 - 5, 100), true);
+});
+
+test("isDrag is exclusive at exactly the threshold", () => {
+  // Exactly DRAG_THRESHOLD_PX away is still a click; a hair beyond is a drag.
+  assert.equal(isDrag(0, 0, DRAG_THRESHOLD_PX, 0), false);
+  assert.equal(isDrag(0, 0, DRAG_THRESHOLD_PX + 0.01, 0), true);
+  // Diagonals use real distance, not per-axis: a 3-4-5 triangle is 5 away.
+  assert.equal(isDrag(0, 0, 3, 4), true);
+  assert.equal(isDrag(0, 0, 2, 2), false);
+});
+
+/* ------------------------------------------------- field-level coercion --- */
+
+test("a source without an id is dropped, not rendered blank", () => {
+  const f = cleanFinding({
+    ...GOOD,
+    sources: [{ kind: "document" }, { kind: "message", id: "123.45" }, "nope", null],
+  });
+  assert.deepEqual(f?.sources.map((s) => s.id), ["123.45"]);
+});
+
+test("an unknown source kind falls back to document", () => {
+  const f = cleanFinding({ ...GOOD, sources: [{ kind: "wat", id: "x" }] });
+  assert.equal(f?.sources[0].kind, "document");
+});
+
+test("a question needs both a person and an ask", () => {
+  assert.equal(cleanFinding({ ...GOOD, question: { to: "Dara" } })?.question, undefined);
+  assert.equal(cleanFinding({ ...GOOD, question: { ask: "which bus?" } })?.question, undefined);
+  assert.equal(cleanFinding({ ...GOOD, question: { to: " ", ask: "x" } })?.question, undefined);
+  assert.deepEqual(cleanFinding({ ...GOOD, question: { to: "Dara", ask: "which?" } })?.question, {
+    to: "Dara",
+    ask: "which?",
+  });
+});
+
+test("whitespace-only strings are treated as absent", () => {
+  assert.equal(cleanFinding({ finding_id: "x", discrepancy: "   " }), null);
+  assert.equal(cleanFinding({ ...GOOD, why_it_matters: "  \n " })?.why_it_matters, "");
+});
+
+test("inferred entries survive as strings and junk is dropped", () => {
+  const f = cleanFinding({ ...GOOD, inferred: ["a real note", 7, null, "  "] });
+  assert.deepEqual(f?.inferred, ["a real note"]);
+});
+
+test("a unit is optional and never becomes the string undefined", () => {
+  const f = cleanFinding({ ...GOOD, reproduced: [{ label: "x", computed: 1.5 }] });
+  assert.equal(f?.reproduced[0].unit, "");
+});
+
+test("matches is only carried when it is a real boolean", () => {
+  const f = cleanFinding({
+    ...GOOD,
+    reproduced: [
+      { label: "a", computed: 1, matches: "yes" },
+      { label: "b", computed: 1, matches: false },
+    ],
+  });
+  assert.equal(f?.reproduced[0].matches, undefined);
+  assert.equal(f?.reproduced[1].matches, false);
 });
