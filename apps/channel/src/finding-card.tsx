@@ -130,6 +130,8 @@ export function reviewerWelcome(platform: string) {
       <Fields>
         <Field label="I will">Recompute printed results, cite the exact line, mark my own card stale when inputs change</Field>
         <Field label="I won't">Recommend component values, sign off a design, or post when there is nothing to say</Field>
+        <Field label="Tell me to stop">Say "reviewer, stand down" and I'll go quiet in that thread. "reviewer, resume" brings me back, and @-mentioning me works either way.</Field>
+        <Field label="Check my work">Say "reviewer, show your work" and I'll post what I read, what I ran, and anything I refused to publish.</Field>
       </Fields>
     </Message>
   );
