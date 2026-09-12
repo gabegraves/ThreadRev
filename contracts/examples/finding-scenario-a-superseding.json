@@ -1,0 +1,32 @@
+{
+  "finding_id": "fnd-a-820-002",
+  "status": "live",
+  "supersedes": "fnd-a-r2-001",
+  "requirements_revision": "1787171400.000200",
+  "discrepancy": "Relay close timer 2.5 s is earlier than t_99.9 = 2.662 s at 820 uF. Bus reaches 99.85 percent at 2.5 s, short of the 99.9 percent criterion.",
+  "why_it_matters": "With the 140 uF snubber bank the precharge does not meet its own completion criterion before the relay closes. Firmware timer or resistor value must change before r3 is signed.",
+  "sources": [
+    {
+      "kind": "message",
+      "id": "1787171400.000200",
+      "quote": "Bus is 820 uF, not 680. Doc will be r3."
+    },
+    {
+      "kind": "document",
+      "id": "precharge-review-r2.docx",
+      "revision": "r2",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+      "locator": "section 1",
+      "quote": "Precharge resistor R = 470 ohm, 10 W."
+    }
+  ],
+  "reproduced": [
+    { "label": "t_99.9 at 820 uF", "computed": 2.6622, "unit": "s" },
+    { "label": "fraction charged at 2.5 s, 820 uF", "computed": 0.99848, "unit": "ratio" }
+  ],
+  "inferred": [
+    "R = 470 ohm is carried from r2 because r3 does not exist yet; this card is bound to the message, not a document."
+  ],
+  "resolution": "Raise the relay close timer above 2.662 s, or lower R, and publish r3 with the new C and printed result.",
+  "checker_run": { "checker": "rc", "version": "1", "run_id": "rc-20260912T153100Z-b21c" }
+}

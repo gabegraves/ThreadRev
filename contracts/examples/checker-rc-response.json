@@ -1,0 +1,39 @@
+{
+  "checker": "rc",
+  "version": "1",
+  "run_id": "rc-20260912T151200Z-7f3a",
+  "inputs": {
+    "R_ohm": 470,
+    "threshold": 0.999,
+    "timer_s": 2.5,
+    "capacitances": [
+      { "label": "680uF_text", "C_F": 0.00068 },
+      { "label": "750uF_diagram", "C_F": 0.00075 },
+      { "label": "820uF_change", "C_F": 0.00082 },
+      { "label": "2mF_example", "C_F": 0.002 }
+    ],
+    "printed": [
+      { "label": "printed_2.435", "value_s": 2.435, "against": ["680uF_text", "750uF_diagram"] },
+      { "label": "printed_6.91", "value_s": 6.91, "against": ["2mF_example"] }
+    ],
+    "tolerance_s": 0.0005
+  },
+  "outputs": {
+    "per_capacitance": {
+      "680uF_text": { "RC_s": 0.3196, "t_threshold_s": 2.2077, "fraction_at_timer": 0.9996 },
+      "750uF_diagram": { "RC_s": 0.3525, "t_threshold_s": 2.435, "fraction_at_timer": 0.99917 },
+      "820uF_change": { "RC_s": 0.3854, "t_threshold_s": 2.6622, "fraction_at_timer": 0.99848 },
+      "2mF_example": { "RC_s": 0.94, "t_threshold_s": 6.4933, "fraction_at_timer": 0.93002 }
+    }
+  },
+  "checks": [
+    { "name": "printed_2.435_matches_680uF_text", "pass": false, "expected": 2.435, "actual": 2.2077, "tolerance": 0.0005 },
+    { "name": "printed_2.435_matches_750uF_diagram", "pass": true, "expected": 2.435, "actual": 2.435, "tolerance": 0.0005 },
+    { "name": "printed_6.91_matches_2mF_example", "pass": false, "expected": 6.91, "actual": 6.4933, "tolerance": 0.0005 },
+    { "name": "680uF_text_reaches_threshold_by_timer", "pass": true, "expected": 0.999, "actual": 0.9996 },
+    { "name": "750uF_diagram_reaches_threshold_by_timer", "pass": true, "expected": 0.999, "actual": 0.99917 },
+    { "name": "820uF_change_reaches_threshold_by_timer", "pass": false, "expected": 0.999, "actual": 0.99848 },
+    { "name": "2mF_example_reaches_threshold_by_timer", "pass": false, "expected": 0.999, "actual": 0.93002 }
+  ],
+  "error": null
+}

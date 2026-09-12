@@ -16,3 +16,4 @@ export {
   type SearchWebArgs,
   type SearchHit,
 } from "./schemas";
+export * from "./contracts/finding";

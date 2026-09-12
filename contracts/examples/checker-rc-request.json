@@ -1,0 +1,20 @@
+{
+  "checker": "rc",
+  "version": "1",
+  "inputs": {
+    "R_ohm": 470,
+    "threshold": 0.999,
+    "timer_s": 2.5,
+    "capacitances": [
+      { "label": "680uF_text", "C_F": 0.00068 },
+      { "label": "750uF_diagram", "C_F": 0.00075 },
+      { "label": "820uF_change", "C_F": 0.00082 },
+      { "label": "2mF_example", "C_F": 0.002 }
+    ],
+    "printed": [
+      { "label": "printed_2.435", "value_s": 2.435, "against": ["680uF_text", "750uF_diagram"] },
+      { "label": "printed_6.91", "value_s": 6.91, "against": ["2mF_example"] }
+    ],
+    "tolerance_s": 0.0005
+  }
+}
