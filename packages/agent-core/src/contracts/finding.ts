@@ -75,6 +75,14 @@ export const finding = z.object({
   reproduced: z.array(reproducedValue),
   /** Claims the reviewer made without recomputation. Must be labeled. */
   inferred: z.array(z.string()).default([]),
+  /**
+   * Instructions found inside the evidence that were addressed to the reviewer.
+   *
+   * Detected by application code on the extracted text, not reported by the
+   * model — a model that complied with such an instruction would also decline
+   * to mention it. Empty is the normal case.
+   */
+  evidence_notices: z.array(z.string()).default([]),
   /** The specific correction or evidence that closes the finding. */
   resolution: z.string().min(1),
   /** Present when evidence conflicts and a person must decide (RC2). */
