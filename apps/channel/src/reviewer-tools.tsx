@@ -183,6 +183,12 @@ export const readThread = defineChannelTool({
     const humans = messages.filter((m) => !m.isBot && m.ts);
     ctx.trigger_ts = humans.at(-1)?.ts ?? ctx.trigger_ts;
     ctx.changes = humans.filter((m) => CHANGE_PATTERN.test(m.text)).map((m) => m.ts!);
+    // read_thread opens a run, so the per-run scratch starts empty. Without
+    // this, a second review in the same thread inherits the first one's
+    // documents and notices: a card would cite a sha it never read this time,
+    // and report an instruction planted in a document that is not under review.
+    ctx.documents = [];
+    ctx.notices = [];
     for (const m of messages) {
       if (!m.ts) continue;
       record({

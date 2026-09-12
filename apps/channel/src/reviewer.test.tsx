@@ -299,7 +299,7 @@ test("different numbers are different findings", () => {
 });
 
 import { mock } from "node:test";
-import { publishResult, rememberRun } from "./reviewer-tools";
+import { publishResult, readThread, rememberRun } from "./reviewer-tools";
 
 const stubCtx = (thread: Record<string, unknown>) =>
   ({ thread, user: { id: "u1", name: "Dara Voss" }, actor: { id: "a1" }, platform: "slack" }) as never;
@@ -415,4 +415,23 @@ test("an instruction planted in a workspace message is attributed and recorded",
   );
   assert.match(attributed, /workspace message from Dara Voss in #ks4-purchasing/);
   assert.match(attributed, /did not affect this review/);
+});
+
+test("a second review in a thread does not inherit the first one's evidence", async () => {
+  const key = "thread-two-runs";
+  const ctx = runContext(key);
+  ctx.documents = [{ sha256: "a".repeat(64) }];
+  ctx.notices = ["A workspace message from someone contains an instruction."];
+
+  await readThread.handler({}, stubCtx({
+    conversationKey: key,
+    getMessages: async () => [
+      { ts: "200.000100", text: "new review please", isBot: false, user: { name: "Juno" } },
+    ],
+  }));
+
+  const after = runContext(key);
+  assert.deepEqual(after.documents, [], "documents from the previous run must not carry over");
+  assert.deepEqual(after.notices, [], "notices from the previous run must not carry over");
+  assert.equal(after.trigger_ts, "200.000100");
 });
