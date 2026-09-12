@@ -132,8 +132,10 @@ function apertureIcon(size: number, alert: boolean): Electron.NativeImage {
   const rInner = size * 0.3;
   const rPupil = size * 0.13;
 
-  const ring: [number, number, number] = alert ? [84, 180, 255] : [232, 234, 237];
-  const pupil: [number, number, number] = alert ? [84, 180, 255] : [154, 160, 168];
+  // Amber matches the panel's "needs a decision" accent. This was blue, which
+  // is the calm colour — the glyph could not signal the one thing it exists for.
+  const ring: [number, number, number] = alert ? [240, 163, 60] : [232, 234, 237];
+  const pupil: [number, number, number] = alert ? [240, 163, 60] : [154, 160, 168];
 
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
@@ -166,6 +168,34 @@ function apertureIcon(size: number, alert: boolean): Electron.NativeImage {
     }
   }
   return nativeImage.createFromBitmap(buf, { width: size, height: size });
+}
+
+/**
+ * A tray image carrying both scale factors.
+ *
+ * Windows asks for 20px at 125% and 24px at 150%. Given only a 16px bitmap it
+ * upscales, and a thin ring is exactly the shape that turns to mush. Supplying
+ * a 2x representation lets it pick instead.
+ */
+function trayImage(alert: boolean): Electron.NativeImage {
+  const img = apertureIcon(16, alert);
+  img.addRepresentation({
+    scaleFactor: 2,
+    width: 32,
+    height: 32,
+    buffer: apertureIcon(32, alert).toBitmap(),
+  });
+  return img;
+}
+
+/** Open a URL in the real browser, ignoring anything that is not http(s). */
+function openExternally(url: unknown): void {
+  if (typeof url !== "string") return;
+  try {
+    if (/^https?:$/.test(new URL(url).protocol)) void shell.openExternal(url);
+  } catch {
+    // Not a usable URL; drop it.
+  }
 }
 
 /* ---------------------------------------------------------------- menus --- */
@@ -281,9 +311,19 @@ function createWindow(): BrowserWindow {
     if (pinned) target.webContents.send("pet:force-state", pinned.slice("--state=".length));
   });
 
+  // Always deny; open http(s) externally. Wrapped because `new URL` throws on a
+  // malformed href, and throwing out of this handler would lose the deny.
   target.webContents.setWindowOpenHandler(({ url }) => {
-    if (/^https?:$/.test(new URL(url).protocol)) void shell.openExternal(url);
+    openExternally(url);
     return { action: "deny" };
+  });
+
+  // Nothing may replace the overlay's own document.
+  target.webContents.on("will-navigate", (e, url) => {
+    if (url !== target.webContents.getURL()) {
+      e.preventDefault();
+      openExternally(url);
+    }
   });
 
   return target;
@@ -301,7 +341,7 @@ if (!app.requestSingleInstanceLock()) {
     loadSettings();
     win = createWindow();
 
-    tray = new Tray(apertureIcon(16, false));
+    tray = new Tray(trayImage(false));
     tray.setToolTip("ThreadRev — Rev");
     tray.setContextMenu(buildMenu());
     tray.on("click", () => toggleVisible());
@@ -344,11 +384,23 @@ ipcMain.on("pet:regions", (_e, payload: unknown) => {
  * system-wide low-level mouse hook it replaces.
  */
 function pollCursor(): void {
-  if (!win || win.isDestroyed() || !win.isVisible()) return;
+  if (!win || win.isDestroyed()) return;
+  if (!win.isVisible()) {
+    // Reset, or re-showing restores whatever the flag happened to be.
+    if (interactive) {
+      interactive = false;
+      win.setIgnoreMouseEvents(true, { forward: true });
+    }
+    return;
+  }
   const b = win.getBounds();
   const c = screen.getCursorScreenPoint();
   const x = c.x - b.x;
   const y = c.y - b.y;
+  // A drag with no movement for a beat is over, whatever the renderer said.
+  // Trusting drag-end alone means one lost message leaves the overlay
+  // permanently interactive, killing that corner of the screen.
+  if (dragging && Date.now() - lastDragAt > 1200) dragging = false;
   const over = shouldCapture(regions, x, y, dragging);
   if (over === interactive) return;
   interactive = over;
@@ -357,6 +409,7 @@ function pollCursor(): void {
 
 let interactive = false;
 let dragging = false;
+let lastDragAt = 0;
 
 /**
  * Drag. The renderer cannot move the window itself, and `-webkit-app-region:
@@ -367,6 +420,7 @@ let dragging = false;
 ipcMain.on("pet:drag", (_e, payload: unknown) => {
   if (!win || win.isDestroyed()) return;
   dragging = true;
+  lastDragAt = Date.now();
   const { dx, dy } = payload as { dx: number; dy: number };
   const cursor = screen.getCursorScreenPoint();
   const { x, y } = clamp(cursor.x - dx, cursor.y - dy);
@@ -385,7 +439,7 @@ ipcMain.on("pet:drag-end", () => {
 /** Rev's state drives the tray glyph, so attention is visible with the pet hidden. */
 ipcMain.on("pet:state", (_e, state: unknown) => {
   if (!tray || tray.isDestroyed()) return;
-  tray.setImage(apertureIcon(16, state === "found"));
+  tray.setImage(trayImage(state === "found"));
   tray.setToolTip(`ThreadRev — ${String(state)}`);
 });
 
@@ -400,13 +454,6 @@ ipcMain.on("pet:hide", () => {
 
 ipcMain.on("pet:quit", () => app.quit());
 
-ipcMain.on("pet:open-external", (_e, url: unknown) => {
-  if (typeof url !== "string") return;
-  try {
-    if (/^https?:$/.test(new URL(url).protocol)) void shell.openExternal(url);
-  } catch {
-    // Ignore anything that is not a usable URL.
-  }
-});
+ipcMain.on("pet:open-external", (_e, url: unknown) => openExternally(url));
 
 app.on("window-all-closed", () => app.quit());

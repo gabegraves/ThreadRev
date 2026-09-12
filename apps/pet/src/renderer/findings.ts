@@ -11,47 +11,12 @@
  * labelled as sample. It never passes invented findings off as real output.
  */
 
-/** Mirrors `reproducedValue` in the contract. */
-export interface Reproduced {
-  label: string;
-  printed?: number;
-  computed: number;
-  unit: string;
-  matches?: boolean;
-}
+import { cleanFeed, type CleanFeed, type CleanFinding } from "../logic.js";
 
-export interface Source {
-  kind: "document" | "message";
-  id: string;
-  revision?: string;
-  sha256?: string;
-  locator?: string;
-}
-
-/** The subset of `Finding` the panel renders. */
-export interface PetFinding {
-  finding_id: string;
-  status: "live" | "stale";
-  discrepancy: string;
-  why_it_matters: string;
-  resolution: string;
-  requirements_revision: string;
-  supersedes_reason?: string;
-  sources: Source[];
-  reproduced: Reproduced[];
-  inferred?: string[];
-  question?: { to: string; ask: string };
-}
-
-/** What the reviewer is doing right now. Drives Rev's aperture. */
-export type AgentPhase = "idle" | "reading" | "searching" | "checking";
-
-export interface Feed {
-  findings: PetFinding[];
-  phase?: AgentPhase;
-  /** Revision the reviewer is currently bound to. */
-  revision?: string;
-}
+export type Reproduced = CleanFinding["reproduced"][number];
+export type Source = CleanFinding["sources"][number];
+export type PetFinding = CleanFinding;
+export type Feed = CleanFeed;
 
 export type Connection =
   | { kind: "connected"; feed: Feed }
@@ -66,7 +31,7 @@ const POLL_MS = 3000;
  * Scenario A cross-channel case so the shape is honest even though the run is
  * not live.
  */
-export const SAMPLE: PetFinding[] = [
+const SAMPLE_RAW: unknown[] = [
   {
     finding_id: "fnd-sample-cross",
     status: "live",
@@ -109,6 +74,12 @@ export const SAMPLE: PetFinding[] = [
   },
 ];
 
+/**
+ * The sample goes through the same validator as a live response, so it cannot
+ * drift from the shape the panel actually renders.
+ */
+export const SAMPLE: PetFinding[] = cleanFeed({ findings: SAMPLE_RAW }).findings;
+
 /** Poll the reviewer. Returns a stop function. */
 export function watchFindings(onUpdate: (state: Connection) => void): () => void {
   let stopped = false;
@@ -118,17 +89,10 @@ export function watchFindings(onUpdate: (state: Connection) => void): () => void
     try {
       const res = await fetch(PET_ENDPOINT, { cache: "no-store" });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const body = (await res.json()) as Partial<Feed>;
-      if (!stopped) {
-        onUpdate({
-          kind: "connected",
-          feed: {
-            findings: body.findings ?? [],
-            phase: body.phase,
-            revision: body.revision,
-          },
-        });
-      }
+      // Coerced, never trusted: see cleanFeed. A malformed payload degrades to
+      // fewer findings, never to a blank panel.
+      const feed = cleanFeed(await res.json());
+      if (!stopped) onUpdate({ kind: "connected", feed });
     } catch (err) {
       // Not an error state: the reviewer simply is not running yet.
       if (!stopped) {

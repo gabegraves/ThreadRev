@@ -21,7 +21,7 @@ import {
   type PetFinding,
   type Reproduced,
 } from "./findings.js";
-import { applyFilter, formatValue, unreadCount, type Filter } from "../logic.js";
+import { applyFilter, formatValue, isDrag, unreadCount, type Filter } from "../logic.js";
 
 interface PetSettings {
   alwaysOnTop: boolean;
@@ -78,6 +78,8 @@ const staleCount = $("count-stale");
 let open = false;
 let dragging = false;
 let grab = { dx: 0, dy: 0 };
+/** Where the press started, so a click is not mistaken for a zero-distance drag. */
+let pressAt = { x: 0, y: 0 };
 let moved = false;
 let state: PetState = "idle";
 let filter: Filter = "live";
@@ -123,8 +125,9 @@ function gaze(x: number, y: number): void {
 document.addEventListener("mousemove", (e) => {
   gaze(e.clientX, e.clientY);
   if (dragging) {
-    moved = true;
-    window.pet.drag(grab.dx, grab.dy);
+    // Only past the threshold; a press alone jiggles the cursor a pixel or two.
+    if (!moved && isDrag(pressAt.x, pressAt.y, e.screenX, e.screenY)) moved = true;
+    if (moved) window.pet.drag(grab.dx, grab.dy);
   }
   wake();
 });
@@ -135,12 +138,13 @@ hitEl.addEventListener("mousedown", (e) => {
   if (e.button !== 0) return;
   dragging = true;
   moved = false;
+  pressAt = { x: e.screenX, y: e.screenY };
   grab = { dx: e.screenX - window.screenX, dy: e.screenY - window.screenY };
   petEl.dataset.dragging = "true";
   petEl.dataset.press = "true";
 });
 
-window.addEventListener("mouseup", () => {
+function endDrag(): void {
   if (!dragging) return;
   dragging = false;
   delete petEl.dataset.dragging;
@@ -152,6 +156,15 @@ window.addEventListener("mouseup", () => {
     pop();
     setOpen(!open);
   }
+}
+
+window.addEventListener("mouseup", endDrag);
+// A release outside the window never reaches us as mouseup. Without this the
+// drag would never end: the overlay would stay permanently interactive and eat
+// every click in that corner of the screen.
+window.addEventListener("blur", endDrag);
+document.addEventListener("mouseleave", () => {
+  if (dragging && moved) endDrag();
 });
 
 hitEl.addEventListener("contextmenu", (e) => {
@@ -221,12 +234,14 @@ window.setInterval(() => {
  * Rev end up.
  */
 function drawThread(): void {
-  const p = panelEl.getBoundingClientRect();
+  // offset* rather than getBoundingClientRect: the panel is mid-transform while
+  // it opens, so its client rect is wherever the animation currently has it.
+  // The thread has to target where the panel will come to rest.
+  const x2 = panelEl.offsetLeft + panelEl.offsetWidth - 26;
+  const y2 = panelEl.offsetTop + panelEl.offsetHeight;
   const r = petEl.getBoundingClientRect();
   const x1 = r.left + r.width * 0.5;
   const y1 = r.top + r.height * 0.18;
-  const x2 = p.right - 26;
-  const y2 = p.bottom;
   const d = `M${x1} ${y1} C ${x1} ${y1 - 30}, ${x2} ${y2 + 34}, ${x2} ${y2}`;
   threadPath.setAttribute("d", d);
   const len = threadPath.getTotalLength();

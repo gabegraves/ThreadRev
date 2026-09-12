@@ -4,6 +4,8 @@ import assert from "node:assert/strict";
 import {
   applyFilter,
   clampOrigin,
+  cleanFeed,
+  cleanFinding,
   formatValue,
   rectContains,
   shouldCapture,
@@ -92,4 +94,98 @@ test("unreadCount ignores stale cards and anything already seen", () => {
   // A superseded card is not news; badging it would train the user to ignore
   // the badge.
   assert.equal(unreadCount(FINDINGS, new Set(["a", "c"])), 0);
+});
+
+/* ----------------------------------------------------------- feed input --- */
+
+const GOOD = {
+  finding_id: "f1",
+  status: "live",
+  discrepancy: "Section 3 says 680 uF.",
+  why_it_matters: "The relay closes early.",
+  resolution: "Confirm the bus.",
+  requirements_revision: "r2",
+  sources: [{ kind: "document", id: "doc.docx", revision: "r2" }],
+  reproduced: [{ label: "t", printed: 2.435, computed: 2.2077, unit: "s", matches: false }],
+};
+
+test("cleanFeed accepts a well-formed response", () => {
+  const feed = cleanFeed({ findings: [GOOD], phase: "checking", revision: "r2" });
+  assert.equal(feed.findings.length, 1);
+  assert.equal(feed.phase, "checking");
+  assert.equal(feed.revision, "r2");
+  assert.equal(feed.findings[0].reproduced[0].computed, 2.2077);
+});
+
+test("cleanFeed survives junk instead of a response", () => {
+  // An error page, a half-written file, or an older reviewer all land here.
+  for (const junk of [null, undefined, 42, "nope", [], { findings: "no" }]) {
+    assert.deepEqual(cleanFeed(junk).findings, []);
+  }
+});
+
+test("cleanFeed keeps the good findings and drops only the broken one", () => {
+  // The point of coercing rather than throwing: nine good findings still show.
+  const feed = cleanFeed({
+    findings: [GOOD, { status: "live" }, null, { ...GOOD, finding_id: "f2" }],
+  });
+  assert.deepEqual(feed.findings.map((f) => f.finding_id), ["f1", "f2"]);
+});
+
+test("a finding missing reproduced or sources still renders", () => {
+  // This is what used to throw inside the render loop and blank the panel.
+  const f = cleanFinding({ finding_id: "x", discrepancy: "d" });
+  assert.ok(f);
+  assert.deepEqual(f.reproduced, []);
+  assert.deepEqual(f.sources, []);
+  assert.deepEqual(f.inferred, []);
+  assert.equal(f.status, "live");
+  assert.equal(f.requirements_revision, "—");
+});
+
+test("an unknown status is treated as live, never dropped", () => {
+  // Silently hiding a finding is worse than showing it under the wrong tab.
+  assert.equal(cleanFinding({ ...GOOD, status: "banana" })?.status, "live");
+});
+
+test("rows without a computed value are dropped", () => {
+  // The table exists to put a recomputed number beside the printed one.
+  const f = cleanFinding({
+    ...GOOD,
+    reproduced: [{ label: "a", printed: 1 }, { label: "b", computed: 2, unit: "s" }],
+  });
+  assert.deepEqual(f?.reproduced.map((r) => r.label), ["b"]);
+});
+
+test("non-finite numbers are rejected rather than formatted into nonsense", () => {
+  const f = cleanFinding({
+    ...GOOD,
+    reproduced: [
+      { label: "inf", computed: Infinity, unit: "s" },
+      { label: "nan", computed: 0, printed: NaN, unit: "s" },
+    ],
+  });
+  assert.deepEqual(f?.reproduced.map((r) => r.label), ["nan"]);
+  assert.equal(f?.reproduced[0].printed, undefined);
+});
+
+test("oversized text is truncated instead of wedging the panel", () => {
+  const f = cleanFinding({ ...GOOD, discrepancy: "x".repeat(50_000) });
+  assert.ok(f);
+  assert.ok(f.discrepancy.length <= 2000);
+  assert.ok(f.discrepancy.endsWith("…"));
+});
+
+test("a flood of findings is capped", () => {
+  const many = Array.from({ length: 5000 }, (_, i) => ({ ...GOOD, finding_id: `f${i}` }));
+  assert.equal(cleanFeed({ findings: many }).findings.length, 100);
+});
+
+test("duplicate ids are collapsed so the badge cannot lie", () => {
+  const feed = cleanFeed({ findings: [GOOD, { ...GOOD, discrepancy: "other" }] });
+  assert.equal(feed.findings.length, 1);
+});
+
+test("an unknown phase is ignored rather than pinning a bogus state", () => {
+  assert.equal(cleanFeed({ findings: [], phase: "hacking" }).phase, undefined);
 });
