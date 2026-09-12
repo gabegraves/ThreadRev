@@ -60,5 +60,5 @@ if (status.overall !== "online") {
 const port = Number(process.env.PORT ?? 3000);
 server.listen(port, () => {
   console.log(`\n  ✓ Channel "${process.env.CHANNEL_CODE}" online — listening on :${port}`);
-  console.log(`    Invite the bot to a channel (/invite @yourbot), then @-mention it.\n`);
+  console.log(`    Invite the bot to a channel (/invite @Rev), then @-mention it.\n`);
 });

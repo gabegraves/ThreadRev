@@ -112,7 +112,7 @@ export function renderFindingCard(f: Finding) {
 export function reviewerWelcome(platform: string) {
   return (
     <Message accent="#8A5C10">
-      <Header>ThreadRev is in this channel</Header>
+      <Header>Rev is in this channel</Header>
       <Section>
         <Markdown>
           {"I read every message here on " + platform +

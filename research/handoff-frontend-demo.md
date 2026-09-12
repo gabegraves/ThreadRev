@@ -43,7 +43,7 @@ Channel `#ks4-electrical`. Precharge RC timing, `t_99.9 = R * C * 6.907755`, R =
 
 1. Dara Voss posts `precharge-review-r2.docx`: "Dropped one film cap, bus is now 680 uF."
 2. Tam Holloway: "Relay close timer in firmware is 2.5 s, matches the doc."
-3. Juno Marsh, trigger: "@reviewer can you check section 3 of the r2 doc before I sign the review?"
+3. Juno Marsh, trigger: "@Rev can you check section 3 of the r2 doc before I sign the review?"
 4. Card 1: section 3 text says 680 uF, section 2 diagram says 750 uF, printed 2.435 s reproduces only with 750 uF. With 680 uF it is 2.208 s. Section 4 example prints 6.91 s, recomputed 6.493 s. Question to Dara: which capacitance is right.
 5. Dara, requirement change: "Bus is 820 uF, not 680. Doc will be r3."
 6. Card 1 is marked stale in the thread. Card 2: at 820 uF, t_99.9 = 2.662 s, which is later than the 2.5 s relay timer. Bus reaches 99.85 percent at 2.5 s. Firmware timer or resistor must change. Bound to Dara's message, not to a document, because r3 does not exist yet.

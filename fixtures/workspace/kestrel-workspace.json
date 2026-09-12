@@ -364,7 +364,7 @@
     "user": "U00SYN06",
     "user_name": "Juno Marsh",
     "thread_ts": null,
-    "text": "@reviewer can you run the 220 km segment at 22 m/s for end SoC 40 percent? I grabbed the params from the July 3 sheet.",
+    "text": "@Rev can you run the 220 km segment at 22 m/s for end SoC 40 percent? I grabbed the params from the July 3 sheet.",
     "files": [],
     "role": "seed"
   },
@@ -410,7 +410,7 @@
     "user": "U00SYN06",
     "user_name": "Juno Marsh",
     "thread_ts": "1787062320.000100",
-    "text": "@reviewer can you check section 3 of the r2 doc before I sign the review?",
+    "text": "@Rev can you check section 3 of the r2 doc before I sign the review?",
     "files": [],
     "role": "trigger"
   },

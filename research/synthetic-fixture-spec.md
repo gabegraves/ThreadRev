@@ -141,7 +141,7 @@ Script:
 2026-08-18 09:40  Tam Holloway (thread)
   Relay close timer in firmware is 2.5 s, matches the doc.
 2026-08-19 14:05  Juno Marsh (thread)   <-- TRIGGER
-  @reviewer can you check section 3 of the r2 doc before I sign the review?
+  @Rev can you check section 3 of the r2 doc before I sign the review?
 ```
 
 Expected finding card (posted in thread, bound to r2 sha256):
@@ -193,7 +193,7 @@ Script:
 2026-07-24 17:02  Ines Calder (thread)
   Confirmed, corner weights from Tuesday add up to 318 with driver.
 2026-08-11 13:15  Juno Marsh   <-- TRIGGER
-  @reviewer run the Northgate to Ferris segment (220 km, no optional loop), start SoC 96%,
+  @Rev run the Northgate to Ferris segment (220 km, no optional loop), start SoC 96%,
   end SoC 40%, two 20-minute stops, 22 m/s constant. I grabbed the params from the
   July 3 sheet.
 ```

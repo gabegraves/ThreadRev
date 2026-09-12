@@ -30,7 +30,7 @@
           "ts": "2026-08-19T19:05:00.000Z",
           "from": "Juno Marsh",
           "bot": false,
-          "text": "@reviewer can you check section 3 of the r2 doc before I sign the review?",
+          "text": "@Rev can you check section 3 of the r2 doc before I sign the review?",
           "files": []
         }
       ]

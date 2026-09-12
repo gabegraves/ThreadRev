@@ -26,7 +26,7 @@ You are a computer-use agent. Your job is to get ThreadRev posting a real findin
 ## Questions to settle with the human before A2
 
 - Q1. Which Slack workspace and who is admin there? The bot install needs workspace admin approval. Test channel name: `#ks4-electrical` (create it if missing).
-- Q2. Bot display name: `ThreadRev`. Channel name for the CLI: `threadrev`. Confirm or take what the human says.
+- Q2. Bot display name: `Rev` (people type `@Rev`). Channel code for the CLI: `rev`. The project is still ThreadRev; only the bot is Rev.
 - Q3. Whose OpenAI key, and does it have credit? If none, use OpenRouter: set `MODEL_PROVIDER=openrouter`, `OPENROUTER_API_KEY=...`, `MODEL=openai/gpt-5.6-sol`.
 
 ## A1. CopilotKit login and project select
@@ -55,7 +55,7 @@ Fetch and follow `https://copilotkit.ai/channels-guide.md`. Do not substitute re
 ```sh
 npm run channel:setup
 # or by hand:
-npx --yes copilotkit@4.9.60 channels add --name threadrev --display-name "ThreadRev" --adapter slack --json
+npx --yes copilotkit@4.9.60 channels add --name rev --display-name "Rev" --adapter slack --json
 ```
 
 The wizard emits a Slack app manifest already pointed at the managed request URL. Expected human-owned screens in order: Slack "create app from manifest", pick workspace (Q1), "Install to workspace" consent. Stop at each and hand over.
@@ -97,21 +97,21 @@ npm run dev:slack
 Gate: the log prints
 
 ```
-✓ Channel "threadrev" online — listening on :3000
+✓ Channel "rev" online — listening on :3000
 ```
 
 If it prints `Channel is not online:` and exits, paste the JSON status line into your report. That is A2 unfinished.
 
 In Slack, as the human or a test user, in `#ks4-electrical`:
 
-1. `/invite @ThreadRev`. The bot should post its welcome message (`reviewerWelcome` in `apps/channel/src/finding-card.tsx`). Screenshot it. This is proof the socket delivers.
+1. `/invite @Rev`. The bot should post its welcome message (`reviewerWelcome` in `apps/channel/src/finding-card.tsx`). Screenshot it. This is proof the socket delivers.
 2. Post the seed message as a new top-level message, and attach the file `fixtures/documents/precharge-review-r2.docx` from this machine:
    `Precharge board r2 review doc is up. Dropped one film cap, bus is now 680 uF.`
    This message passes the gate ("is now"). The bot may reply in-thread already. That is acceptable; if it posts a card here, note it, but the scripted trigger is step 4.
 3. Reply in that thread:
    `Relay close timer in firmware is 2.5 s, matches the doc.`
 4. Reply in the thread, mentioning the bot:
-   `@ThreadRev can you check section 3 of the r2 doc before I sign the review?`
+   `@Rev can you check section 3 of the r2 doc before I sign the review?`
 5. Wait up to 90 s. Expected Card 1: section 3 says 680 uF, section 2 diagram says 750 uF, printed 2.435 s reproduces only at 750 uF, at 680 uF it is 2.208 s, section 4 prints 6.91 s and recomputes to 6.493 s, question to Dara about which capacitance is right. Reference: `contracts/examples/finding-scenario-a.json`. Screenshot the card.
 6. Reply in the thread:
    `Correction: we are adding a 140 uF snubber bank on the motor controller side. Bus is 820 uF, not 680. Doc will be r3.`

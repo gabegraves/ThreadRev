@@ -78,7 +78,7 @@ The following benchmark size and acceptance targets are planning assumptions, no
 
 **Corpus:** One reproducible export with approximately 1,200 messages across the existing five channels over six months. Include 30–50 deliberately authored causal messages and varied background threads. At least one necessary source must lie beyond 40 plausible matching messages; unrelated filler alone does not make a retrieval benchmark.
 
-**Opening request:** “@reviewer the shock we planned to use is backordered. What options have we already investigated for KS-4, and what still needs checking?” The request gives the job, not the historical route.
+**Opening request:** “@Rev the shock we planned to use is backordered. What options have we already investigated for KS-4, and what still needs checking?” The request gives the job, not the historical route.
 
 **Evidence trail:** Current suspension question → older suspension discussion with a reference → older purchasing thread and replies containing previous candidates → later pre-cutoff replies rejecting an option or leaving a quote unpaid. Use fictional candidate names and values. The linked original is authored as synthetic evidence; it is not reconstructed or represented as a recovered real research source.
 

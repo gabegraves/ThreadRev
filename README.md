@@ -46,7 +46,7 @@ Kestrel Motors is a fictional maker of light electric city vehicles. The KS-4 is
 
 1. Dara posts `precharge-review-r2.docx`: "Dropped one film cap, bus is now 680 uF."
 2. Tam: "Relay close timer in firmware is 2.5 s, matches the doc."
-3. Juno: "@reviewer can you check section 3 of the r2 doc before I sign the review?"
+3. Juno: "@Rev can you check section 3 of the r2 doc before I sign the review?"
 4. **Card 1.** The section 3 text says 680 uF, the section 2 diagram says 750 uF, and the printed 2.435 s only reproduces with 750 uF. At 680 uF it is 2.208 s. The section 4 worked example prints 6.91 s; recomputed, 6.493 s. Question to Dara: which capacitance is right. Card content: [`contracts/examples/finding-scenario-a.json`](contracts/examples/finding-scenario-a.json).
 5. Dara: "Bus is 820 uF, not 680. Doc will be r3."
 6. **Card 1 goes stale. Card 2.** At 820 uF, t_99.9 = 2.662 s, later than the 2.5 s relay timer. The bus reaches 99.85 percent at 2.5 s. The timer or the resistor must change. Bound to Dara's message, because r3 does not exist yet. [`finding-scenario-a-superseding.json`](contracts/examples/finding-scenario-a-superseding.json).

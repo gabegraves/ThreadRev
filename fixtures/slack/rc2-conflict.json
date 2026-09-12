@@ -54,7 +54,7 @@
     "user": "U00SYN06",
     "user_name": "Juno Marsh",
     "thread_ts": null,
-    "text": "@reviewer run the Northgate to Ferris segment (220 km, no optional loop), start SoC 96%, end SoC 40%, two 20-minute stops, 22 m/s constant. I grabbed the params from the July 3 sheet.",
+    "text": "@Rev run the Northgate to Ferris segment (220 km, no optional loop), start SoC 96%, end SoC 40%, two 20-minute stops, 22 m/s constant. I grabbed the params from the July 3 sheet.",
     "files": [],
     "role": "trigger"
   },

@@ -24,7 +24,7 @@ If you need a change outside your lane, write the request to the owner and keep 
 - `main` must pass `npm run verify` at all times. Whoever pushes is responsible for it passing afterward. If it fails because of another lane's files, tell that owner in `STATUS.md`; do not fix their files.
 - Before starting, read `STATUS.md`. When you finish a unit of work, update your lane's line: what you pushed, what you are editing next, what you are blocked on.
 - Never commit `.env`, tokens, screenshots containing secrets, or anything from the private research archive outside this repo. No co-author trailers on commits.
-- The project name is ThreadRev. Do not rename, reorganize, or clean up files outside your lane.
+- The project name is ThreadRev. The bot's Slack name is Rev: people type `@Rev`, the Channel code is `rev`, the welcome card says "Rev is in this channel". Do not rename, reorganize, or clean up files outside your lane.
 - Report only what you verified. Say which command you ran.
 
 ## ThreadRev workspace
