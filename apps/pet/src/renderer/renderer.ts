@@ -72,6 +72,7 @@ const connEl = $("conn");
 const connLabel = $("conn-label");
 const threadEl = $("thread");
 const threadPath = document.getElementById("thread-path") as unknown as SVGPathElement;
+const liveRegion = $("live-region");
 const liveCount = $("count-live");
 const staleCount = $("count-stale");
 
@@ -87,6 +88,12 @@ let findings: PetFinding[] = [];
 let isSample = true;
 let settings: PetSettings = { alwaysOnTop: true, sleepAfterMin: 5, reducedMotion: false };
 let lastActivity = Date.now();
+/**
+ * The OS-level preference. The tray toggle is an override on top of it, so a
+ * user who set reduced motion system-wide gets it without discovering the menu.
+ */
+const osReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+const reducedMotion = (): boolean => settings.reducedMotion || osReducedMotion.matches;
 let seen = new Set<string>();
 /** Set by --state=<name>; freezes the aperture for visual verification. */
 let pinnedState: PetState | null = null;
@@ -205,7 +212,7 @@ function setState(next: PetState): void {
 function scheduleBlink(): void {
   const wait = 2600 + Math.random() * 4200;
   window.setTimeout(() => {
-    if (state !== "asleep" && !settings.reducedMotion) {
+    if (state !== "asleep" && !reducedMotion()) {
       petEl.dataset.blink = "true";
       window.setTimeout(() => delete petEl.dataset.blink, 110);
     }
@@ -251,7 +258,10 @@ function drawThread(): void {
 function setOpen(next: boolean): void {
   open = next;
   panelEl.dataset.open = String(next);
-  panelEl.setAttribute("aria-hidden", String(!next));
+  // `inert` rather than aria-hidden: aria-hidden on a container whose children
+  // are still tabbable is a contradiction, and lets Tab land on invisible
+  // controls. inert removes them from focus and the accessibility tree at once.
+  panelEl.toggleAttribute("inert", !next);
   hitEl.setAttribute("aria-expanded", String(next));
   petEl.dataset.open = String(next);
 
@@ -262,7 +272,8 @@ function setOpen(next: boolean): void {
     // Opening is acknowledgement: clear the unread badge.
     for (const f of findings) seen.add(f.finding_id);
     renderBadge();
-    window.setTimeout(() => $<HTMLButtonElement>("panel-close").focus(), 60);
+    // After the unroll, or focus lands on a control that is still clipped.
+    window.setTimeout(() => $<HTMLButtonElement>("panel-close").focus(), 180);
   } else {
     delete threadEl.dataset.open;
     hitEl.focus();
@@ -276,18 +287,77 @@ $("btn-hide").addEventListener("click", () => {
   window.pet.hide();
 });
 
+/** Controls inside the panel, in DOM order, that can currently take focus. */
+function focusables(): HTMLElement[] {
+  const all = panelEl.querySelectorAll<HTMLElement>(
+    'button:not([disabled]), [href], [tabindex]:not([tabindex="-1"])',
+  );
+  return [...all].filter((node) => node.offsetParent !== null);
+}
+
 document.addEventListener("keydown", (e) => {
   wake();
-  if (e.key === "Escape" && open) setOpen(false);
+  if (!open) return;
+
+  if (e.key === "Escape") {
+    e.preventDefault();
+    setOpen(false);
+    return;
+  }
+
+  // Trap Tab inside the panel. The window is an overlay with nothing else in
+  // it, so tabbing past the panel would otherwise strand focus on nothing.
+  if (e.key === "Tab") {
+    const items = focusables();
+    if (!items.length) return;
+    const first = items[0];
+    const last = items[items.length - 1];
+    const active = document.activeElement as HTMLElement | null;
+    if (e.shiftKey && (active === first || !panelEl.contains(active))) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && active === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  }
 });
 
-for (const tab of document.querySelectorAll<HTMLButtonElement>(".tab")) {
-  tab.addEventListener("click", () => {
-    filter = tab.dataset.filter as Filter;
-    for (const t of document.querySelectorAll(".tab")) {
-      t.setAttribute("aria-selected", String(t === tab));
+const tabEls = [...document.querySelectorAll<HTMLButtonElement>(".tab")];
+
+/**
+ * Roving tabindex: the tablist is one tab stop and the arrows move between the
+ * tabs inside it. That is what role="tablist" promises, and it stops three
+ * filters eating three Tab presses on the way to the findings.
+ */
+function selectTab(tab: HTMLButtonElement, moveFocus = false): void {
+  const next = tab.dataset.filter;
+  if (next !== "live" && next !== "stale" && next !== "all") return;
+  filter = next;
+  for (const t of tabEls) {
+    const on = t === tab;
+    t.setAttribute("aria-selected", String(on));
+    t.tabIndex = on ? 0 : -1;
+  }
+  bodyEl.setAttribute("aria-labelledby", tab.id);
+  if (moveFocus) tab.focus();
+  renderList();
+}
+
+for (const [i, tab] of tabEls.entries()) {
+  tab.addEventListener("click", () => selectTab(tab));
+  tab.addEventListener("keydown", (e) => {
+    const delta = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
+    if (delta !== 0) {
+      e.preventDefault();
+      selectTab(tabEls[(i + delta + tabEls.length) % tabEls.length], true);
+    } else if (e.key === "Home") {
+      e.preventDefault();
+      selectTab(tabEls[0], true);
+    } else if (e.key === "End") {
+      e.preventDefault();
+      selectTab(tabEls[tabEls.length - 1], true);
     }
-    renderList();
   });
 }
 
@@ -306,29 +376,47 @@ function el<K extends keyof HTMLElementTagNameMap>(
 
 function reproTable(rows: Reproduced[]): HTMLElement {
   const table = el("table", "repro");
+  table.append(el("caption", "sr-only", "Values the checker recomputed"));
+
+  const thead = el("thead");
   const head = el("tr");
   for (const [label, cls] of [
-    ["", ""],
+    ["value", ""],
     ["printed", ""],
     ["computed", ""],
-    ["", "repro__flag"],
+    ["reproduces", "repro__flag"],
   ] as const) {
     const th = el("th", cls || undefined, label);
+    th.setAttribute("scope", "col");
+    // First and last headers are for screen readers only: on screen the columns
+    // are self-evident and the labels would crowd a 348px panel.
+    if (label === "value" || label === "reproduces") th.classList.add("sr-only");
     head.append(th);
   }
-  table.append(head);
+  thead.append(head);
+  table.append(thead);
+
+  const tbody = el("tbody");
 
   for (const r of rows) {
     const tr = el("tr");
     if (r.matches !== undefined) tr.dataset.match = String(r.matches);
-    tr.append(el("td", undefined, r.label));
+    const rowHead = el("th", undefined, r.label);
+    rowHead.setAttribute("scope", "row");
+    tr.append(rowHead);
     tr.append(el("td", undefined, r.printed === undefined ? "—" : formatValue(r.printed)));
     tr.append(el("td", undefined, `${formatValue(r.computed)}${r.unit ? ` ${r.unit}` : ""}`));
     const flag = el("td", "repro__flag");
+    // The glyph is decorative; the word is what a screen reader should read.
     flag.textContent = r.matches === undefined ? "" : r.matches ? "✓" : "✗";
+    flag.setAttribute("aria-hidden", "true");
     tr.append(flag);
-    table.append(tr);
+    if (r.matches !== undefined) {
+      tr.append(el("td", "sr-only", r.matches ? "reproduces" : "does not reproduce"));
+    }
+    tbody.append(tr);
   }
+  table.append(tbody);
   return table;
 }
 
@@ -338,6 +426,16 @@ function section(label: string, node: Node): HTMLElement {
   return wrap;
 }
 
+/**
+ * Expand or collapse one card, keeping the visual state and the announced state
+ * in step. They were set in two different places before, so the first card —
+ * opened by default — reported itself collapsed until it had been clicked twice.
+ */
+function setCardExpanded(card: HTMLElement, expanded: boolean): void {
+  card.dataset.expanded = String(expanded);
+  card.querySelector(".finding__top")?.setAttribute("aria-expanded", String(expanded));
+}
+
 function findingNode(f: PetFinding, i: number): HTMLElement {
   const card = el("article", "finding");
   card.dataset.status = f.status;
@@ -345,6 +443,8 @@ function findingNode(f: PetFinding, i: number): HTMLElement {
 
   const top = el("button", "finding__top");
   top.type = "button";
+  top.id = `fh-${f.finding_id}`;
+  top.setAttribute("aria-expanded", "false");
   top.append(el("p", "finding__what", f.discrepancy));
 
   const caret = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -356,6 +456,10 @@ function findingNode(f: PetFinding, i: number): HTMLElement {
   top.append(caret);
 
   const detail = el("div", "finding__detail");
+  detail.id = `fd-${f.finding_id}`;
+  detail.setAttribute("role", "region");
+  detail.setAttribute("aria-labelledby", top.id);
+  top.setAttribute("aria-controls", detail.id);
   const inner = el("div", "finding__inner");
   const pad = el("div", "finding__pad");
 
@@ -367,14 +471,19 @@ function findingNode(f: PetFinding, i: number): HTMLElement {
   );
 
   if (f.reproduced.length) {
-    pad.append(section("Reproduced by the checker", reproTable(f.reproduced)));
+    const scroll = el("div", "repro__scroll");
+    scroll.append(reproTable(f.reproduced));
+    pad.append(section("Reproduced by the checker", scroll));
   }
 
   if (f.sources.length) {
     const list = el("div");
     for (const s of f.sources) {
       const row = el("div", "source");
-      row.append(el("span", "source__id", s.id));
+      const id = el("span", "source__id", s.id);
+      // The id is ellipsised to fit; the full value has to stay reachable.
+      id.title = s.id;
+      row.append(id);
       const meta = [s.revision, s.locator, s.sha256?.slice(0, 8)].filter(Boolean).join(" · ");
       row.append(el("span", "source__meta", meta));
       list.append(row);
@@ -401,10 +510,7 @@ function findingNode(f: PetFinding, i: number): HTMLElement {
   detail.append(inner);
   card.append(top, detail);
 
-  top.addEventListener("click", () => {
-    const expanded = card.dataset.expanded === "true";
-    card.dataset.expanded = String(!expanded);
-  });
+  top.addEventListener("click", () => setCardExpanded(card, card.dataset.expanded !== "true"));
 
   return card;
 }
@@ -416,22 +522,52 @@ function renderEmpty(title: string, detail: string): void {
   bodyEl.replaceChildren(box);
 }
 
+let everConnected = false;
+let lastAnnounced = "";
+
+/**
+ * Announce what the panel now shows.
+ *
+ * Deduplicated: the feed polls every 3s and re-announcing an unchanged count
+ * would make the panel unusable with a screen reader running.
+ */
+function announce(message: string): void {
+  if (message === lastAnnounced) return;
+  lastAnnounced = message;
+  liveRegion.textContent = message;
+}
+
 function renderList(): void {
   const shown = applyFilter(findings, filter);
 
+  announce(
+    shown.length === 0
+      ? `No ${filter === "all" ? "" : filter} findings.`
+      : `${shown.length} ${filter === "all" ? "" : filter} finding${shown.length === 1 ? "" : "s"}.`,
+  );
+
   if (!shown.length) {
-    renderEmpty(
-      filter === "stale" ? "No superseded cards" : "Nothing to flag",
-      filter === "stale"
-        ? "Cards move here when a later revision invalidates them."
-        : "Rev is watching the thread. It speaks up when a number stops reproducing.",
-    );
+    if (filter === "stale") {
+      renderEmpty(
+        "No superseded cards",
+        "Cards move here when a later revision invalidates them.",
+      );
+    } else if (!everConnected) {
+      // Saying "nothing to flag" before the reviewer has ever answered would
+      // claim a clean result that nobody has actually computed.
+      renderEmpty("Not connected", "Waiting for the reviewer to answer.");
+    } else {
+      renderEmpty(
+        "Nothing to flag",
+        "Rev is watching the thread. It speaks up when a number stops reproducing.",
+      );
+    }
     return;
   }
   bodyEl.replaceChildren(...shown.map(findingNode));
   // First card opens by default; the rest stay collapsed.
   const first = bodyEl.firstElementChild as HTMLElement | null;
-  if (first) first.dataset.expanded = "true";
+  if (first) setCardExpanded(first, true);
 }
 
 function renderBadge(): void {
@@ -453,11 +589,13 @@ function render(conn: Connection): void {
 
   if (conn.kind === "offline") {
     findings = SAMPLE;
+    everConnected = false;
     connEl.dataset.state = "offline";
     connLabel.textContent = "sample data — reviewer offline";
     revChip.textContent = "sample";
     petRev.textContent = "r?";
   } else {
+    everConnected = true;
     findings = conn.feed.findings;
     connEl.dataset.state = "connected";
     connLabel.textContent = "connected to reviewer";
@@ -485,10 +623,16 @@ function render(conn: Connection): void {
 
 /* ----------------------------------------------------------------- boot --- */
 
+function applyMotionPreference(): void {
+  document.body.dataset.reducedMotion = String(reducedMotion());
+}
+
 window.pet.onSettings((s) => {
   settings = s;
-  document.body.dataset.reducedMotion = String(s.reducedMotion);
+  applyMotionPreference();
 });
+osReducedMotion.addEventListener("change", applyMotionPreference);
+applyMotionPreference();
 
 publishRegions();
 // Rev bleeds past the corner and shifts on hover, so republish as it settles.

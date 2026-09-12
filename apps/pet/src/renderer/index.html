@@ -17,7 +17,8 @@
         class="panel"
         role="dialog"
         aria-label="ThreadRev findings"
-        aria-hidden="true"
+        aria-modal="true"
+        inert
       >
         <header class="panel__head">
           <span class="mark" aria-hidden="true">
@@ -28,9 +29,13 @@
           </span>
           <div class="panel__ident">
             <span class="panel__name">Rev</span>
-            <span id="panel-sub" class="panel__sub">watching</span>
+            <span id="panel-sub" class="panel__sub" role="status" aria-live="polite">watching</span>
           </div>
-          <span id="rev-chip" class="chip chip--rev" title="Revision these findings are bound to">
+          <span
+            id="rev-chip"
+            class="chip chip--rev"
+            title="Revision these findings are bound to"
+          >
             —
           </span>
           <button id="panel-close" class="icon-btn" type="button" aria-label="Close panel">
@@ -40,26 +45,71 @@
           </button>
         </header>
 
-        <nav class="tabs" role="tablist" aria-label="Filter findings">
-          <button class="tab" role="tab" data-filter="live" aria-selected="true">
+        <div class="tabs" role="tablist" aria-label="Filter findings">
+          <button
+            class="tab"
+            role="tab"
+            id="tab-live"
+            data-filter="live"
+            aria-selected="true"
+            aria-controls="panel-body"
+            tabindex="0"
+          >
             Live <span id="count-live" class="tab__n">0</span>
           </button>
-          <button class="tab" role="tab" data-filter="stale" aria-selected="false">
+          <button
+            class="tab"
+            role="tab"
+            id="tab-stale"
+            data-filter="stale"
+            aria-selected="false"
+            aria-controls="panel-body"
+            tabindex="-1"
+          >
             Stale <span id="count-stale" class="tab__n">0</span>
           </button>
-          <button class="tab" role="tab" data-filter="all" aria-selected="false">All</button>
-        </nav>
+          <button
+            class="tab"
+            role="tab"
+            id="tab-all"
+            data-filter="all"
+            aria-selected="false"
+            aria-controls="panel-body"
+            tabindex="-1"
+          >
+            All
+          </button>
+        </div>
 
-        <div id="panel-body" class="panel__body" role="tabpanel"></div>
+        <div class="scroller">
+          <div
+            id="panel-body"
+            class="panel__body"
+            role="tabpanel"
+            aria-labelledby="tab-live"
+            tabindex="0"
+          ></div>
+        </div>
 
         <footer class="panel__foot">
           <span id="conn" class="conn" data-state="offline">
             <i class="conn__dot" aria-hidden="true"></i>
             <span id="conn-label">connecting…</span>
           </span>
-          <button id="btn-hide" class="text-btn" type="button">Hide</button>
+          <kbd class="kbd" aria-hidden="true">Esc</kbd>
+          <button
+            id="btn-hide"
+            class="text-btn"
+            type="button"
+            aria-label="Hide Rev. It stays in the system tray."
+            title="Hide Rev (it stays in the tray)"
+          >
+            Hide
+          </button>
         </footer>
       </section>
+
+      <p id="live-region" class="sr-only" role="status" aria-live="polite"></p>
 
       <!-- Rev. A revision stamp with an aperture for a face. -->
       <div id="pet" class="pet" data-state="idle">
@@ -68,7 +118,6 @@
           class="pet__hit"
           type="button"
           aria-expanded="false"
-          aria-controls="panel"
           aria-label="Rev. Open findings."
         >
           <svg class="pet__svg" viewBox="0 0 140 164" aria-hidden="true">
