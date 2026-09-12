@@ -13,7 +13,7 @@ Slack keeps the conversation. ThreadRev keeps the decision, what it was decided 
 
 <sub>Web review console, Scenario A sample. The Slack card is the product; this view reads the same evidence log.</sub>
 
-[What it does](#what-it-does) · [Demo](#the-demo-scenario-a) · [How it works](#how-it-works) · [Versus Slack AI](#what-slack-already-does-and-what-threadrev-adds) · [Why search, not RAG](#why-search-by-identifier-not-rag) · [Status](#status) · [Run it](#run-it) · [Repo map](#repo-map) · [Team](#team-and-working-rules)
+[What it does](#what-it-does) · [Demo](#the-demo-scenario-a) · [How it works](#how-it-works) · [Approval workflow](#approval-workflow-rev-proposes-a-person-approves-rev-writes-a-copy) · [Versus Slack AI](#what-slack-already-does-and-what-threadrev-adds) · [Why search, not RAG](#why-search-by-identifier-not-rag) · [Status](#status) · [Run it](#run-it) · [Repo map](#repo-map) · [Team](#team-and-working-rules)
 
 </div>
 
@@ -88,6 +88,47 @@ Slack thread ──▶ CopilotKit Channels ──▶ review gate (is this a revi
 - **Evidence log and graph** in [`packages/agent-core/src/evidence/`](packages/agent-core/src/evidence/). Every message read, document hashed, checker run, card published, and silence decision is appended as an event. The graph builder turns the log into message, document, run, finding, and revision nodes with a downstream walk, so "what did this change invalidate" is a query.
 - **Replay harness** in [`apps/channel/src/replay/`](apps/channel/src/replay/). Replays a fixture Slack script through the real channel handlers and real checkers offline, with a scripted agent standing in for the model, and asserts the card that gets posted. This is the contract test for the checker-to-card seam and the scorecard for the three replay cases.
 - **Web review console** in [`apps/web/src/components/review-console/`](apps/web/src/components/review-console/), served by [`/api/evidence`](apps/web/src/app/api/evidence/route.ts). A browser view of the thread, the cards, and the evidence graph, polling the live log and falling back to the Scenario A sample. Secondary surface; Slack is the product.
+
+## Approval workflow: Rev proposes, a person approves, Rev writes a copy
+
+Rev never edits a file on its own. When a printed result does not reproduce and the inputs it came from are not in dispute, it proposes the exact replacement and waits.
+
+**1. Rev proposes.** After the finding card, the model calls `propose_edit` with the text to find and the checker's value. The tool refuses any replacement number the checker did not produce, any find text without a number, and any text that does not occur exactly once in the document. If it passes, this card posts in the thread:
+
+```
+Proposed edit: needs approval
+
+precharge-review-r2.docx (r2) · sha b63f3e53bb26
+• section 4, line 13: `t = 6.91 s` → `t = 6.493 s`
+  (printed value does not reproduce at 2 mF; checker gives 6.4933 s)
+
+Replacement values are copied from checker run rc-20260912T180314Z-7f3f.
+Rev only proposes replacing a printed result; it never changes an input
+or a design value.
+
+Nothing has been written. Approve to write the new file; the source
+stays untouched.
+
+[ Approve and write the file ]   [ Reject ]
+```
+
+The model's turn ends there. Rev is waiting on a person.
+
+**2. A person decides.** Reject redraws the card to "rejected by <name>, nothing was written" and records the refusal. Approve redraws it to "approved, writing", then runs [`checkers/apply_docx_edit.py`](checkers/apply_docx_edit.py): stdlib only, reads the docx, applies the replacement inside the document XML, writes a new file next to the original, returns both hashes. The original is never opened for writing.
+
+**3. The card shows the result.**
+
+```
+Proposed edit: applied
+Applied, approved by Juno Marsh. New file `precharge-review-r2-proposed.docx`
+sha 839e48a591bc. Source b63f3e53bb26 untouched.
+```
+
+Three events land in the evidence log, `edit_proposed`, `edit_decided`, `edit_applied`, each carrying the proposal id, the run id, and the hashes. The web console timeline shows them in order.
+
+What cannot happen: a write without a click (the write lives inside the button handler), a number the checker did not produce, a change to an input value or a design choice (those become the question on the finding card), a modified original, or a second decision on the same proposal. In Scenario A the section 3 timing is not proposed because its capacitance is the open question to Dara; only the fixed 2 mF worked example qualifies.
+
+Replay tests cover the proposal card, approval writing the new file with the source hash unchanged, the refused value, and the editor's exactly-once rule: [`apps/channel/src/replay/replay.test.tsx`](apps/channel/src/replay/replay.test.tsx), [`checkers/test_checkers.py`](checkers/test_checkers.py).
 
 ## What Slack already does, and what ThreadRev adds
 

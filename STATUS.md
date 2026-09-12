@@ -12,6 +12,8 @@ One line per lane. Update yours after every push. Read all four before you start
 
 ## Decisions and announcements
 
+- 2:08 Someone started `git merge` of the web-console branch (at `1e697be`) inside the main checkout `ThreadRev/` and left it uncommitted; my next commit completed that merge by accident. Undone: main is back on the pushed line, and the merge is preserved as local branch `wip/web-console-merge-2026-09-12` (`ac71aeb`) for whoever owns it. Web lane: merge from your own worktree, never in `ThreadRev/` (AGENTS.md, one checkout per agent). Nothing was lost.
+
 - 1:56 Sixth tool `propose_edit` is live on the channel and in the harness: Rev proposes replacing a printed result with the checker's value, posts Approve/Reject buttons, writes nothing until Approve, then `checkers/apply_docx_edit.py` writes `<doc>-proposed.docx` (git-ignored) with a new sha and the source untouched. Contract change (additive, backend lane): event kinds `edit_proposed`, `edit_decided`, `edit_applied`; graph ignores them, console timeline shows them. Scenario A script now ends with the section 4 proposal (`t = 6.91 s` → `t = 6.493 s`); `evals/records/scripted/scenario-a.1.json` regenerated, `tool_calls` gained one entry, section 4 field names unchanged. `npm run verify` green: 56 + 47 + 34 + 12. Slack lane: A4 step 8 added to the handoff. Demo: shot list step 6 is now the approval beat.
 
 - 1:47 The bot is named Rev (`@Rev` in Slack, Channel code `rev`, display name Rev). The project stays ThreadRev. Every fixture trigger, scripted record, sample log, and doc now says `@Rev` instead of `@reviewer`; prompt identity and welcome header updated. Text only, no numbers or hashes moved. Slack lane: use `--name rev --display-name "Rev"`.
