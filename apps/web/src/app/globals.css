@@ -1,206 +1,27 @@
-/* ── Token layer ───────────────────────────────────────────────────────────
-   Ported from the Civic design system (github.com/ssamba1/civic,
-   src/app/globals.css). Token NAMES are kept identical to Civic's so a
-   component lifted from that repo resolves here without renaming.
-
-   `:root` is the LIGHT theme; `.dark` overrides only the values that flip.
-   The single source of truth is the `dark` class on <html>, set before first
-   paint by the inline script in app/layout.tsx and kept in sync afterwards by
-   src/lib/theme.ts. One set of rules renders correctly in BOTH themes — there
-   is no second, dark-only stylesheet to keep in step.
-
-   Contrast ratios in the comments below are Civic's, measured against the
-   surfaces named. They survive the port because the surfaces came with them.
-
-   NOT ported from Civic: the pastel accent ramp and the categorical map hues.
-   Both exist to encode chart series and map layers, which this app has none
-   of; they can be lifted from Civic's globals.css if that changes. */
+/* Calm defaults shared by the web example, voice page, and agent cards. */
 :root {
+  --ground: #ededf5;
+  --surface: #fff;
+  --border: #dbdbe5;
+  --text: #010507;
+  --muted: #57575b;
+  --accent: #010507;
   color-scheme: light;
-
-  /* page + text — soft gray canvas, cards sit on it in pure white */
-  --background: #f7f7f8;
-  --foreground: #141415; /* primary text */
-  --subtle: #52525b; /* secondary text */
-  --faint: #67676e; /* tertiary text — holds WCAG AA (>=4.5:1) as 11-13px functional copy on --background, --surface, and the --elevated wash */
-
-  /* surfaces */
-  --surface: #ffffff; /* cards / panels */
-  --elevated: #ededf0; /* raised chips / inset fields */
-  --glass: rgba(255, 255, 255, 0.72); /* sticky chrome */
-
-  /* translucent washes — hover fills + faint raises */
-  --overlay: rgba(0, 0, 0, 0.04);
-  --overlay-strong: rgba(0, 0, 0, 0.07);
-
-  /* hairline borders — crisp enough to edge white cards on the paper-white
-     page, still whisper-quiet */
-  --hairline: rgba(0, 0, 0, 0.08);
-  --hairline-strong: rgba(0, 0, 0, 0.13);
-
-  /* elevation — subtle two-layer float on light (pure hairline borders read
-     flat); popovers float harder */
-  --shadow-card: 0 1px 2px rgba(16, 17, 20, 0.04), 0 2px 8px -2px rgba(16, 17, 20, 0.06);
-  --shadow-pop: 0 12px 32px -8px rgba(0, 0, 0, 0.16), 0 4px 12px rgba(0, 0, 0, 0.08);
-
-  --color-primary: #18181b;
-  --color-primary-hover: #2d2d31;
-  --color-primary-light: rgba(24, 24, 27, 0.08);
-
-  /* Ink accent — the monochrome accent. Grayscale by design; hue is reserved
-     for state only.
-
-     NOTE for this app specifically: CopilotKit v2 also defines `--accent` on
-     `[data-copilotkit]`, where it means a subtle hover SURFACE rather than an
-     ink colour. Inside the chat subtree that declaration shadows this one, so
-     nothing in this stylesheet reads `var(--accent)` — app rules use
-     `--color-primary`, which carries the same value and no collision. The
-     token is still declared here so ported Civic components keep working. */
-  --accent: #18181b;
-  --accent-contrast: #ffffff;
-  --accent-soft: rgba(24, 24, 27, 0.07);
-  --accent-text: #18181b;
-
-  /* Status FILL hues — muted enterprise tones, for dots/bars/pill fills. */
-  --color-success: #3d9a63;
-  --color-warning: #c08a1d;
-  --color-danger: #cc4638;
-
-  /* Status TEXT tokens — kept SEPARATE from the fill hues above. On a
-     near-white surface the saturated fills only reach ~1.7:1 as text, far under
-     the 4.5:1 AA floor, so small status labels use these darkened variants
-     while the dot/bar/pill-fill keeps the bright hue. Flipped in `.dark`. */
-  --status-success-fg: #1a7f37;
-  --status-warning-fg: #7a5c00;
-  --status-danger-fg: #b42318;
-  --status-info-fg: #0a66c2;
-  --status-neutral-fg: #475467;
-
-  /* Status washes — tints of the status hues rather than separate pastels, so
-     a callout or a changed table row tracks its hue in both themes. */
-  --tint-danger: rgba(204, 70, 56, 0.07);
-  --tint-warning: rgba(192, 138, 29, 0.18);
-
-  --color-muted: #86868b;
-
-  --radius-sm: 4px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-xl: 16px; /* panel radius — this app's frame is rounder than Civic's */
-
-  --font-sans: "Plus Jakarta Sans", system-ui, sans-serif;
-  --font-mono: "Spline Sans Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
-
-  /* Same value as --foreground, under a name CopilotKit does not also define.
-     The bridge below needs to hand the chat this app's text colour, and
-     `--foreground: var(--foreground)` would be a self-reference — a custom
-     property cycle, which computes to nothing and silently drops the chat's
-     text colour back to whatever it inherits. */
-  --app-foreground: #141415;
 }
-
-/* DARK theme — overrides only the values that flip. */
-.dark {
-  color-scheme: dark;
-
-  /* Near-black canvas (not pitch black) — cards sit clearly lighter on it, and
-     that card/canvas separation is what gives the theme its structure. */
-  --background: #040406;
-  --foreground: #ffffff;
-  --subtle: #b3b3ba; /* dark surfaces swallow mid-grays, so secondary copy runs one step brighter than the zinc scale suggests */
-  --faint: #95959d; /* >=4.5:1 (AA) as 11-13px copy on both --surface and --background */
-
-  --surface: #0c0c0f;
-  --elevated: #232327;
-  --glass: rgba(7, 7, 10, 0.68);
-
-  --overlay: rgba(255, 255, 255, 0.06);
-  --overlay-strong: rgba(255, 255, 255, 0.11);
-
-  --hairline: rgba(255, 255, 255, 0.12);
-  --hairline-strong: rgba(255, 255, 255, 0.2);
-
-  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --shadow-pop: 0 20px 48px -12px rgba(0, 0, 0, 0.75);
-
-  --color-primary: #f4f4f5;
-  --color-primary-hover: #d4d4d8;
-  --color-primary-light: rgba(255, 255, 255, 0.1);
-
-  /* Ink accent inverted for the dark canvas — near-white, so primary CTAs read
-     as light-on-dark and their label (--accent-contrast) goes near-black. */
-  --accent: #f4f4f5;
-  --accent-contrast: #131316;
-  --accent-soft: rgba(255, 255, 255, 0.09);
-  --accent-text: #f4f4f5;
-
-  /* The bright system hues clear AA as text on the dark surface; info and
-     danger are lifted slightly so they also clear it on the 10-12% pill tint
-     the chips actually render on. */
-  --status-success-fg: #30d158;
-  --status-warning-fg: #ff9f0a;
-  --status-danger-fg: #ff5347;
-  --status-info-fg: #3a97f5;
-  --status-neutral-fg: #98989f;
-
-  --tint-danger: rgba(255, 83, 71, 0.13);
-  --tint-warning: rgba(255, 159, 10, 0.16);
-
-  --app-foreground: #ffffff;
-}
-
-/* ── CopilotKit v2 bridge ──────────────────────────────────────────────────
-   The chat ships its own shadcn-shaped token block scoped to
-   `[data-copilotkit]`, and it already honours an ancestor `.dark` — so the
-   chat follows the toggle out of the box. What it does NOT do is match this
-   palette: its light theme is pure #fff on #fff with a colder border.
-
-   These rules re-point its tokens at the tokens above so the chat reads as one
-   surface with the page. They sit outside any `@layer`, so they win over the
-   package's layered defaults regardless of selector specificity.
-
-   Two of its tokens are false friends and are deliberately NOT set to this
-   app's same-named values: CopilotKit's `--muted` and `--accent` are quiet
-   SURFACES (hover fills, message grounds), not a text grey and an ink colour.
-   They map to --elevated / --overlay here. */
-[data-copilotkit] {
-  --background: var(--surface);
-  --foreground: var(--app-foreground);
-  --card: var(--surface);
-  --card-foreground: var(--app-foreground);
-  --popover: var(--surface);
-  --popover-foreground: var(--app-foreground);
-  --primary: var(--color-primary);
-  --primary-foreground: var(--accent-contrast);
-  --secondary: var(--elevated);
-  --secondary-foreground: var(--app-foreground);
-  --muted: var(--elevated);
-  --muted-foreground: var(--subtle);
-  --accent: var(--overlay);
-  --accent-foreground: var(--app-foreground);
-  --destructive: var(--color-danger);
-  --destructive-foreground: var(--color-danger);
-  --border: var(--hairline);
-  --input: var(--hairline);
-  --ring: var(--color-primary);
-}
-
-/* ── Base ──────────────────────────────────────────────────────────────── */
 * {
   box-sizing: border-box;
 }
 body {
   margin: 0;
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-sans);
+  background: var(--ground);
+  color: var(--text);
+  font-family: "Plus Jakarta Sans", system-ui, sans-serif;
   font-size: 14px;
   line-height: 1.6;
 }
 button,
 input,
-select,
-textarea {
+select {
   font: inherit;
 }
 button,
@@ -211,14 +32,13 @@ select {
 button:focus-visible,
 input:focus-visible,
 select:focus-visible,
-summary:focus-visible,
-textarea:focus-visible {
-  outline: 2px solid var(--color-primary);
+summary:focus-visible {
+  outline: 2px solid var(--accent);
   outline-offset: 3px;
 }
 code,
 time {
-  font-family: var(--font-mono);
+  font-family: "Spline Sans Mono", monospace;
   font-size: 12px;
 }
 h1,
@@ -239,15 +59,9 @@ p {
   gap: 24px;
   margin-bottom: 32px;
 }
-.ck-workspace-actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-shrink: 0;
-}
 .ck-eyebrow {
   font-size: 12px;
-  color: var(--faint);
+  color: var(--muted);
   margin-bottom: 12px;
 }
 .ck-workspace h1 {
@@ -258,16 +72,16 @@ p {
   margin: 0;
 }
 .ck-intro {
-  color: var(--subtle);
+  color: var(--muted);
   margin: 12px 0 0;
 }
 .ck-tag {
   flex-shrink: 0;
   font-size: 12px;
   padding: 4px 10px;
-  border: 1px solid var(--hairline-strong);
+  border: 1px solid var(--border);
   border-radius: 999px;
-  color: var(--subtle);
+  color: var(--muted);
   white-space: nowrap;
 }
 .ck-workspace-grid {
@@ -278,9 +92,8 @@ p {
 }
 .ck-panel {
   background: var(--surface);
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
   padding: 28px;
   min-width: 0;
 }
@@ -289,20 +102,20 @@ p {
   align-items: center;
   gap: 16px;
   padding-bottom: 24px;
-  border-bottom: 1px solid var(--hairline);
+  border-bottom: 1px solid var(--border);
 }
 .ck-incident-picker label {
   font-size: 12px;
-  color: var(--subtle);
+  color: var(--muted);
 }
 .ck-incident-picker select {
   flex: 1;
   min-width: 0;
   max-width: 100%;
-  color: var(--foreground);
-  background: var(--elevated);
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-md);
+  color: var(--text);
+  background: #f7f7f9;
+  border: 1px solid var(--border);
+  border-radius: 8px;
   padding: 10px;
 }
 .ck-detail {
@@ -310,7 +123,7 @@ p {
 }
 .ck-status-label {
   display: inline-block;
-  color: var(--subtle);
+  color: var(--muted);
   font-size: 12px;
   margin-bottom: 12px;
 }
@@ -322,7 +135,7 @@ p {
   margin-bottom: 12px;
 }
 .ck-detail p {
-  color: var(--subtle);
+  color: var(--muted);
   margin-bottom: 16px;
 }
 .ck-more summary {
@@ -342,7 +155,7 @@ p {
   font-size: 12px;
 }
 .ck-detail-facts dt {
-  color: var(--faint);
+  color: var(--muted);
 }
 .ck-detail-facts dd {
   margin: 4px 0 0;
@@ -360,7 +173,7 @@ p {
   font-size: 12px;
 }
 .ck-timeline time {
-  color: var(--faint);
+  color: var(--muted);
   font-size: 10px;
   padding-top: 2px;
 }
@@ -372,7 +185,7 @@ p {
 }
 .ck-followups {
   padding-top: 24px;
-  border-top: 1px solid var(--hairline);
+  border-top: 1px solid var(--border);
 }
 .ck-followups h2,
 .ck-assistant-header h2 {
@@ -394,10 +207,10 @@ p {
   overflow-wrap: anywhere;
 }
 .ck-task-list li + li {
-  border-top: 1px solid var(--hairline);
+  border-top: 1px solid var(--border);
 }
 .ck-empty {
-  color: var(--faint);
+  color: var(--muted);
   font-size: 12px;
   margin-bottom: 16px;
 }
@@ -408,21 +221,21 @@ p {
 .ck-task-form input {
   width: 100%;
   min-width: 0;
-  border: 1px solid var(--hairline);
+  border: 1px solid var(--border);
   background: var(--surface);
-  border-radius: var(--radius-md);
+  border-radius: 8px;
   padding: 10px 12px;
-  color: var(--foreground);
+  color: var(--text);
 }
 .ck-task-form .ck-btn {
   padding: 10px 16px;
-  border-radius: var(--radius-md);
+  border-radius: 8px;
 }
 .ck-local-note,
 .ck-notice {
   font-size: 12px;
   margin: 10px 0 0;
-  color: var(--faint);
+  color: var(--muted);
 }
 .ck-notice:empty {
   margin: 0;
@@ -437,12 +250,12 @@ p {
 }
 .ck-assistant-header {
   padding: 24px 28px;
-  border-bottom: 1px solid var(--hairline);
+  border-bottom: 1px solid var(--border);
 }
 .ck-assistant-header p {
   font-size: 12px;
   margin: 0;
-  color: var(--subtle);
+  color: var(--muted);
 }
 .ck-chat {
   flex: 1;
@@ -465,14 +278,8 @@ p {
   margin: auto;
   padding: 48px 24px;
 }
-.ck-page-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 24px;
-}
 .ck-dek {
-  color: var(--subtle);
+  color: var(--muted);
 }
 @media (max-width: 800px) {
   .ck-workspace {
@@ -516,60 +323,18 @@ p {
   }
 }
 
-/* ── Theme toggle ──────────────────────────────────────────────────────────
-   Civic's toggle shape: an icon-sized ghost button that swaps a sun for a
-   moon. The 44px minimum only applies below the md breakpoint, where the
-   control is a touch target rather than a pointer target. */
-.ck-theme-toggle {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  min-width: 44px;
-  min-height: 44px;
-  flex-shrink: 0;
-  padding: 0;
-  color: var(--subtle);
-  background: transparent;
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-md);
-  transition: background-color 0.2s, color 0.2s, border-color 0.2s;
-}
-@media (min-width: 768px) {
-  .ck-theme-toggle {
-    min-width: 36px;
-    min-height: 36px;
-  }
-}
-.ck-theme-toggle:hover {
-  background: var(--overlay);
-  color: var(--foreground);
-  border-color: var(--hairline-strong);
-}
-.ck-theme-toggle svg {
-  width: 16px;
-  height: 16px;
-  display: block;
-}
-
-/* ── agent-rendered cards ──────────────────────────────────────────────────
-   These render INSIDE the CopilotKit chat, i.e. inside `[data-copilotkit]`.
-   Every colour below must therefore come from a token the bridge above does
-   not repoint — `--surface`, `--subtle`, `--faint`, `--hairline`,
-   `--color-primary` and the status tokens are all safe; `--muted`, `--accent`,
-   `--background` and `--border` are not. */
+/* ── agent-rendered cards ──────────────────────────────────────────────── */
 .ck-card {
   background: var(--surface);
-  border: 1px solid var(--hairline);
-  border-left: 3px solid var(--subtle);
-  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--muted);
+  border-radius: 3px;
   padding: 0.9rem 1rem;
   margin: 0.5rem 0;
   font-size: 0.92rem;
 }
 .ck-card--gate {
-  border-left-color: var(--color-primary);
+  border-left-color: var(--accent);
 }
 .ck-card h3 {
   margin: 0 0 0.4rem;
@@ -577,7 +342,7 @@ p {
 }
 .ck-card p {
   margin: 0 0 0.5rem;
-  color: var(--subtle);
+  color: var(--muted);
 }
 .ck-card p:last-child {
   margin-bottom: 0;
@@ -593,11 +358,11 @@ p {
   margin: 0.6rem 0 0;
 }
 .ck-facts dt {
-  font-family: var(--font-mono);
+  font-family: ui-monospace, monospace;
   font-size: 0.65rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--faint);
+  color: var(--muted);
 }
 .ck-facts dd {
   margin: 0.1rem 0 0;
@@ -605,7 +370,7 @@ p {
 .ck-steps {
   margin: 0.6rem 0 0;
   padding-left: 1.1rem;
-  color: var(--subtle);
+  color: var(--muted);
 }
 
 .ck-scroll {
@@ -620,14 +385,14 @@ p {
 .ck-card td {
   text-align: left;
   padding: 0.4rem 0.6rem;
-  border-bottom: 1px solid var(--hairline);
+  border-bottom: 1px solid var(--border);
 }
 .ck-card th {
-  font-family: var(--font-mono);
+  font-family: ui-monospace, monospace;
   font-size: 0.65rem;
   letter-spacing: 0.09em;
   text-transform: uppercase;
-  color: var(--faint);
+  color: var(--muted);
   font-weight: 500;
 }
 
@@ -642,53 +407,48 @@ p {
   padding: 0.35rem 0.8rem;
   cursor: pointer;
   background: var(--surface);
-  color: var(--foreground);
-  border: 1px solid var(--hairline-strong);
-  border-radius: var(--radius-sm);
-  transition: background-color 0.2s, border-color 0.2s;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 3px;
 }
 .ck-btn:hover {
-  background: var(--overlay);
+  border-color: var(--muted);
 }
 .ck-btn--primary {
-  background: var(--color-primary);
-  border-color: var(--color-primary);
-  color: var(--accent-contrast);
-}
-.ck-btn--primary:hover {
-  background: var(--color-primary-hover);
-  border-color: var(--color-primary-hover);
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
 }
 .ck-btn--tiny {
   font-size: 0.75rem;
   padding: 0.15rem 0.5rem;
 }
 .ck-btn:focus-visible {
-  outline: 2px solid var(--color-primary);
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
 .ck-status {
   align-self: center;
-  font-family: var(--font-mono);
+  font-family: ui-monospace, monospace;
   font-size: 0.7rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--faint);
+  color: var(--muted);
 }
 .ck-status[data-status="live"] {
-  color: var(--status-success-fg);
+  color: #2e7d5b;
 }
 .ck-status[data-status="error"] {
-  color: var(--status-danger-fg);
+  color: var(--accent);
 }
 .ck-transcript {
-  font-family: var(--font-mono);
+  font-family: ui-monospace, monospace;
   font-size: 0.8rem;
   line-height: 1.8;
   background: var(--surface);
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  border-radius: 3px;
   padding: 0.9rem 1rem;
   overflow-x: auto;
   white-space: pre-wrap;
@@ -710,11 +470,11 @@ p {
 .ck-task-form--stacked textarea {
   width: 100%;
   min-width: 0;
-  border: 1px solid var(--hairline);
+  border: 1px solid var(--border);
   background: var(--surface);
-  border-radius: var(--radius-md);
+  border-radius: 8px;
   padding: 10px 12px;
-  color: var(--foreground);
+  color: var(--text);
 }
 .ck-task-form--stacked textarea {
   resize: vertical;
@@ -730,7 +490,7 @@ p {
   margin: 5px 0;
 }
 .ck-muted {
-  color: var(--faint);
+  color: var(--muted);
   font-size: 12px;
 }
 .ck-task-list .ck-muted {
@@ -742,9 +502,9 @@ p {
 }
 .ck-setup-note,
 .ck-approval {
-  background: var(--elevated);
-  border: 1px solid var(--hairline);
-  border-radius: var(--radius-lg);
+  background: #f7f7f9;
+  border: 1px solid var(--border);
+  border-radius: 10px;
   padding: 16px;
   margin: 16px 0;
   overflow-wrap: anywhere;
@@ -764,43 +524,36 @@ p {
   flex-wrap: wrap;
 }
 .ck-error {
-  color: var(--status-danger-fg);
-  background: var(--tint-danger);
+  color: #a12730;
+  background: #fff1f2;
   padding: 12px;
-  border-radius: var(--radius-md);
+  border-radius: 8px;
   font-size: 13px;
   overflow-wrap: anywhere;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .ck-btn,
-  .ck-theme-toggle {
-    transition: none;
-  }
-}
-/* ── ThreadRev review console ─────────────────────────────────────────────
-   The console's own semantics, expressed on top of the token layer. The three
-   card states map onto the shared --status-*-fg tones rather than repeating
-   hexes, so a stale card here is the same amber as a stale label anywhere
-   else, and both flip with the theme.
-
-   The `@media (prefers-color-scheme: dark)` block that used to sit here is
-   gone. It re-declared the six pre-token variables the token layer replaced,
-   and an OS-driven dark mode cannot be overridden by the toggle — the `dark`
-   class on <html> is the single source of truth now. */
+/* ── ThreadRev review console ─────────────────────────────────────────── */
 :root {
-  --tr-live: var(--status-success-fg);
-  --tr-stale: var(--status-warning-fg);
-  --tr-refused: var(--status-danger-fg);
-  /* The one hue the status set does not cover: "this message changed an
-     input". Civic's lavender-strong, which is contrast-tuned per theme. */
-  --tr-change: #6658a2;
-  --tr-node: var(--elevated);
-  --tr-node-text: var(--foreground);
-  --tr-highlight: var(--tint-warning);
+  --tr-live: #1b7f4b;
+  --tr-stale: #b3651b;
+  --tr-refused: #b42323;
+  --tr-change: #7a4bd6;
+  --tr-node: #f3f3f9;
+  --tr-node-text: var(--text);
+  --tr-highlight: #fff2c7;
 }
-.dark {
-  --tr-change: #b7a5ff;
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ground: #101116;
+    --surface: #1a1b22;
+    --border: #2f3040;
+    --text: #ecedf3;
+    --muted: #a3a4b3;
+    --accent: #ecedf3;
+    --tr-node: #23242e;
+    --tr-highlight: #4a3b10;
+    color-scheme: dark;
+  }
 }
 .ck-tr-workspace {
   padding-bottom: 96px;
@@ -831,7 +584,7 @@ p {
   border-radius: 8px;
 }
 .ck-tr-msg:hover {
-  background: var(--overlay);
+  background: color-mix(in srgb, var(--ground) 60%, var(--surface));
 }
 .ck-tr-msg--change {
   border-left: 3px solid var(--tr-change);
@@ -841,13 +594,13 @@ p {
   height: 36px;
   border-radius: 8px;
   background: var(--tr-change);
-  color: var(--accent-contrast);
+  color: #fff;
   display: grid;
   place-items: center;
   font-weight: 600;
 }
 .ck-tr-msg:not(.ck-tr-msg--change) .ck-tr-avatar {
-  background: var(--color-primary);
+  background: var(--muted);
 }
 .ck-tr-msg-head {
   display: flex;
@@ -856,7 +609,7 @@ p {
   flex-wrap: wrap;
 }
 .ck-tr-msg-head time {
-  color: var(--faint);
+  color: var(--muted);
 }
 .ck-tr-msg-body p {
   margin: 2px 0 0;
@@ -889,7 +642,7 @@ p {
   right: -34px;
   transform: rotate(35deg);
   background: var(--tr-stale);
-  color: var(--accent-contrast);
+  color: #fff;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.1em;
@@ -908,7 +661,7 @@ p {
   gap: 12px;
   flex-wrap: wrap;
   padding-left: 8px;
-  border-left: 2px solid var(--hairline);
+  border-left: 2px solid var(--border);
 }
 .ck-tr-repro li[data-match="false"] {
   border-left-color: var(--tr-refused);
@@ -923,42 +676,28 @@ p {
   left: 48px;
   width: min(560px, calc(100vw - 64px));
   background: var(--surface);
-  border: 1px solid var(--hairline);
+  border: 1px solid var(--border);
   border-radius: 10px;
   padding: 12px;
-  box-shadow: var(--shadow-pop);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
 }
 .ck-tr-popover p {
   margin-bottom: 6px;
 }
 
 /* pill + drawer */
-
-/* The floating cluster: issue pill and theme toggle. It sits above the drawer
-   (z-40 over z-30) because the drawer is a fixed overlay down the whole right
-   edge — anything left in the page header is covered, and unclickable, for as
-   long as the drawer is open. */
-.ck-tr-float {
+.ck-tr-pill {
   position: fixed;
   right: 20px;
   bottom: 20px;
   z-index: 40;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.ck-tr-float .ck-theme-toggle {
-  background: var(--surface);
-  box-shadow: var(--shadow-pop);
-}
-.ck-tr-pill {
-  border: 1px solid var(--hairline);
-  background: var(--color-primary);
-  color: var(--accent-contrast);
+  border: 1px solid var(--border);
+  background: var(--accent);
+  color: var(--ground);
   border-radius: 999px;
   padding: 10px 18px;
   font-weight: 600;
-  box-shadow: var(--shadow-pop);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
 }
 .ck-tr-drawer {
   position: fixed;
@@ -969,7 +708,7 @@ p {
   max-width: 100vw;
   z-index: 30;
   background: var(--surface);
-  border-left: 1px solid var(--hairline);
+  border-left: 1px solid var(--border);
   display: flex;
   flex-direction: column;
   transform: translateX(100%);
@@ -985,7 +724,7 @@ p {
   justify-content: space-between;
   gap: 8px;
   padding: 12px 16px;
-  border-bottom: 1px solid var(--hairline);
+  border-bottom: 1px solid var(--border);
 }
 .ck-tr-tabs {
   display: flex;
@@ -994,14 +733,14 @@ p {
 .ck-tr-tabs button {
   border: 0;
   background: transparent;
-  color: var(--subtle);
+  color: var(--muted);
   padding: 6px 10px;
   border-radius: 6px;
   font-weight: 600;
 }
 .ck-tr-tabs button.is-active {
-  background: var(--accent-soft);
-  color: var(--accent-text);
+  background: var(--ground);
+  color: var(--text);
 }
 .ck-tr-drawer-body {
   flex: 1;
@@ -1027,7 +766,7 @@ p {
   gap: 12px;
 }
 .ck-tr-issue {
-  border: 1px solid var(--hairline);
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 10px 12px;
 }
@@ -1051,8 +790,8 @@ p {
   text-transform: uppercase;
   border-radius: 999px;
   padding: 1px 8px;
-  border: 1px solid var(--hairline);
-  color: var(--subtle);
+  border: 1px solid var(--border);
+  color: var(--muted);
   white-space: nowrap;
 }
 .ck-tr-status[data-status="live"] {
@@ -1077,8 +816,8 @@ p {
 .ck-tr-sources blockquote {
   margin: 4px 0 0;
   padding-left: 8px;
-  border-left: 2px solid var(--hairline);
-  color: var(--subtle);
+  border-left: 2px solid var(--border);
+  color: var(--muted);
 }
 .ck-tr-diff h3 {
   font-size: 14px;
@@ -1094,11 +833,11 @@ p {
   text-align: left;
   vertical-align: top;
   padding: 6px 8px;
-  border-top: 1px solid var(--hairline);
+  border-top: 1px solid var(--border);
 }
 .ck-tr-diff-table thead th {
   border-top: 0;
-  color: var(--subtle);
+  color: var(--muted);
   font-weight: 600;
 }
 .ck-tr-diff-table tbody th {
@@ -1123,14 +862,14 @@ p {
 }
 .ck-tr-run-pick select {
   flex: 1;
-  border: 1px solid var(--hairline);
+  border: 1px solid var(--border);
   border-radius: 6px;
   padding: 4px 8px;
   background: var(--surface);
-  color: var(--foreground);
+  color: var(--text);
 }
 .ck-tr-timeline li {
-  border-left: 2px solid var(--hairline);
+  border-left: 2px solid var(--border);
   padding-left: 12px;
 }
 .ck-tr-timeline li[data-kind="trigger"] {
@@ -1152,7 +891,7 @@ p {
   margin-top: 6px;
 }
 .ck-tr-chip {
-  font-family: var(--font-mono);
+  font-family: "Spline Sans Mono", monospace;
   font-size: 11px;
   border-radius: 999px;
   padding: 1px 8px;
@@ -1165,9 +904,9 @@ p {
 }
 .ck-tr-graph {
   position: relative;
-  border: 1px solid var(--hairline);
+  border: 1px solid var(--border);
   border-radius: 8px;
-  background: var(--background);
+  background: var(--ground);
   overflow: hidden;
 }
 .ck-tr-graph svg {
@@ -1175,18 +914,18 @@ p {
 }
 .ck-tr-graph-col {
   font-size: 10px;
-  fill: var(--faint);
+  fill: var(--muted);
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
 .ck-tr-edge line {
-  stroke: var(--hairline-strong);
+  stroke: var(--muted);
   stroke-width: 1;
   opacity: 0.6;
 }
 .ck-tr-edge text {
   font-size: 8px;
-  fill: var(--faint);
+  fill: var(--muted);
 }
 .ck-tr-edge.is-lit line {
   stroke: var(--tr-change);
@@ -1201,7 +940,7 @@ p {
 }
 .ck-tr-node rect {
   fill: var(--tr-node);
-  stroke: var(--hairline-strong);
+  stroke: var(--muted);
   stroke-width: 1.2;
 }
 .ck-tr-node text {
@@ -1231,7 +970,7 @@ p {
   outline: none;
 }
 .ck-tr-node:focus-visible rect {
-  stroke: var(--color-primary);
+  stroke: var(--accent);
   stroke-width: 2;
 }
 .ck-tr-hovercard {
@@ -1242,10 +981,10 @@ p {
   max-height: 60%;
   overflow: auto;
   background: var(--surface);
-  border: 1px solid var(--hairline);
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 10px 12px;
-  box-shadow: var(--shadow-pop);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
 }
 .ck-tr-hovercard header {
   display: flex;
@@ -1272,7 +1011,7 @@ p {
   .ck-tr-popover {
     left: 0;
   }
-  .ck-tr-float {
+  .ck-tr-pill {
     right: 12px;
     bottom: 12px;
   }

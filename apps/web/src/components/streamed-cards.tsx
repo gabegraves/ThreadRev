@@ -15,17 +15,7 @@ export interface TimelineProps {
   rows?: Array<Array<string | null> | null> | null;
 }
 
-// These cards render INSIDE the CopilotKit chat, which declares its own
-// `--muted` and `--accent` on `[data-copilotkit]` — both quiet surfaces there,
-// not a text grey and an ink colour. Reading either from in here picks up the
-// chat's near-white values and the stripe disappears. The tokens below are the
-// ones app/globals.css owns outright, so they resolve the same everywhere and
-// flip correctly between light and dark.
-const toneColor = {
-  neutral: "var(--subtle)",
-  good: "var(--status-success-fg)",
-  attention: "var(--status-warning-fg)",
-} as const;
+const toneColor = { neutral: "var(--muted)", good: "#2e7d5b", attention: "var(--accent)" } as const;
 
 export function IncidentCard({ headline, summary, facts, nextSteps, tone }: IncidentCardProps) {
   const color = tone === "good" || tone === "attention" ? toneColor[tone] : toneColor.neutral;

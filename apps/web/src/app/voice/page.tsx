@@ -17,7 +17,6 @@ import { useCallback, useRef, useState } from "react";
 import { RealtimeAgent, RealtimeSession, tool } from "@openai/agents/realtime";
 import { SYSTEM_PROMPT, searchWebParameters } from "agent-core/shared";
 import { REALTIME_MODEL } from "@/lib/realtime-config";
-import { ThemeToggle } from "@/components/theme-toggle";
 
 type Status = "idle" | "connecting" | "live" | "error";
 
@@ -112,13 +111,8 @@ export default function VoicePage() {
 
   return (
     <main className="ck-page">
-      <div className="ck-page-header">
-        <div>
-          <p className="ck-eyebrow">In the room</p>
-          <h1>Talk to it.</h1>
-        </div>
-        <ThemeToggle />
-      </div>
+      <p className="ck-eyebrow">In the room</p>
+      <h1>Talk to it.</h1>
       <p className="ck-dek">
         WebRTC straight from this browser to OpenAI Realtime, on <code>{REALTIME_MODEL}</code>. Same
         prompt and same web-search capability as the Slack and web surfaces — only the transport
