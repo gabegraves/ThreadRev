@@ -277,4 +277,42 @@ it("propose_edit refuses a replacement value the checker did not produce", { tim
   const refusal = result.agentMessages.find((m) => m.role === "tool" && String(m.content).includes('"proposed":false'));
   assert.ok(refusal, "expected a refusal from propose_edit");
   assert.match(String(refusal.content), /7\.0.*not a value from run/);
+
+/**
+ * Live/fixture divergence guard.
+ *
+ * The revision tracker once compared Slack ts strings with Number(), which
+ * silently returned -1 for every message on a managed transcript because those
+ * carry ISO occurredAt instead. Fixtures used numeric ts, so the whole suite
+ * stayed green while revision detection was dead on the live path.
+ *
+ * These assert on the fields the reviewer actually reads off a transcript, so
+ * the next shape difference fails here rather than in front of a judge.
+ */
+it("author identity survives the managed transcript", { timeout: 20_000 }, async () => {
+  const messages = loadFixture("scenario-a");
+  let seen: Array<{ ts?: string; from?: string; bot?: boolean; text?: string }> = [];
+  await runReplay({
+    messages,
+    steps: [
+      () => readThread,
+      (ctx) => {
+        seen = ctx.results[0] as typeof seen;
+        return undefined;
+      },
+    ],
+  });
+
+  assert.ok(Array.isArray(seen) && seen.length > 0, "read_thread returned no messages");
+  const humans = seen.filter((m) => !m.bot);
+  assert.ok(humans.length > 0, "no human messages came through");
+  for (const m of humans) {
+    assert.ok(m.ts, "every message must carry a ts the revision tracker can order");
+    assert.notEqual(
+      m.from,
+      "unknown",
+      `author fell back to "unknown" — the transcript's user shape is not the one read_thread reads`,
+    );
+    assert.ok(typeof m.text === "string", "message text must survive as a string");
+  }
 });
