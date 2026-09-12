@@ -56,6 +56,15 @@ export const finding = z.object({
   status: z.enum(["live", "stale"]),
   /** finding_id of the card this one replaces, if any. */
   supersedes: z.string().optional(),
+  /**
+   * Why the replaced card stopped being true, in a sentence a person can read.
+   *
+   * `supersedes` names the dependency but only an id can see it. The whole
+   * claim this reviewer makes is that it knows which earlier conclusion a new
+   * message broke, so the card has to say that in words. Written by
+   * publish_result from the thread, never by the model.
+   */
+  supersedes_reason: z.string().max(400).optional(),
   /** Slack ts or document revision the finding was computed against. */
   requirements_revision: z.string().min(1),
   /** "none" is a valid, expected answer for a clean control. */

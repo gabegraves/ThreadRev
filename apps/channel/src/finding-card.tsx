@@ -70,6 +70,9 @@ export function renderFindingCard(f: Finding) {
           {`This card was computed against revision ${f.requirements_revision} and has been superseded. Kept for the record; do not act on it.`}
         </Context>
       )}
+      {!stale && f.supersedes_reason && (
+        <Context>{f.supersedes_reason}</Context>
+      )}
       <Section>
         <Markdown>{f.discrepancy === "none" ? "*No discrepancy found.*" : `*${f.discrepancy}*`}</Markdown>
       </Section>
