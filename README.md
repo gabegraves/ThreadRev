@@ -28,6 +28,12 @@ Built on September 12, 2026 at the [Agents, Everywhere](https://aitinkerers.org/
 | **Checker-backed numbers; no autonomous write** | *Reproduced by checker* rows are copied from a named run; a document edit is proposed, then a person approves a new copy. | Replay-verified. The original document remains untouched. |
 | **Explore the evidence** | The deployed console shows the decision lifecycle, checker runs, and provenance. | Fixture-backed viewer, not proof of a live Slack session. [Open it.](https://threadrev-web.vercel.app/analytics) |
 
+## Rev in the engineering thread
+
+[![Synthetic Slack-style replay: the Scenario A engineering thread and Rev's checker-backed review card](assets/demo/slack-fixture-replay.svg)](fixtures/slack/scenario-a.json)
+
+**Fixture replay — not a screenshot.** This reconstruction uses the exact Scenario A messages, document values, checker results, and review question. It shows the experience the project is designed around: a decision stays where the team made it, with the source conflict, reproduced values, revision, and human question all in the thread.
+
 ## See the decision lifecycle
 
 [![ThreadRev analytics dashboard: supersession rate, time to supersede, checker-failure mix, and workflow pipeline](assets/demo/threadrev-analytics.png)](https://threadrev-web.vercel.app/analytics)
