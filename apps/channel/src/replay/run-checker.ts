@@ -25,6 +25,27 @@ export interface RunCheckerOptions {
   timeoutMs?: number;
 }
 
+/**
+ * The environment a checker runs in.
+ *
+ * A checker is untrusted-adjacent by design: it exists so the model cannot put
+ * a number on a card that nothing recomputed, and a child process that inherits
+ * this one's environment inherits OPENAI_API_KEY, INTELLIGENCE_API_KEY and
+ * everything else alongside it. Nothing in checkers/ reads an env var, so
+ * handing them one is pure downside.
+ *
+ * PATH stays so the interpreter resolves; SystemRoot stays because Python on
+ * Windows will not start without it. This is environment hygiene, not a
+ * sandbox — the child still has the filesystem and the network, so say
+ * "out-of-process checker the model cannot edit", never "sandboxed".
+ */
+export function checkerEnv(from: NodeJS.ProcessEnv = process.env): NodeJS.ProcessEnv {
+  const keep = ["PATH", "Path", "SystemRoot", "SYSTEMROOT", "COMSPEC", "TEMP", "TMP", "LANG", "PYTHONIOENCODING"];
+  const env: NodeJS.ProcessEnv = { PYTHONIOENCODING: "utf-8" };
+  for (const k of keep) if (from[k] !== undefined) env[k] = from[k];
+  return env;
+}
+
 export function checkerScript(name: string, dir = CHECKERS_DIR): string {
   if (!/^[a-z][a-z0-9_]*$/.test(name)) {
     throw new Error(`invalid checker name: ${JSON.stringify(name)}`);
@@ -43,6 +64,7 @@ export function runChecker(
     const child = spawn(python, [script], {
       stdio: ["pipe", "pipe", "pipe"],
       timeout: options.timeoutMs ?? 30_000,
+      env: checkerEnv(),
     });
     let stdout = "";
     let stderr = "";

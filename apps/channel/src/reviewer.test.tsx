@@ -258,3 +258,21 @@ test("the workplace stays inert until a key exists", () => {
     else process.env.AMBIGUOUS_API_KEY = saved;
   }
 });
+
+import { checkerEnv } from "./replay/run-checker";
+
+test("checkers do not inherit this process's secrets", () => {
+  const env = checkerEnv({
+    PATH: "/usr/bin",
+    SystemRoot: "C:\Windows",
+    OPENAI_API_KEY: "sk-should-not-be-here",
+    INTELLIGENCE_API_KEY: "cpk-should-not-be-here",
+    AMBIGUOUS_API_KEY: "amb-should-not-be-here",
+    CHANNEL_CODE: "my-agent",
+  });
+  assert.equal(env.PATH, "/usr/bin", "the interpreter still has to resolve");
+  assert.equal(env.SystemRoot, "C:\Windows", "python on Windows will not start without it");
+  for (const secret of ["OPENAI_API_KEY", "INTELLIGENCE_API_KEY", "AMBIGUOUS_API_KEY", "CHANNEL_CODE"]) {
+    assert.equal(env[secret], undefined, `${secret} must not reach a checker`);
+  }
+});
