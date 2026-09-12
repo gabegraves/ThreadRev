@@ -213,6 +213,18 @@ export function buildEvidenceGraph(events: EvidenceEvent[], opts: { thread?: str
       case "silence":
         // Applied after the loop so the trigger message exists regardless of order.
         break;
+      case "followup_filed": {
+        // Not a node of its own: a follow-up is something that happened to a
+        // finding, and the console reads it off that finding.
+        const node = nodes.get(e.finding_id);
+        if (node) {
+          node.data = {
+            ...node.data,
+            followup: { filed: e.filed, tool: e.tool, detail: e.detail, at: e.at },
+          };
+        }
+        break;
+      }
       case "workspace_search":
         // Hits are message_read events with via: "workspace_search"; nothing extra to draw.
         break;

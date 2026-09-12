@@ -83,9 +83,29 @@ export interface FileFollowupOptions {
   session?: McpSession;
   url?: string;
   apiKey?: string;
+  /**
+   * Whole-operation budget. Filing is four round trips, and publish_result
+   * awaits this before returning, so a slow workplace would otherwise hold a
+   * Slack turn open. The card is already posted by the time this runs; giving
+   * up is cheap and saying so is honest.
+   */
+  deadlineMs?: number;
 }
 
 export async function fileFollowup(f: Finding, options: FileFollowupOptions = {}): Promise<FollowupOutcome> {
+  const deadline = options.deadlineMs ?? 8_000;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const expired = new Promise<FollowupOutcome>((resolve) => {
+    timer = setTimeout(() => resolve({ filed: false, reason: `workplace did not answer within ${deadline} ms` }), deadline);
+  });
+  try {
+    return await Promise.race([fileFollowupInner(f, options), expired]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function fileFollowupInner(f: Finding, options: FileFollowupOptions): Promise<FollowupOutcome> {
   const apiKey = options.apiKey ?? process.env.AMBIGUOUS_API_KEY;
   if (!options.session && !(apiKey && isWorkplaceConfigured())) {
     return { filed: false, reason: "no workplace configured" };

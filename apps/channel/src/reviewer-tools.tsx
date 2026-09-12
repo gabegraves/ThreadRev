@@ -30,6 +30,7 @@ import { CHANGE_PATTERN, latestRevision, tsNum, unitsFromInputs } from "./revisi
 import { record, runContext, threadKey } from "./evidence";
 import { editProposalBody, renderFindingCard, type EditProposalView } from "./finding-card";
 import { findEvidenceInstructions, noticeSummary } from "./injection";
+import { fileFollowup } from "./followup";
 import { queryIndex, workspaceIndex } from "./workspace";
 
 export const REPO_ROOT = resolve(import.meta.dirname, "../../..");
@@ -806,6 +807,21 @@ export const publishResult = defineChannelTool({
       }
     }
 
+    // The card is posted; now carry it into the team's records. Application
+    // code does this rather than the model, like every other consequential
+    // step here, and it never throws — a workplace that is down must not turn
+    // a published review into a failed one.
+    const followup = await fileFollowup(f);
+    record({
+      kind: "followup_filed",
+      thread: threadKey(thread),
+      trigger_ts: runContext(threadKey(thread)).trigger_ts,
+      finding_id: f.finding_id,
+      filed: followup.filed,
+      tool: followup.filed ? followup.tool : undefined,
+      detail: followup.filed ? followup.detail : followup.reason,
+    });
+
     return {
       published: true,
       finding_id: f.finding_id,
@@ -813,6 +829,9 @@ export const publishResult = defineChannelTool({
       ...(args.requirements_revision !== bound
         ? { note: `Bound to ${bound}, the thread's revision when run ${args.run_id} executed, not the ${args.requirements_revision} you passed.` }
         : {}),
+      followup: followup.filed
+        ? `Filed in the workplace via ${followup.tool}: ${followup.detail}`
+        : `No workplace follow-up: ${followup.reason}`,
       ...(canRestrike ? {} : { warning: "This surface returned no message reference, so I will not be able to mark this card stale later. Say so if the inputs change again." }),
       ...(supersedeNote ? { warning: supersedeNote } : {}),
     };
