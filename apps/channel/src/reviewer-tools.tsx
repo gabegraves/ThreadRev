@@ -29,6 +29,29 @@ export const REPO_ROOT = resolve(import.meta.dirname, "../../..");
 const DOCUMENTS_DIR = resolve(REPO_ROOT, "fixtures", "documents");
 const DOCX_EXTRACTOR = resolve(REPO_ROOT, "extractors", "docx_text.py");
 
+/* -------------------------------------------------------------- duplicates */
+
+/**
+ * Whether two discrepancy sentences are saying the same thing.
+ *
+ * Not similarity in general — just enough normalisation that rewording does not
+ * read as a new finding. The numbers are what identify a claim here, so they
+ * survive; case, punctuation and spacing do not. "Section 3 text states
+ * C = 680 uF" and "section 3 text states C=680uF" are one finding.
+ */
+export function sameClaim(a: string, b: string): boolean {
+  const norm = (s: string) =>
+    s
+      .toLowerCase()
+      // Everything that is not a letter, digit or decimal point goes, spacing
+      // included, so "C = 680 uF" and "C=680uF" collapse to one string.
+      .replace(/[^a-z0-9.]/g, "")
+      // Decimal points survive; sentence-ending ones do not.
+      .replace(/\.(?!\d)/g, "")
+      .replace(/(?<!\d)\./g, "");
+  return norm(a) === norm(b);
+}
+
 /* ------------------------------------------------------- dependency prose */
 
 interface ThreadMessageLike {
@@ -411,7 +434,13 @@ export const publishResult = defineChannelTool({
       (c) =>
         c.finding.status === "live" &&
         c.finding.requirements_revision === args.requirements_revision &&
-        c.finding.discrepancy === args.discrepancy,
+        // Either the same checker run is being published twice, or the same
+        // thing is being said again in different words. Exact string equality
+        // on the discrepancy caught neither: a re-triggered thread produces a
+        // fresh run_id, and a model rewording its own sentence produces a
+        // fresh string, so the gate let both through.
+        (c.finding.checker_run.run_id === run.run_id ||
+          sameClaim(c.finding.discrepancy, args.discrepancy)),
     );
     if (duplicate) {
       return { published: false, reason: `Already posted as ${duplicate.finding.finding_id}. Do not repeat it.` };

@@ -276,3 +276,24 @@ test("checkers do not inherit this process's secrets", () => {
     assert.equal(env[secret], undefined, `${secret} must not reach a checker`);
   }
 });
+
+import { sameClaim } from "./reviewer-tools";
+
+test("a reworded discrepancy is still the same finding", () => {
+  assert.equal(
+    sameClaim("Section 3 text states C = 680 uF.", "section 3 text states C=680uF"),
+    true,
+  );
+  assert.equal(
+    sameClaim("Printed t_99.9 = 2.435 s does not reproduce.", "printed t_99.9 2.435 s does not reproduce"),
+    true,
+  );
+});
+
+test("different numbers are different findings", () => {
+  assert.equal(
+    sameClaim("Section 3 text states C = 680 uF.", "Section 3 text states C = 750 uF."),
+    false,
+  );
+  assert.equal(sameClaim("none", "Printed value does not reproduce."), false);
+});
