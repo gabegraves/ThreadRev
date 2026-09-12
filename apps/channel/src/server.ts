@@ -24,12 +24,46 @@ const runtime = new CopilotRuntime({
 });
 
 let teardown: (() => Promise<void>) | undefined;
-const shutdown = async () => {
-  await teardown?.();
-  process.exit(0);
+let shuttingDown = false;
+
+const shutdown = async (code = 0) => {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  try {
+    await teardown?.();
+  } catch (e) {
+    console.error("  teardown failed:", (e as Error).message);
+  }
+  process.exit(code);
 };
-process.once("SIGINT", shutdown);
-process.once("SIGTERM", shutdown);
+process.once("SIGINT", () => shutdown());
+process.once("SIGTERM", () => shutdown());
+
+/**
+ * A listener has to outlive one bad turn.
+ *
+ * Node terminates the process on an unhandled rejection, so a promise that
+ * rejects anywhere in one thread's review — a Slack write that 429s, a tool
+ * that throws past its own catch — takes down every other channel with it and
+ * leaves the bot silently offline. Log it loudly and stay up: one failed review
+ * is recoverable, a dead listener during a live thread is not.
+ */
+process.on("unhandledRejection", (reason) => {
+  console.error(
+    "  [unhandled rejection] the run that caused this failed; the listener is still up:",
+    reason instanceof Error ? reason.stack : reason,
+  );
+});
+
+/**
+ * An uncaught exception is different: the process state is no longer
+ * trustworthy, so stay down rather than serve from it. Shut down cleanly so the
+ * Channel disconnects instead of dangling.
+ */
+process.on("uncaughtException", (error) => {
+  console.error("  [uncaught exception] shutting down:", error.stack ?? error);
+  void shutdown(1);
+});
 
 const listener = createCopilotNodeListener({ runtime, basePath: "/api/copilotkit" });
 const channels = listener.channels;
@@ -58,6 +92,24 @@ if (status.overall !== "online") {
 }
 
 const port = Number(process.env.PORT ?? 3000);
+
+server.on("error", (error: NodeJS.ErrnoException) => {
+  if (error.code === "EADDRINUSE") {
+    console.error(
+      `
+  Port ${port} is already in use — something else is listening there.
+` +
+        `  → Stop it, or start this with PORT=<other> npm run dev:slack
+`,
+    );
+  } else {
+    console.error(`
+  Server failed to start: ${error.message}
+`);
+  }
+  void shutdown(1);
+});
+
 server.listen(port, () => {
   console.log(`\n  ✓ Channel "${process.env.CHANNEL_CODE}" online — listening on :${port}`);
   console.log(`    Invite the bot to a channel (/invite @yourbot), then @-mention it.\n`);
