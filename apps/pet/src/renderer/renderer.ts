@@ -50,6 +50,7 @@ declare global {
       quit(): void;
       openExternal(url: string): void;
       onSettings(handler: (s: PetSettings) => void): void;
+      onCursor(handler: (p: { x: number; y: number }) => void): void;
       onOpen(handler: () => void): void;
       onForceState(handler: (state: string) => void): void;
     };
@@ -215,13 +216,26 @@ function gaze(x: number, y: number): void {
   const cx = r.left + r.width / 2;
   const cy = r.top + r.height * 0.52;
   const d = Math.hypot(x - cx, y - cy) || 1;
-  const reach = Math.min(d, 260) / 260;
+  const reach = Math.min(d, 420) / 420;
   petEl.style.setProperty("--gaze-x", `${((x - cx) / d) * 5 * reach}px`);
+  // Pupil travel inside the eye white, in SVG user units: white radius 4.3
+  // minus pupil radius 2.9 leaves 1.4, so it can never leave the eye.
+  const EYE_TRAVEL = 1.3;
+  petEl.style.setProperty("--eye-x", `${(((x - cx) / d) * EYE_TRAVEL * reach).toFixed(2)}px`);
+  petEl.style.setProperty("--eye-y", `${(((y - cy) / d) * EYE_TRAVEL * reach).toFixed(2)}px`);
   petEl.style.setProperty("--gaze-y", `${((y - cy) / d) * 5 * reach}px`);
 }
 
+/**
+ * Set once main starts sending the OS cursor. From then on the eyes take only
+ * that feed: the document's own mousemove is the forwarded-event path, whose
+ * coordinates are unreliable on Windows, and letting both write the gaze made
+ * the pupils race each other and point the wrong way.
+ */
+let osCursorFeed = false;
+
 document.addEventListener("mousemove", (e) => {
-  gaze(e.clientX, e.clientY);
+  if (!osCursorFeed) gaze(e.clientX, e.clientY);
   if (dragging) {
     // Only past the threshold; a press alone jiggles the cursor a pixel or two.
     if (!moved && isDrag(pressAt.x, pressAt.y, e.screenX, e.screenY)) moved = true;
@@ -1168,6 +1182,14 @@ function render(conn: Connection): void {
 function applyMotionPreference(): void {
   document.body.dataset.reducedMotion = String(reducedMotion());
 }
+
+// The eyes follow the cursor anywhere on screen. The document only hears
+// mousemove while the pointer is over this window, so main sends the OS cursor
+// position (already polled for click-through) relative to the window.
+window.pet.onCursor(({ x, y }) => {
+  osCursorFeed = true;
+  gaze(x, y);
+});
 
 window.pet.onSettings((s) => {
   settings = s;

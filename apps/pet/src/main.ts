@@ -405,6 +405,7 @@ let regions: Rect[] = [];
 let interactive = false;
 let dragging = false;
 let lastDragAt = 0;
+let lastCursor = { x: Number.NaN, y: Number.NaN };
 let pollTimer: ReturnType<typeof setInterval> | undefined;
 
 /**
@@ -433,6 +434,11 @@ function pollCursor(): void {
 
   const b = win.getBounds();
   const c = screen.getCursorScreenPoint();
+  // Feed the eyes. Only on change, so a still cursor costs no IPC.
+  if (c.x !== lastCursor.x || c.y !== lastCursor.y) {
+    lastCursor = c;
+    win.webContents.send("pet:cursor", { x: c.x - b.x, y: c.y - b.y });
+  }
   const over = shouldCapture(regions, c.x - b.x, c.y - b.y, dragging);
   if (over === interactive) return;
   interactive = over;

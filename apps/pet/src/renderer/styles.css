@@ -67,7 +67,7 @@
    * arc ended up centred on a point the character was not at.
    */
   /* Dictation-pill size, so Rev sits beside one instead of covering the corner. */
-  --pet-size: 72px;
+  --pet-size: 100px;
   --pet-inset-x: 12px;
   --pet-inset-y: 16px;
 
@@ -1819,4 +1819,48 @@ body[data-reduced-motion="true"] .radial[data-open="true"] .radial__item {
 /* The bound revision is meaningless on the settings page. */
 .panel[data-view="settings"] .chip--rev {
   display: none;
+}
+
+/* ---------------------------------------------------------------- eyes --- */
+
+.eye__white {
+  fill: #fff;
+}
+
+.eye__pupil {
+  fill: #18202b;
+}
+
+.eye__shine {
+  fill: #fff;
+}
+
+/*
+ * The pupils follow the cursor. --eye-x/--eye-y are clamped in script to the
+ * room inside the white, in SVG user units, so a pupil can never leave its eye.
+ */
+.eye__look {
+  transform: translate(var(--eye-x, 0), var(--eye-y, 0));
+  transition: transform 120ms var(--ease-out);
+}
+
+/*
+ * Blink and sleep close the lid, which wraps the white and the pupil. Scaling
+ * the pupil group directly replaced its gaze translate, so every blink snapped
+ * the pupils back to centre; the lid sits one level up and leaves that alone.
+ * The eye's own group is not touched either: a CSS transform there would
+ * override its SVG position attribute and drop the eye at the origin.
+ */
+.eye__lid {
+  transform-origin: 0 0;
+  transition: transform 90ms ease;
+}
+
+.pet[data-blink="true"] .eye__lid,
+.pet[data-state="asleep"] .eye__lid {
+  transform: scaleY(0.12);
+}
+
+.pet[data-blink="true"] .pet__face {
+  transform: none;
 }

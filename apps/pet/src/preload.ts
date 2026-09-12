@@ -52,6 +52,10 @@ contextBridge.exposeInMainWorld("pet", {
    * used to stack handlers with no way to remove them, so a reloaded renderer
    * would open the panel once per past registration.
    */
+  onCursor(handler: (point: { x: number; y: number }) => void): void {
+    ipcRenderer.removeAllListeners("pet:cursor");
+    ipcRenderer.on("pet:cursor", (_e, point: { x: number; y: number }) => handler(point));
+  },
   onSettings(handler: (settings: PetSettings) => void): void {
     ipcRenderer.removeAllListeners("pet:settings");
     ipcRenderer.on("pet:settings", (_e, settings: PetSettings) => handler(settings));
