@@ -45,8 +45,8 @@
     { "label": "max feasible speed, v2-1 inputs", "computed": 21.3037, "unit": "m/s" }
   ],
   "inferred": [
-    "The optional loop is excluded and the two 20-minute swaps are the full swap budget, both taken from the request text as written.",
-    "Array input is assumed zero. The model is constant-speed rolling plus aero only.",
+    "The optional loop is excluded and the two 20-minute stops are the full swap budget, both taken from the request text as written.",
+    "Regen is assumed zero. The model is constant-speed rolling plus aero only.",
     "Driving time at 22 m/s is 2.778 h, plus 40 min of swaps gives 3.44 h wall time. Not recomputed by the checker."
   ],
   "resolution": "Juno confirms the run should use v2-1, or Milo states v2-0 is intentionally being used for a KS-3 comparison. The v2-1 result above is posted but the run is blocked on that confirmation, not final.",

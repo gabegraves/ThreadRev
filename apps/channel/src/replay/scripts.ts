@@ -233,7 +233,7 @@ function rc2Conflict(messages: FixtureMessage[]): Script {
             { kind: "message", id: useV21.ts, quote: "Use v2-1 for anything after today." },
             { kind: "message", id: reweigh.ts, quote: "v2-1 mass may be 8 kg high, the ballast was on the scale. Re-weigh pending." },
           ],
-          inferred: ["Array input assumed zero.", "Optional loop excluded and two 20 minute swaps taken from the request text."],
+          inferred: ["Regen assumed zero.", "Optional loop excluded and two 20 minute stops taken from the request text."],
           resolution: "Milo posts the re-weigh result. The run is blocked on that confirmation.",
           question: { to: "Milo Trent", ask: "Is the v2-1 mass 318 kg or 310 kg? The re-weigh was pending on July 30 and nothing later resolves it." },
         }),
@@ -266,7 +266,7 @@ function scenarioB(messages: FixtureMessage[]): Script {
             { kind: "message", id: ines.ts, quote: "Confirmed, corner weights from Tuesday add up to 318 with driver." },
             { kind: "message", id: t.ts, quote: "I grabbed the params from the July 3 sheet." },
           ],
-          inferred: ["Array input assumed zero.", "Optional loop excluded and two 20 minute swaps taken from the request text."],
+          inferred: ["Regen assumed zero.", "Optional loop excluded and two 20 minute stops taken from the request text."],
           resolution: "Juno confirms v2-1, or Milo states v2-0 is intentionally used for a KS-3 comparison. The v2-1 result is blocked on that confirmation.",
           question: { to: "Juno Marsh", ask: "Should this run use v2-1 (318 kg, Crr 0.0048) as Milo's July 24 message requires?" },
         });
@@ -284,7 +284,7 @@ export function routeFinding(ctx: ScriptContext, triggerTs: string, revision: st
     discrepancy: `Under v2-1 the segment at 22 m/s is ${c.feasible ? "" : "not "}feasible at end SoC ${socEnd * 100} percent (${c.energy_kWh} kWh against ${c.budget_kWh} kWh).`,
     why_it_matters: "The request used v2-0; v2-1 supersedes it.",
     sources: [{ kind: "message", id: triggerTs, quote: "I grabbed the params from the July 3 sheet." }],
-    inferred: ["Array input assumed zero."],
+    inferred: ["Regen assumed zero."],
     resolution: "Juno confirms v2-1.",
     supersedes,
   });

@@ -44,7 +44,7 @@
   "inferred": [
     "310 kg is Milo's stated 8 kg correction applied to 318 kg. It is a candidate, not a measured value.",
     "Crr 0.0048 is carried unchanged for both masses because the July 30 message questions only the mass.",
-    "Array input is assumed zero. Optional loop excluded and two 20-minute swaps taken from the request text."
+    "Regen is assumed zero. Optional loop excluded and two 20-minute stops taken from the request text."
   ],
   "resolution": "Milo posts the re-weigh result, or states that 318 kg stands. Until then neither mass is final and the run is blocked on that answer.",
   "question": {

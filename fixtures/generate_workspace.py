@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Generate fixtures/workspace/kestrel-workspace.json: a multi-channel,
-multi-month Slack export for the Kestrel Solar Racing workspace.
+multi-month Slack export for the Kestrel Motors workspace.
 
 Same message shape as fixtures/slack/*.json. Everything is fictional and
 consistent with research/synthetic-fixture-spec.md (cast, channels, numbers).
@@ -80,7 +80,7 @@ A(m("2026-04-06 10:15", "electrical", "dara", "Bus capacitance for KS-4: three 2
 A(m("2026-04-06 10:40", "firmware", "tam", "Precharge relay timer in firmware set to 2.0 s for bench testing. Will bump to match Dara's number once the bus is final."))
 A(m("2026-04-08 09:00", "purchasing", "dara", "Quote for 3 x 250 uF 450 V film caps: 312 USD from Arlen Components. OK to order?"))
 A(m("2026-04-08 09:25", "purchasing", "rowan", "Approved, PO-2207."))
-A(m("2026-04-14 15:30", "sim", "milo", "Sim v1-1: added the array shading model. Lap energy at 22 m/s is 3.9 kWh on the 220 km segment, mass still 280 kg."))
+A(m("2026-04-14 15:30", "sim", "milo", "Sim v1-1: added the HVAC load model. Segment energy at 22 m/s is 3.9 kWh on the 220 km segment, mass still 280 kg."))
 A(m("2026-04-22 11:10", "suspension", "ines", "Bracket rev B. Moved the lower mount 6 mm inboard for tire clearance."))
 
 # --- May: firmware timer, first precharge review ----------------------------

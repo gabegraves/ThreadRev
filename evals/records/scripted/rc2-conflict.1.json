@@ -46,7 +46,7 @@
           "ts": "2026-08-11T18:15:00.000Z",
           "from": "Juno Marsh",
           "bot": false,
-          "text": "@reviewer run the Northgate to Ferris segment (220 km, no optional loop), start SoC 96%, end SoC 40%, two 20-minute driver swaps, 22 m/s constant. I grabbed the params from the July 3 sheet.",
+          "text": "@reviewer run the Northgate to Ferris segment (220 km, no optional loop), start SoC 96%, end SoC 40%, two 20-minute stops, 22 m/s constant. I grabbed the params from the July 3 sheet.",
           "files": []
         }
       ]
@@ -148,8 +148,8 @@
           }
         ],
         "inferred": [
-          "Array input assumed zero.",
-          "Optional loop excluded and two 20 minute swaps taken from the request text."
+          "Regen assumed zero.",
+          "Optional loop excluded and two 20 minute stops taken from the request text."
         ],
         "resolution": "Milo posts the re-weigh result. The run is blocked on that confirmation.",
         "question": {
@@ -257,8 +257,8 @@
         }
       ],
       "inferred": [
-        "Array input assumed zero.",
-        "Optional loop excluded and two 20 minute swaps taken from the request text."
+        "Regen assumed zero.",
+        "Optional loop excluded and two 20 minute stops taken from the request text."
       ],
       "resolution": "Milo posts the re-weigh result. The run is blocked on that confirmation.",
       "question": {

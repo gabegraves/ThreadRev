@@ -9,7 +9,7 @@
     {
       "kind": "message",
       "id": "1786474920.000900",
-      "quote": "Race director allows end SoC 35% for this segment now, not 40%."
+      "quote": "Test lead allows end SoC 35% for this segment now, not 40%."
     },
     {
       "kind": "message",
@@ -38,8 +38,8 @@
     { "label": "max feasible speed, v2-0 inputs (run route-20260912T161102Z-c40d)", "computed": 23.7247, "unit": "m/s" }
   ],
   "inferred": [
-    "Start SoC 96 percent, 220 km, no optional loop, and two 20-minute swaps are carried from the 13:15 request because the 14:02 message changed only the end SoC.",
-    "Array input is assumed zero."
+    "Start SoC 96 percent, 220 km, no optional loop, and two 20-minute stops are carried from the 13:15 request because the 14:02 message changed only the end SoC.",
+    "Regen is assumed zero."
   ],
   "resolution": "Run is feasible at 22 m/s under v2-1 with the 35 percent end SoC. Juno should still confirm v2-1 so the posted margin is the one the team plans against.",
   "checker_run": { "checker": "route", "version": "1", "run_id": "route-20260912T161102Z-51cc" }

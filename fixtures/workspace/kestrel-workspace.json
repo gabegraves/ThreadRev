@@ -116,7 +116,7 @@
     "user": "U00SYN02",
     "user_name": "Milo Trent",
     "thread_ts": null,
-    "text": "Sim v1-1: added the array shading model. Lap energy at 22 m/s is 3.9 kWh on the 220 km segment, mass still 280 kg.",
+    "text": "Sim v1-1: added the HVAC load model. Segment energy at 22 m/s is 3.9 kWh on the 220 km segment, mass still 280 kg.",
     "files": [],
     "role": "seed"
   },

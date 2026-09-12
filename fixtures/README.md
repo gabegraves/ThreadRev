@@ -1,6 +1,6 @@
 # Synthetic fixtures (W1)
 
-Everything here is fictional. Team: Kestrel Solar Racing (KSR) at the Halvern Institute of Technology, workspace `kestrel-solar.slack.example`. Slack IDs use the `U00SYN` / `C00SYN` prefix only. The single source for every name, number, timestamp, and message is `research/synthetic-fixture-spec.md`. If a value here disagrees with the spec, the spec wins and this directory is wrong.
+Everything here is fictional. Company: Kestrel Motors, a fictional electric vehicle maker, workspace `kestrel-motors.slack.example`. Slack IDs use the `U00SYN` / `C00SYN` prefix only. The single source for every name, number, timestamp, and message is `research/synthetic-fixture-spec.md`. If a value here disagrees with the spec, the spec wins and this directory is wrong.
 
 Regenerate the documents with `python3 fixtures/generate.py` (needs python-docx and openpyxl), then `shasum -a 256 fixtures/documents/* > fixtures/SHA256SUMS` from the repo root. Output is byte-for-byte reproducible.
 
@@ -15,7 +15,7 @@ Regenerate the documents with `python3 fixtures/generate.py` (needs python-docx 
 
 `ks4-hv-interface-req-r1.xlsx` (optional in the brief) is not generated. The spec gives it no cell values, so anything written would be invented rather than sourced.
 
-Scenario A model: first-order ideal RC, `t_99.9 = R * C * 6.907755`. Scenario B model: the toy closed form `E = (m * g * Crr + 0.5 * rho * CdA * v^2) * d` with `g = 9.81`, `rho = 1.20`, `CdA = 0.12`, `d = 220 km`, array input assumed zero. Neither is real simulation code.
+Scenario A model: first-order ideal RC, `t_99.9 = R * C * 6.907755`. Scenario B model: the toy closed form `E = (m * g * Crr + 0.5 * rho * CdA * v^2) * d` with `g = 9.81`, `rho = 1.20`, `CdA = 0.12`, `d = 220 km`, regen assumed zero. Neither is real simulation code.
 
 ## slack/
 
