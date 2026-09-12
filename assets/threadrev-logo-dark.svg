@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="560" height="120" viewBox="0 0 560 120" role="img" aria-label="ThreadRev">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#a596ff"/>
+      <stop offset="1" stop-color="#7c6cf0"/>
+    </linearGradient>
+  </defs>
+  <rect x="8" y="8" width="104" height="104" rx="22" fill="#23242d"/>
+  <rect x="26" y="26" width="68" height="18" rx="5" fill="#363845"/>
+  <rect x="26" y="51" width="68" height="18" rx="5" fill="#363845"/>
+  <line x1="30" y1="60" x2="90" y2="60" stroke="#f0a36a" stroke-width="3" stroke-linecap="round"/>
+  <rect x="26" y="76" width="68" height="18" rx="5" fill="#363845"/>
+  <path d="M18 35 C 40 35, 40 60, 60 60 S 82 85, 102 85" fill="none" stroke="url(#g)" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="18" cy="35" r="5" fill="#a596ff"/>
+  <circle cx="102" cy="85" r="7" fill="#3ddc97"/>
+  <path d="M98.5 85 l2.5 2.5 l4.5 -5" fill="none" stroke="#15161c" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="136" y="76" font-family="Inter, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif" font-size="56" font-weight="700" fill="#f3f3f7" letter-spacing="-1.5">Thread<tspan fill="#a596ff">Rev</tspan></text>
+</svg>

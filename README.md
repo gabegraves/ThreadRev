@@ -1,14 +1,23 @@
 <div align="center">
 
-# ThreadRev
-
-![Agents, Everywhere hackathon — OpenAI, CopilotKit, OpenRouter, Exa, Auth0, and Ambiguous AI](assets/banner.png)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="assets/threadrev-logo-dark.svg">
+  <img src="assets/threadrev-logo.svg" alt="ThreadRev" width="420">
+</picture>
 
 **A Slack-native engineering change reviewer. It reads the thread, searches the rest of the workspace by document and unit, recomputes the numbers, and marks its own findings stale when the inputs change.**
+
+Slack keeps the conversation. ThreadRev keeps the decision, what it was decided against, and whether it is still true.
+
+<img src="assets/hero-scenario-a.png" alt="Card 1 marked STALE after Dara's 820 uF correction, Card 2 posted against her message" width="820">
+
+<sub>Web review console, Scenario A sample. The Slack card is the product; this view reads the same evidence log.</sub>
 
 [What it does](#what-it-does) · [Demo](#the-demo-scenario-a) · [How it works](#how-it-works) · [Versus Slack AI](#what-slack-already-does-and-what-threadrev-adds) · [Why search, not RAG](#why-search-by-identifier-not-rag) · [Status](#status) · [Run it](#run-it) · [Repo map](#repo-map) · [Team](#team-and-working-rules)
 
 </div>
+
+![Agents, Everywhere hackathon](assets/banner.png)
 
 Built during the [Agents, Everywhere](https://aitinkerers.org/hackathons/global/agents-everywhere) hackathon on September 12, 2026, on top of CopilotKit's [agents-everywhere-starter-kit](https://github.com/CopilotKit/agents-everywhere-starter-kit). Inherited code is listed separately in [What we built and what we inherited](#what-we-built-and-what-we-inherited).
 
