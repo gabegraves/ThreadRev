@@ -8,13 +8,13 @@ You are setting up the live test environment and the shared GitHub repo for Thre
 - Never paste a token, key, or channel code into a commit, a chat message, a screenshot, or a file other than the gitignored `.env`. Report that a value was set, never the value.
 - The private research archive at `~/Documents/ChatGPT/9_12_26_Hackathon` contains real names. Do not copy, reference, or push anything from it.
 - If a step is still failing after 45 minutes, stop, report exactly where it failed with the error text, and move to the fallback in step 6.
-- Everything you claim done must have evidence: a command output, a status JSON, or a screenshot saved under `~/Desktop/9_12_26_Hackathon/agents-everywhere-starter-kit/research/setup-evidence/`.
+- Everything you claim done must have evidence: a command output, a status JSON, or a screenshot saved under `~/Desktop/9_12_26_Hackathon/ThreadRev/research/setup-evidence/`.
 
 ## Workspace
 
-Checkout: `~/Desktop/9_12_26_Hackathon/agents-everywhere-starter-kit` (Node 22+, npm installed, `npm run verify` passes offline).
+Checkout: `~/Desktop/9_12_26_Hackathon/ThreadRev` (Node 22+, npm installed, `npm run verify` passes offline).
 Setup docs to read first: `dev-docs/setup.md`, `dev-docs/troubleshooting.md`, `.agents/skills/channels-setup/` if present.
-Platform facts and the fallback Slack manifest: `~/Desktop/9_12_26_Hackathon/agents-everywhere-starter-kit/research/slack-agent-platform.md`.
+Platform facts and the fallback Slack manifest: `~/Desktop/9_12_26_Hackathon/ThreadRev/research/slack-agent-platform.md`.
 
 ## Steps
 
