@@ -4,127 +4,180 @@
 
 ![Agents, Everywhere hackathon — OpenAI, CopilotKit, OpenRouter, Exa, Auth0, and Ambiguous AI](assets/banner.png)
 
-**A Slack-native engineering change investigator, built for Agents Everywhere.**
+**A Slack-native engineering change reviewer. It reads the thread, recomputes the numbers, and marks its own findings stale when the inputs change.**
 
-[Overview](#overview) · [Get started](#get-started) · [Templates](#templates) · [Coding agent](#coding-agent) · [Resources](#resources)
+[What it does](#what-it-does) · [Demo](#the-demo-scenario-a) · [How it works](#how-it-works) · [Status](#status) · [Run it](#run-it) · [Repo map](#repo-map) · [Team](#team-and-working-rules)
 
 </div>
 
-ThreadRev is currently an infrastructure baseline: the Slack channel, model,
-and research integrations are being wired up before the engineering extraction,
-verification, and revision-invalidation workflow is implemented.
+Built during the [Agents, Everywhere](https://aitinkerers.org/hackathons/global/agents-everywhere) hackathon on September 12, 2026, on top of CopilotKit's [agents-everywhere-starter-kit](https://github.com/CopilotKit/agents-everywhere-starter-kit). Inherited code is listed separately in [What we built and what we inherited](#what-we-built-and-what-we-inherited).
 
-It is built from CopilotKit's public
-[`agents-everywhere-starter-kit`](https://github.com/CopilotKit/agents-everywhere-starter-kit);
-the inherited templates remain below for reference and are identified separately
-from hackathon work in [SUBMISSION.md](SUBMISSION.md).
+## What it does
 
-## Overview
+Engineering teams make decisions in Slack threads and then write documents that quietly disagree with them. A review document prints a result computed from a capacitance the thread already replaced. A simulation request pulls parameters from a sheet that a correction message superseded three weeks earlier. Nobody catches it because nobody rereads the thread.
 
-Build for **[Agents, Everywhere: Bots, Channels, & More](https://aitinkerers.org/hackathons/global/agents-everywhere)**, the AI Tinkerers global hackathon on **September 12–13, 2026**. Choose your city on the event page for its local schedule. Put an agent inside a conversation, an app, a phone, or a physical environment. Make the context of that place essential to what it can do.
+ThreadRev lives in the channel. When someone asks it to check a document, or when a message changes an input that an earlier finding depended on, it posts one card in the thread:
 
-This kit gives you three runnable templates, files to hand to your coding agent, and sponsor setup notes. Pick a user, a problem, and one complete interaction. You can use any stack; you do not need every sponsor or every surface.
+1. **Discrepancy.** What the document says versus what the thread decided, with the exact line.
+2. **Why it matters.** The engineering consequence, in the team's own units.
+3. **Sources and versions.** Document name, revision, SHA-256, section locator, and the Slack message timestamp that supersedes it.
+4. **Reproduced versus inferred.** Which numbers a checker recomputed, with the run id, and which claims are only read from the text.
+5. **What resolves it.** Who can answer, and the question to ask them.
 
-Your project and its core functionality must be created during the event. Existing libraries, templates, and starter code are allowed; describe what you reuse and what you build. Read [the rules](hackathon-rules.md), then follow your city's participant portal for the current deadline and judging criteria.
+When a later message changes a requirement, the earlier card is marked **stale in place**, never deleted, and a new card bound to the new revision is posted. If a revision lands while a check is running, the result is refused before it posts, kept as a stale record, and rerun.
 
-## Get started
+Two rules shape everything:
 
-Use Node.js 22+, then clone and install the kit:
+- **The model never computes a number that appears on a card.** A local, stdlib-only Python checker does. The card renderer is called only by the `publish_result` tool, which copies numbers from the checker's response.
+- **A possible contradiction is not automatically a finding.** The reviewer stays silent on normal chatter, posts a clean card when everything reproduces, and asks instead of deciding when the evidence conflicts.
 
-```bash
-git clone https://github.com/CopilotKit/agents-everywhere-starter-kit.git
-cd agents-everywhere-starter-kit
+## The demo: Scenario A
+
+A fictional solar-car team, channel `#ks4-electrical`, precharge RC timing. Fixture script in [`fixtures/slack/scenario-a.json`](fixtures/slack/scenario-a.json), full spec in [`research/synthetic-fixture-spec.md`](research/synthetic-fixture-spec.md).
+
+1. Dara posts `precharge-review-r2.docx`: "Dropped one film cap, bus is now 680 uF."
+2. Tam: "Relay close timer in firmware is 2.5 s, matches the doc."
+3. Juno: "@reviewer can you check section 3 of the r2 doc before I sign the review?"
+4. **Card 1.** The section 3 text says 680 uF, the section 2 diagram says 750 uF, and the printed 2.435 s only reproduces with 750 uF. At 680 uF it is 2.208 s. The section 4 worked example prints 6.91 s; recomputed, 6.493 s. Question to Dara: which capacitance is right. Card content: [`contracts/examples/finding-scenario-a.json`](contracts/examples/finding-scenario-a.json).
+5. Dara: "Bus is 820 uF, not 680. Doc will be r3."
+6. **Card 1 goes stale. Card 2.** At 820 uF, t_99.9 = 2.662 s, later than the 2.5 s relay timer. The bus reaches 99.85 percent at 2.5 s. The timer or the resistor must change. Bound to Dara's message, because r3 does not exist yet. [`finding-scenario-a-superseding.json`](contracts/examples/finding-scenario-a-superseding.json).
+
+Scenario B (stale simulation inputs, `#ks4-strategy-sim`) and three replay cases are also built: a clean control that must produce no discrepancy, a conflicting-evidence case where the reviewer must ask instead of choose, and a mid-run revision where the first result must be refused before it posts. All four have finding examples under [`contracts/examples/`](contracts/examples/).
+
+## How it works
+
+```
+Slack thread ──▶ CopilotKit Channels ──▶ review gate (is this a review moment?)
+                                              │
+                                              ▼
+                                   reviewer agent, four tools
+                        read_thread · read_evidence · run_check · publish_result
+                                              │                 │
+                                              ▼                 ▼
+                              checkers/check_rc.py       finding card (Block Kit)
+                              checkers/check_route.py    posted in thread, updated
+                              stdlib only, JSON in/out   to stale on revision
+                                              │
+                                              ▼
+                                  evidence log (JSONL) ──▶ evidence graph ──▶ web console
+```
+
+- **Reviewer tools** in [`apps/channel/src/reviewer-tools.tsx`](apps/channel/src/reviewer-tools.tsx). `read_thread` reads the Slack history; `read_evidence` extracts document text and hashes; `run_check` invokes a checker and records the run; `publish_result` is the only path to a card and refuses a result whose requirement revision is no longer current.
+- **Review gate and silence filter** in [`review-moment.ts`](apps/channel/src/review-moment.ts) and [`agent.ts`](apps/channel/src/agent.ts). Most messages get nothing.
+- **Revision tracking** in [`revision.ts`](apps/channel/src/revision.ts): a requirement-change message becomes the revision every later card binds to.
+- **Checkers** in [`checkers/`](checkers/), contract in [`contracts/checker-io.md`](contracts/checker-io.md). `check_rc.py` does first-order RC timing; `check_route.py` does the constant-speed route energy model. No network, no file writes, no imports outside the standard library.
+- **Finding contract** in [`packages/agent-core/src/contracts/finding.ts`](packages/agent-core/src/contracts/finding.ts) and the Slack card in [`finding-card.tsx`](apps/channel/src/finding-card.tsx).
+- **Evidence log and graph** in [`packages/agent-core/src/evidence/`](packages/agent-core/src/evidence/). Every message read, document hashed, checker run, card published, and silence decision is appended as an event. The graph builder turns the log into message, document, run, finding, and revision nodes with a downstream walk, so "what did this change invalidate" is a query.
+- **Replay harness** in [`apps/channel/src/replay/`](apps/channel/src/replay/). Replays a fixture Slack script through the real channel handlers and real checkers offline, with a scripted agent standing in for the model, and asserts the card that gets posted. This is the contract test for the checker-to-card seam and the scorecard for the three replay cases.
+- **Web review console** in [`apps/web/src/components/review-console/`](apps/web/src/components/review-console/), served by [`/api/evidence`](apps/web/src/app/api/evidence/route.ts). A browser view of the thread, the cards, and the evidence graph, polling the live log and falling back to the Scenario A sample. Secondary surface; Slack is the product.
+
+## Status
+
+Verified on `main` at 12:35 PM EDT, September 12, 2026, with `npm run verify`:
+
+| Check | Result |
+|---|---|
+| TypeScript typecheck, all workspaces | pass |
+| `agent-core` tests | 52 pass |
+| `channel` tests, including the replay harness | 37 pass |
+| `web` tests | 34 pass |
+| Python checker tests | 10 pass |
+
+What is **not** yet true:
+
+- **Slack is not connected.** The model key, Channel code, and Intelligence key are blank locally. The bot has not posted to a real workspace. Everything above is proven offline through the replay harness. The demo video will state clearly whether it shows live delivery or the harness.
+- The web console has no styling yet and is in active development.
+- Exa search is configured and verified live but is not registered on the reviewer. External research is not part of the core workflow.
+- Persistent storage (the Convex decision in [`SCRATCHPAD.md`](SCRATCHPAD.md)) is a recorded direction, not implemented. Evidence lives in a local JSONL file.
+- The inherited dependency audit has unresolved advisories. This is not a production or security-cleared deployment.
+
+Live status by lane is in [`STATUS.md`](STATUS.md).
+
+## Run it
+
+Node 22+ and Python 3.
+
+```sh
+git clone https://github.com/gabegraves/ThreadRev.git
+cd ThreadRev
 npm ci
 cp .env.example .env
+npm run verify          # typecheck, all tests, python checkers, no credentials needed
 ```
 
-Choose one template and configure only the credentials it needs. Slack and web use the root install; React Native has its own install under `apps/mobile` because Expo pins its React Native stack separately.
+Offline, no accounts:
 
-Paste this into your coding agent:
-
-```text
-Read AGENTS.md, hackathon-overview.md, hackathon-rules.md, and
-using-sponsor-tools.md. Help me choose one template app README for my idea,
-then build a new project using its infrastructure. Ask me who it is for and
-what the agent should do in that setting. Read the selected template before
-editing; for Slack also read .agents/skills/build-channels-agent/SKILL.md.
-Use only the integrations the idea needs. Verify a complete interaction and
-prepare SUBMISSION.md, distinguishing inherited code from our event work.
+```sh
+npm run test --workspace channel              # includes the replay harness
+python3 -m unittest checkers/test_checkers.py
+echo '{"checker":"rc","version":"1","inputs":'"$(jq .inputs contracts/examples/checker-rc-request.json)"'}' | python3 checkers/check_rc.py
 ```
 
-## Templates
+Web console, offline, renders the Scenario A sample:
 
-These starting points serve different kinds of context. **CopilotKit Channels** brings the Slack agent into the conversation; **CopilotKit React** connects the web agent to the app people are using; **CopilotKit React Native** brings the same agent pattern onto a phone.
+```sh
+npm run dev:web         # http://127.0.0.1:3100
+```
 
-### 1. Slack — an agent that joins the thread
+Slack, live. Requires a model key (`OPENAI_API_KEY` or `OPENROUTER_API_KEY`), a CopilotKit Intelligence project key, and a Channel code. Setup steps are in [`SETUP.md`](SETUP.md) and the [`.env.example`](.env.example) comments. Managed Channels dial out from this process, so no tunnel is needed.
 
-**OpenAI + CopilotKit Channels + Exa**
+```sh
+npm run channel:status
+npm run dev:slack
+```
 
-An agent reads what people already said, researches with Exa, and answers in the same thread with native cards and source links. Start with a support conversation, a research discussion, or a team decision.
+## What we built and what we inherited
 
-The included Slack app supplies thread history, subscriptions, search, and Channels UI. Configure your model, Exa, and a managed Channel, then run `npm run dev:slack`. No public tunnel is needed. Teams or other chat platforms can use the same Channels pattern, but this starter ships the Slack app.
+Baseline commit is `9ed46e0`. `git diff --name-only 9ed46e0..HEAD` is the authoritative list.
 
-**[Use the Slack template →](apps/channel/)**
+**Built during the event**
 
-### 2. Web — an agent inside your app
-
-**OpenAI + CopilotKit React + Ambiguous AI**
-
-An agent sees the page you are on and turns a request into a real workplace record you can still find after a refresh. Adapt it to customer follow-ups, a project workspace, or a personal planning app.
-
-The included web app supplies page context, frontend tools, agent-rendered UI, and a browser approval step. Connect an Ambiguous AI workspace, then run `npm run dev:web`; approved follow-ups are saved through the server and can be read back after refresh.
-
-**[Use the web template →](apps/web/)**
-
-### 3. React Native — an agent in your pocket
-
-**OpenAI or OpenRouter + CopilotKit React Native**
-
-A mobile agent reads app state, renders native cards, and waits for a tap before changing local sample data. Start with a personal finance assistant, a field checklist, an inventory counter, or any workflow where phone context and approval matter.
-
-The included Expo app supplies seeded finance state, native rendered tool UI, a human-in-the-loop expense approval, and a mobile-specific CopilotKit runtime endpoint served by the web app. Configure your model provider, start `npm run dev:web`, then run the mobile app from `apps/mobile`.
-
-**[Use the React Native template →](apps/mobile/)**
-
-### Make the demo yours
-
-The supplied on-call and finance assistants are **infrastructure examples**: read ambient context, call a tool, render useful UI, and return a verifiable result. Choose a different user, problem, dataset, and interaction; the goal is your own project, not another version of the starter scenario.
-
-Use the [demo prompts](dev-docs/demo-prompts.md) to learn how the pieces connect, then replace the sample domain. In the Slack sample incident flow, approval cards record decisions without executing production actions. In the web follow-up flow, the page approval button saves the reviewed Ambiguous task. In the mobile finance flow, approval changes local in-memory sample data. Enforce the same kind of write boundary around any external action you add.
-
-Want another surface pattern? The web app also includes a voice route, and the shared agent can connect to remote MCP tools when configured. The event surfaces are inspiration, not separate tracks or a requirement to build multiple apps.
-
-## Coding agent
-
-Give your agent these files before it starts coding:
-
-| File | What it provides |
+| Area | Where |
 |---|---|
-| [hackathon-overview.md](hackathon-overview.md) | The challenge, four surfaces, and official judging criteria |
-| [hackathon-rules.md](hackathon-rules.md) | Build eligibility, inherited code, and required deliverables |
-| [using-sponsor-tools.md](using-sponsor-tools.md) | Every sponsor featured in this kit: access, authentication, configuration, and a first working call |
-| [AGENTS.md](AGENTS.md) | Repository conventions and verification commands |
-| [Channels skill](.agents/skills/build-channels-agent/SKILL.md) | Verified Channels APIs for the Slack template |
+| Reviewer tools, review gate, silence filter, revision tracking, evidence recorder | `apps/channel/src/reviewer-tools.tsx`, `review-moment.ts`, `agent.ts`, `revision.ts`, `evidence.ts` |
+| Finding card and welcome message | `apps/channel/src/finding-card.tsx` |
+| Reviewer system prompt | `packages/agent-core/src/reviewer-prompt.ts` |
+| Finding, evidence, and checker contracts with examples and tests | `packages/agent-core/src/contracts/`, `contracts/` |
+| Evidence log and graph | `packages/agent-core/src/evidence/` |
+| Checkers | `checkers/` |
+| Document extractor | `extractors/docx_text.py` |
+| Fixtures: documents, Slack scripts, checksums, generator | `fixtures/` |
+| Replay harness and publish guard | `apps/channel/src/replay/` |
+| Evidence API and web review console | `apps/web/src/app/api/evidence/`, `apps/web/src/components/review-console/` |
+| Research, design, fixture spec, handoffs | `RESEARCH.md`, `research/` |
 
-The app READMEs provide launch commands, files to customize, and a concrete result to check. Start with one template and add a second surface only if it helps your user.
+**Inherited from the starter**
 
-## Resources
+The CopilotKit Channels runtime wiring, the `BuiltInAgent` loop, the managed-gateway test harness pattern, the shared model configuration, the Exa search capability, the incident-response tools and cards in `apps/channel/src/tools.tsx` and `components.tsx` (no longer registered on the channel, kept for their tests), the web app shell and its follow-up workflow, the mobile app, the developer docs, and the bundled skills under `.agents/`.
 
-| Need | Go here |
-|---|---|
-| Event details, deadline, and judging | [Find your city](https://aitinkerers.org/hackathons/global/agents-everywhere), then open its participant portal and handbook |
-| OpenAI agent development | [Agents SDK quickstart](https://openai.github.io/openai-agents-js/guides/quickstart/) |
-| OpenRouter access and model choice | [Quickstart](https://openrouter.ai/docs/quickstart) · [Keys](https://openrouter.ai/keys) · [Model catalog](https://openrouter.ai/models) · [Model switching](dev-docs/model-switching.md) |
-| CopilotKit app development | [Docs](https://docs.copilotkit.ai/) · [Tools and context](dev-docs/tools-and-context.md) · [Discord channel for technical questions](https://discord.com/channels/1122926057641742418/1548038338848489532) |
-| CopilotKit Channels | [Channels guide](https://copilotkit.ai/channels-guide.md) · [Screenshot walkthrough](dev-docs/channels-sdk-walkthrough/README.md) · [OpenTag example app](https://github.com/CopilotKit/OpenTag) |
-| Exa quickstart | [Search API guide](https://exa.ai/docs/reference/search-api-guide) · [Kit setup](using-sponsor-tools.md#exa) |
-| Auth0 API authorization | [Node API](https://auth0.com/docs/quickstart/backend/nodejs) · [Kit setup](using-sponsor-tools.md#auth0) |
-| Ambiguous AI quickstart | [Developer guide](https://www.ambiguous.ai/llms.txt) · [Kit setup](using-sponsor-tools.md#ambiguous-ai) |
-| Rehearse and debug | [Demo prompts](dev-docs/demo-prompts.md) · [Troubleshooting](dev-docs/troubleshooting.md) |
-| Prepare your entry | [Submission checklist](SUBMISSION.md) |
+## Repo map
 
-For credit redemption instructions, choose your city on the [global event page](https://aitinkerers.org/hackathons/global/agents-everywhere) and check its participant portal's **Credits & Offers** section.
+```
+apps/channel/          Slack agent: reviewer tools, card, gate, replay harness
+apps/web/              Web review console and /api/evidence
+packages/agent-core/   Contracts, evidence log and graph, prompts, model config
+checkers/              Trusted Python checkers and their tests
+contracts/             Checker I/O contract and example findings, requests, logs
+fixtures/              Synthetic documents and Slack scripts for Scenario A, B, RC1 to RC3
+extractors/            Document text extraction
+research/              Research, fixture spec, design decisions, lane handoffs
+AGENTS.md              Lane ownership, workspace rules, conventions for coding agents
+STATUS.md              Live status board, one line per lane
+SCRATCHPAD.md          Accepted decisions
+SETUP.md               Environment setup record and verification history
+SUBMISSION.md          Hackathon submission checklist
+```
 
-For technical questions during the event, check your city's participant portal and ask your local organizers.
+## Team and working rules
 
-For the Slack/web workspaces, `npm run verify` runs typechecks and offline tests without credentials. The mobile app has its own install, tests, typecheck, and Metro export checks under `apps/mobile`. Each app reports missing configuration when the relevant integration is used. Live sponsor calls and platform delivery require your accounts. See [developer docs](dev-docs/README.md) for detailed setup and deployment.
+Five lanes work on this repo in parallel: backend, web console, demo and submission, Slack environment, and eval / red team. [`AGENTS.md`](AGENTS.md) has the lane table (who owns which directories), the workspace rules (one checkout per agent, stage by explicit path, `main` must always verify, pull-rebase before push), and the Channels API conventions. [`STATUS.md`](STATUS.md) is the board everyone updates after each push. [`CLAUDE.md`](CLAUDE.md) points Claude Code at both.
+
+## Sponsor technologies
+
+- **CopilotKit Channels** hosts the Slack connection, delivers thread history, and renders the finding card as native Block Kit from one component tree.
+- **OpenAI** (or OpenRouter) runs the reviewer agent that decides what to read, which checker to run, and what to ask.
+- **Exa** is wired for explicitly requested external research and is not used in the core workflow.
+
+## Research
+
+The reasoning behind the scope, the harness choice, the fixture design, and the competitive audit is in [`RESEARCH.md`](RESEARCH.md) and [`research/`](research/). Start with [`research/hackathon-design.md`](research/hackathon-design.md), [`research/synthetic-fixture-spec.md`](research/synthetic-fixture-spec.md), and [`research/change-agent-novelty-audit.md`](research/change-agent-novelty-audit.md), which names the direct competitors and why we do not claim a market gap.
