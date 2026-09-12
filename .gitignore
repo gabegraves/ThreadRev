@@ -17,4 +17,4 @@ apps/mobile/.expo/
 .data/
 
 # live evidence log (sample lives in contracts/examples)
-evidence/
+/evidence/
