@@ -6,8 +6,31 @@
 import { createServer } from "node:http";
 import { CopilotKitIntelligence, CopilotRuntime } from "@copilotkit/runtime/v2";
 import { createCopilotNodeListener } from "@copilotkit/runtime/v2/node";
+import { resolveModel } from "agent-core";
 import { channel } from "./channel";
 import { required } from "./env";
+
+/**
+ * Fail on a bad model configuration at boot, not on the first message.
+ *
+ * resolveModel() runs when an agent is constructed, which is per turn. A
+ * missing or mistyped key therefore let the process start, report the channel
+ * online, and answer nothing — the failure arriving when someone posts, which
+ * during a live thread is the worst time to learn it. Calling it here is free
+ * and side-effect-less.
+ */
+try {
+  resolveModel();
+} catch (error) {
+  console.error(
+    `
+  Model is not configured: ${(error as Error).message}
+` +
+      `  → Set MODEL and the matching provider key in the root .env
+`,
+  );
+  process.exit(1);
+}
 
 const intelligence = new CopilotKitIntelligence({
   apiKey: required("INTELLIGENCE_API_KEY"),
