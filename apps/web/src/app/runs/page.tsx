@@ -79,13 +79,13 @@ function Runs() {
               <Skeleton className="h-24 w-full rounded-[var(--radius-md)]" />
             </div>
           ) : (
-            <RunDetail row={selected} graph={graph} className="min-h-full rounded-none border-0 shadow-none" />
+            <RunDetail row={selected} graph={graph} events={events} className="min-h-full rounded-none border-0 shadow-none" />
           )}
         </aside>
       </div>
       {!isLg && drawerOpen && selected && (
         <Drawer open onClose={close} title={selected.run.run_id}>
-          <RunDetail row={selected} graph={graph} className="rounded-none border-0 p-0 shadow-none sm:p-0" />
+          <RunDetail row={selected} graph={graph} events={events} className="rounded-none border-0 p-0 shadow-none sm:p-0" />
         </Drawer>
       )}
     </div>

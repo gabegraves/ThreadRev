@@ -5,6 +5,8 @@ import { useMemo } from "react";
 import type { EvidenceEvent } from "agent-core/shared";
 import { DataTable, type Column } from "@/civic-ui/components/DataTable";
 import { LINK_CLASS, hrefs } from "@/lib/demo/links";
+import { type EditProposal, proposalStatus, proposalsFor } from "@/lib/edit-proposals";
+import { StatusPill } from "@/civic-ui/components/StatusPill";
 import { CheckBar, checkSummary } from "./kv-table";
 
 export type CheckRunEvent = Extract<EvidenceEvent, { kind: "check_run" }>;
@@ -16,6 +18,8 @@ export type RunRow = {
   /** finding ids published from this run (usually 0 or 1). */
   published: string[];
   refused: RefusedEvent | null;
+  /** edit proposals raised off this run, most-progressed first. */
+  proposals: EditProposal[];
 };
 
 /** One row per check_run, joined to its trigger message and its outcome. */
@@ -25,24 +29,38 @@ export function runRows(events: EvidenceEvent[]): RunRow[] {
     const trigger = events.find((e) => e.kind === "message_read" && e.ts === ev.trigger_ts);
     const published = events.flatMap((e) => (e.kind === "finding_published" && e.finding.checker_run.run_id === ev.run_id ? [e.finding.finding_id] : []));
     const refused = events.find((e): e is RefusedEvent => e.kind === "publish_refused" && e.run_id === ev.run_id) ?? null;
-    return [{ run: ev, triggerFrom: trigger && trigger.kind === "message_read" ? trigger.from : (ev.trigger_ts ?? "—"), published, refused }];
+    const proposals = proposalsFor(events, { run_id: ev.run_id });
+    return [{ run: ev, triggerFrom: trigger && trigger.kind === "message_read" ? trigger.from : (ev.trigger_ts ?? "—"), published, refused, proposals }];
   });
 }
 
 export const LINK = "font-mono text-[12px] text-accent-text underline-offset-2 hover:underline";
 
+/** Newest-decided-first: applied/error beats approved/rejected beats proposed. */
+function latestProposal(proposals: EditProposal[]): EditProposal | undefined {
+  const rank = (p: EditProposal) => (p.applied ? 2 : p.decision ? 1 : 0);
+  return proposals.reduce<EditProposal | undefined>((best, p) => (!best || rank(p) >= rank(best) ? p : best), undefined);
+}
+
 /** Table cell: what the run produced, readable without opening the detail. */
 function Result({ row }: { row: RunRow }) {
+  const proposal = latestProposal(row.proposals);
+  const editPill = proposal ? (
+    <StatusPill tone={proposalStatus(proposal).tone}>edit {proposalStatus(proposal).label}</StatusPill>
+  ) : null;
   if (row.refused) {
     return (
-      <span className="block max-w-[44ch] truncate text-[var(--status-danger-fg)]" title={row.refused.reason}>
-        refused: {row.refused.reason}
+      <span className="inline-flex flex-wrap items-center gap-2">
+        <span className="block max-w-[44ch] truncate text-[var(--status-danger-fg)]" title={row.refused.reason}>
+          refused: {row.refused.reason}
+        </span>
+        {editPill}
       </span>
     );
   }
-  if (row.published.length === 0) return <span className="text-faint">—</span>;
+  if (row.published.length === 0) return editPill ?? <span className="text-faint">—</span>;
   return (
-    <span className="inline-flex flex-wrap gap-x-2">
+    <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1">
       {row.published.map((id) => (
         <span key={id}>
           published{" "}
@@ -51,6 +69,7 @@ function Result({ row }: { row: RunRow }) {
           </Link>
         </span>
       ))}
+      {editPill}
     </span>
   );
 }

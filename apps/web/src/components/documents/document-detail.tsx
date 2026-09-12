@@ -9,6 +9,7 @@ import { cn } from "@/civic-ui/lib/cn";
 import { fmtAt } from "@/components/overview/metrics";
 import { LINK_CLASS, hrefs } from "@/lib/demo/links";
 import { STATUS_LABEL, STATUS_TONE } from "@/lib/demo/status";
+import { type EditProposal, proposalStatus } from "@/lib/edit-proposals";
 import type { DocCitation, DocRow } from "./document-model";
 
 function CopyButton({ text }: { text: string }) {
@@ -64,10 +65,73 @@ function Citation({ c }: { c: DocCitation }) {
   );
 }
 
+/** Compact two-line `find → replace` block for one proposed edit. */
+function EditRow({ edit }: { edit: { locator: string; find: string; replace: string; reason?: string } }) {
+  return (
+    <li className="flex flex-col gap-1 text-[13px] leading-relaxed">
+      <span className="font-mono text-[11px] text-faint">{edit.locator}</span>
+      <span className="text-subtle">
+        <span className="line-through">{edit.find}</span> {"→"} <span className="font-medium text-foreground">{edit.replace}</span>
+      </span>
+      {edit.reason && <span className="text-[12px] text-faint">{edit.reason}</span>}
+    </li>
+  );
+}
+
+/** Edits section shared by run/finding/document detail panels: `find → replace`, decision, and — if written — the output file. */
+export function EditsSection({ proposals }: { proposals: EditProposal[] }) {
+  if (proposals.length === 0) return null;
+  return (
+    <DetailSection title="Edits">
+      <ul className="flex flex-col gap-4">
+        {proposals.map((p) => {
+          const status = proposalStatus(p);
+          return (
+            <li key={p.proposal_id} className="flex flex-col gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-mono text-[12px] text-subtle">{p.proposal_id}</span>
+                <StatusPill tone={status.tone}>{status.label}</StatusPill>
+                {p.by && <span className="text-[12px] text-faint">by {p.by}</span>}
+                {p.finding_id && (
+                  <Link href={hrefs.finding(p.finding_id)} className={cn("font-mono text-[12px]", LINK_CLASS)}>
+                    {p.finding_id}
+                  </Link>
+                )}
+              </div>
+              <ul className="flex flex-col gap-2 border-l-2 border-hairline-strong pl-3">
+                {p.edits.map((e, i) => (
+                  // biome-ignore lint/suspicious/noArrayIndexKey: edits within one proposal have no stable id
+                  <EditRow key={i} edit={e} />
+                ))}
+              </ul>
+              {p.applied && (
+                <div className="text-[12px] text-subtle">
+                  {p.applied.error ? (
+                    <span className="text-[var(--status-danger-fg)]">error: {p.applied.error}</span>
+                  ) : (
+                    <>
+                      wrote{" "}
+                      <Link href={hrefs.document(p.applied.sha256)} className={cn("font-mono", LINK_CLASS)}>
+                        {p.applied.output}
+                      </Link>{" "}
+                      <span className="font-mono text-[11px] text-faint">{p.applied.sha256.slice(0, 12)}…</span>
+                    </>
+                  )}
+                </div>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </DetailSection>
+  );
+}
+
 /** Body shared by the desktop DetailPanel and the mobile Drawer. */
 export function DocumentDetailBody({ row, graphNodeIds }: { row: DocRow; graphNodeIds: Set<string> }) {
   return (
     <>
+      {row.writtenByRev && <p className="text-[12px] text-faint">written by Rev on approval</p>}
       <div className="flex flex-col gap-1.5">
         <span className="text-[11px] font-medium uppercase tracking-[0.08em] text-faint">sha256</span>
         <span className="flex items-center gap-2">
@@ -107,6 +171,7 @@ export function DocumentDetailBody({ row, graphNodeIds }: { row: DocRow; graphNo
           </ul>
         </DetailSection>
       )}
+      <EditsSection proposals={row.appliedEdits} />
     </>
   );
 }

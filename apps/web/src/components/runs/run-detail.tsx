@@ -3,9 +3,11 @@
 import { Check, Copy, Waypoints } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useState } from "react";
-import type { EvidenceGraph } from "agent-core/shared";
+import type { EvidenceEvent, EvidenceGraph } from "agent-core/shared";
 import { DetailPanel, DetailSection, Field, FieldGrid } from "@/civic-ui/components/DetailPanel";
 import { fmtTime } from "@/components/review-console/graph-utils";
+import { EditsSection } from "@/components/documents/document-detail";
+import { proposalsFor } from "@/lib/edit-proposals";
 import { ChecksTable, RecordFields } from "./kv-table";
 import { LINK, type RunRow } from "./runs-table";
 
@@ -50,10 +52,11 @@ function CopyId({ id }: { id: string }) {
   );
 }
 
-export function RunDetail({ row, graph, className }: { row: RunRow | null; graph: EvidenceGraph; className?: string }) {
+export function RunDetail({ row, graph, events, className }: { row: RunRow | null; graph: EvidenceGraph; events: EvidenceEvent[]; className?: string }) {
   if (!row) return <DetailPanel emptyMessage="Select a run." className={className} />;
   const { run } = row;
   const node = graph.nodes.find((n) => n.kind === "run" && n.id === run.run_id);
+  const proposals = proposalsFor(events, { run_id: run.run_id });
   return (
     <DetailPanel
       title={<CopyId id={run.run_id} />}
@@ -77,6 +80,8 @@ export function RunDetail({ row, graph, className }: { row: RunRow | null; graph
       <DetailSection title="Outputs">
         <RecordFields data={run.outputs} />
       </DetailSection>
+
+      <EditsSection proposals={proposals} />
 
       {node && (
         <DetailSection title="Graph">

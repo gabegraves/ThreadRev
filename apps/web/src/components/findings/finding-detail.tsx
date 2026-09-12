@@ -10,6 +10,8 @@ import type { EvidenceEvent, EvidenceGraph, Finding } from "agent-core/shared";
 import { cn } from "@/civic-ui/lib/cn";
 import { findingById, fmtTime } from "@/components/review-console/graph-utils";
 import { LINK_CLASS, hrefs } from "@/lib/demo/links";
+import { EditsSection } from "@/components/documents/document-detail";
+import { proposalsFor } from "@/lib/edit-proposals";
 import { FindingCard, fmt } from "./finding-card";
 
 const Id = ({ href, children }: { href: string; children: string }) => (
@@ -118,10 +120,12 @@ export function FindingDetail({ finding, graph, events }: { finding: Finding; gr
   const before = finding.supersedes ? findingById(graph, finding.supersedes) : undefined;
   const history = historyOf(finding, events);
   const graphNodeIds = new Set(graph.nodes.map((n) => n.id));
+  const proposals = proposalsFor(events, { finding_id: finding.finding_id });
   return (
     <div className="flex flex-col gap-5">
       <FindingCard finding={finding} graphNodeIds={graphNodeIds} />
       {before && <WhatChanged before={before} after={finding} />}
+      <EditsSection proposals={proposals} />
       {history.length > 0 && (
         <section className="flex flex-col gap-2 border-t border-hairline pt-4">
           <SectionTitle>History</SectionTitle>

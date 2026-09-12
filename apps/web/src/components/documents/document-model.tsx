@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { EvidenceEvent, EvidenceGraph } from "agent-core/shared";
 import { threadMessages } from "@/components/review-console/graph-utils";
+import { type EditProposal, proposalsFor } from "@/lib/edit-proposals";
 
 export type DocCitation = {
   finding_id: string;
@@ -33,6 +34,10 @@ export type DocRow = {
   citations: DocCitation[];
   /** check_run run_ids whose evidence_refs name this sha. */
   run_refs: string[];
+  /** edit_proposed→edit_applied proposals whose source is this document, applied and producing an output file. */
+  appliedEdits: EditProposal[];
+  /** True when this row exists only because an edit_applied wrote it — the output, not something read from the thread. */
+  writtenByRev?: boolean;
 };
 
 export function buildDocumentRows(events: EvidenceEvent[], graph: EvidenceGraph): DocRow[] {
@@ -60,6 +65,7 @@ export function buildDocumentRows(events: EvidenceEvent[], graph: EvidenceGraph)
       run_count: 0,
       citations: [],
       run_refs: [],
+      appliedEdits: [],
     });
   }
   for (const [sha, runs] of runsBySha) {
@@ -73,7 +79,7 @@ export function buildDocumentRows(events: EvidenceEvent[], graph: EvidenceGraph)
       const id = s.sha256 ?? `named:${s.id}`;
       let row = rows.get(id);
       if (!row) {
-        row = { id, document: s.id, revision: s.revision, sha256: s.sha256, read: false, run_count: 0, citations: [], run_refs: [] };
+        row = { id, document: s.id, revision: s.revision, sha256: s.sha256, read: false, run_count: 0, citations: [], run_refs: [], appliedEdits: [] };
         rows.set(id, row);
       }
       row.citations.push({ finding_id: f.finding_id, finding_status: f.status, locator: s.locator, quote: s.quote, revision: s.revision });
@@ -86,6 +92,28 @@ export function buildDocumentRows(events: EvidenceEvent[], graph: EvidenceGraph)
       if (ref.kind !== "document") continue;
       const row = rows.get(ref.id);
       if (row && !row.run_refs.includes(ev.run_id)) row.run_refs.push(ev.run_id);
+    }
+  }
+
+  // Applied edits: attach to the source document row, and — if the output
+  // sha isn't already a row from being read or cited — add it as one, since
+  // Rev wrote those bytes even though no document_read ever named them.
+  for (const p of proposalsFor(events, {})) {
+    if (!p.applied) continue;
+    const sourceRow = rows.get(p.source_sha256);
+    if (sourceRow) sourceRow.appliedEdits.push(p);
+    if (!p.applied.error && !rows.has(p.applied.sha256)) {
+      rows.set(p.applied.sha256, {
+        id: p.applied.sha256,
+        document: p.applied.output,
+        sha256: p.applied.sha256,
+        read: false,
+        run_count: 0,
+        citations: [],
+        run_refs: [],
+        appliedEdits: [],
+        writtenByRev: true,
+      });
     }
   }
 
