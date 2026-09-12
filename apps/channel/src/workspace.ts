@@ -93,7 +93,7 @@ const SYMBOL_RE =
 const WORD_RE =
   /(\d+(?:\.\d+)?)\s*(micro-?farads?|millifarads?|nanofarads?|farads?|kilowatt[- ]hours?|watt[- ]hours?|kilowatts?|milliamperes?|milliamps?|amperes?|amps?|millivolts?|volts?|milliseconds?|msecs?|seconds?|secs?|kilograms?|kilometres?|kilometers?|millimetres?|millimeters?|watts?|dollars?|ohms?)(?![A-Za-z0-9/])/gi;
 
-const DOC_RE = /([A-Za-z0-9._-]+\.(?:docx|xlsx|pdf))/g;
+const DOC_RE = /([A-Za-z0-9._-]+\.(?:docx|xlsx|pdf))/g;
 
 export function normalizeUnit(raw: string): string {
   return UNIT_ALIASES[raw.toLowerCase()] ?? raw;
