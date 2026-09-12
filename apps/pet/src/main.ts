@@ -42,8 +42,13 @@ const dirname = __dirname;
 /** Fixed window box, in DIP. Wide enough for the panel, tall enough for it to grow. */
 const WINDOW = { width: 412, height: 620 } as const;
 
-/** How far the pet pokes past the work-area edge, so it reads as peeking in. */
-const BLEED = 10;
+/*
+ * The window sits flush with the work area. It used to hang 10px past it, which
+ * suited a character with a capsule around it; a bare glyph clipped by the
+ * screen edge just looks broken. The inset from the edge is now the renderer's
+ * business, in one place, next to the size it has to agree with.
+ */
+const BLEED = 0;
 
 interface Settings {
   /** Window origin, or null to use the default corner. */
@@ -55,6 +60,9 @@ interface Settings {
   reducedMotion: boolean;
 }
 
+/** The only idle thresholds offered, in minutes. 0 disables sleeping. */
+const SLEEP_CHOICES = [0, 2, 5, 15] as const;
+
 const DEFAULTS: Settings = {
   x: null,
   y: null,
@@ -62,6 +70,9 @@ const DEFAULTS: Settings = {
   sleepAfterMin: 5,
   reducedMotion: false,
 };
+
+const isRecord = (v: unknown): v is Record<string, unknown> =>
+  typeof v === "object" && v !== null;
 
 let win: BrowserWindow | null = null;
 let tray: Tray | null = null;
@@ -132,8 +143,10 @@ function apertureIcon(size: number, alert: boolean): Electron.NativeImage {
   const rInner = size * 0.3;
   const rPupil = size * 0.13;
 
-  const ring: [number, number, number] = alert ? [84, 180, 255] : [232, 234, 237];
-  const pupil: [number, number, number] = alert ? [84, 180, 255] : [154, 160, 168];
+  // Amber matches the panel's "needs a decision" accent. This was blue, which
+  // is the calm colour — the glyph could not signal the one thing it exists for.
+  const ring: [number, number, number] = alert ? [240, 163, 60] : [232, 234, 237];
+  const pupil: [number, number, number] = alert ? [240, 163, 60] : [154, 160, 168];
 
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
@@ -168,6 +181,52 @@ function apertureIcon(size: number, alert: boolean): Electron.NativeImage {
   return nativeImage.createFromBitmap(buf, { width: size, height: size });
 }
 
+/**
+ * A tray image carrying both scale factors.
+ *
+ * Windows asks for 20px at 125% and 24px at 150%. Given only a 16px bitmap it
+ * upscales, and a thin ring is exactly the shape that turns to mush. Supplying
+ * a 2x representation lets it pick instead.
+ */
+function trayImage(alert: boolean): Electron.NativeImage {
+  const img = apertureIcon(16, alert);
+  img.addRepresentation({
+    scaleFactor: 2,
+    width: 32,
+    height: 32,
+    buffer: apertureIcon(32, alert).toBitmap(),
+  });
+  return img;
+}
+
+/** Open a URL in the real browser, ignoring anything that is not http(s). */
+function openExternally(url: unknown): void {
+  if (typeof url !== "string") return;
+  try {
+    if (/^https?:$/.test(new URL(url).protocol)) void shell.openExternal(url);
+  } catch {
+    // Not a usable URL; drop it.
+  }
+}
+
+/**
+ * Apply a settings change and tell the renderer.
+ *
+ * Both the tray menu and the in-overlay settings view write through here, so
+ * the two can never disagree about what is on — which they would if each
+ * mutated its own copy.
+ */
+function applySettings(patch: Partial<Settings>): void {
+  settings = { ...settings, ...patch };
+
+  if (patch.alwaysOnTop !== undefined && win && !win.isDestroyed()) {
+    win.setAlwaysOnTop(patch.alwaysOnTop, "screen-saver");
+  }
+  saveSettings();
+  win?.webContents.send("pet:settings", settings);
+  tray?.setContextMenu(buildMenu());
+}
+
 /* ---------------------------------------------------------------- menus --- */
 
 function buildMenu(): Electron.Menu {
@@ -181,48 +240,38 @@ function buildMenu(): Electron.Menu {
       label: "Always on top",
       type: "checkbox",
       checked: settings.alwaysOnTop,
-      click: (item) => {
-        settings.alwaysOnTop = item.checked;
-        win?.setAlwaysOnTop(item.checked, "screen-saver");
-        saveSettings();
-      },
+      click: (item) => applySettings({ alwaysOnTop: item.checked }),
     },
     {
       label: "Reduce motion",
       type: "checkbox",
       checked: settings.reducedMotion,
-      click: (item) => {
-        settings.reducedMotion = item.checked;
-        win?.webContents.send("pet:settings", settings);
-        saveSettings();
-      },
+      click: (item) => applySettings({ reducedMotion: item.checked }),
     },
     {
       label: "Sleep when idle",
-      submenu: ([0, 2, 5, 15] as const).map((min) => ({
+      submenu: SLEEP_CHOICES.map((min) => ({
         label: min === 0 ? "Never" : `After ${min} min`,
         type: "radio" as const,
         checked: settings.sleepAfterMin === min,
-        click: () => {
-          settings.sleepAfterMin = min;
-          win?.webContents.send("pet:settings", settings);
-          saveSettings();
-        },
+        click: () => applySettings({ sleepAfterMin: min }),
       })),
     },
     { type: "separator" },
     {
       label: "Reset position",
-      click: () => {
-        settings.x = null;
-        settings.y = null;
-        if (win) place(win);
-        saveSettings();
-      },
+      click: () => resetPosition(),
     },
     { type: "separator" },
     { label: "Quit ThreadRev Pet", click: () => app.quit() },
   ]);
+}
+
+function resetPosition(): void {
+  settings.x = null;
+  settings.y = null;
+  if (win && !win.isDestroyed()) place(win);
+  saveSettings();
 }
 
 function toggleVisible(): void {
@@ -266,8 +315,8 @@ function createWindow(): BrowserWindow {
   target.setIgnoreMouseEvents(true, { forward: true });
 
   place(target);
-  // `--endpoint=<url>` or PET_ENDPOINT points the panel at a findings feed
-  // other than the default; the renderer reads it from the page query.
+  // `--endpoint=<url>` or PET_ENDPOINT points the poll at a findings feed other
+  // than the default; the renderer reads it from the page query.
   const endpoint =
     process.argv.find((a) => a.startsWith("--endpoint="))?.slice("--endpoint=".length) ?? process.env.PET_ENDPOINT;
   void target.loadFile(path.join(dirname, "index.html"), endpoint ? { query: { endpoint } } : undefined);
@@ -281,13 +330,24 @@ function createWindow(): BrowserWindow {
     if (process.argv.includes("--open")) target.webContents.send("pet:open");
     // `--state=<name>` pins Rev to one state. For verifying each look without
     // having to reproduce the agent phase that produces it.
+    // The renderer owns the list of valid names and rejects anything else.
     const pinned = process.argv.find((a) => a.startsWith("--state="));
     if (pinned) target.webContents.send("pet:force-state", pinned.slice("--state=".length));
   });
 
+  // Always deny; open http(s) externally. Wrapped because `new URL` throws on a
+  // malformed href, and throwing out of this handler would lose the deny.
   target.webContents.setWindowOpenHandler(({ url }) => {
-    if (/^https?:$/.test(new URL(url).protocol)) void shell.openExternal(url);
+    openExternally(url);
     return { action: "deny" };
+  });
+
+  // Nothing may replace the overlay's own document.
+  target.webContents.on("will-navigate", (e, url) => {
+    if (url !== target.webContents.getURL()) {
+      e.preventDefault();
+      openExternally(url);
+    }
   });
 
   return target;
@@ -295,17 +355,24 @@ function createWindow(): BrowserWindow {
 
 /* ----------------------------------------------------------------- boot --- */
 
-// Only one companion, or two Revs fight over the same corner.
+/**
+ * Only one companion, or two Revs fight over the same corner.
+ *
+ * The loser quits without registering anything: wiring up a dozen IPC handlers
+ * in a process whose only remaining job is to exit is work that can only
+ * confuse the next reader.
+ */
 if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
+  registerIpc();
   app.on("second-instance", () => win?.showInactive());
 
   app.whenReady().then(() => {
     loadSettings();
     win = createWindow();
 
-    tray = new Tray(apertureIcon(16, false));
+    tray = new Tray(trayImage(false));
     tray.setToolTip("ThreadRev — Rev");
     tray.setContextMenu(buildMenu());
     tray.on("click", () => toggleVisible());
@@ -313,7 +380,7 @@ if (!app.requestSingleInstanceLock()) {
     const reposition = () => {
       if (win && !win.isDestroyed()) place(win);
     };
-    setInterval(pollCursor, 60);
+    pollTimer = setInterval(pollCursor, 60);
 
     screen.on("display-metrics-changed", reposition);
     screen.on("display-added", reposition);
@@ -335,10 +402,10 @@ if (!app.requestSingleInstanceLock()) {
  * overlay that silently stops being clickable is the worst possible failure.
  */
 let regions: Rect[] = [];
-
-ipcMain.on("pet:regions", (_e, payload: unknown) => {
-  regions = Array.isArray(payload) ? (payload as Rect[]) : [];
-});
+let interactive = false;
+let dragging = false;
+let lastDragAt = 0;
+let pollTimer: ReturnType<typeof setInterval> | undefined;
 
 /**
  * Poll the OS cursor and flip click-through accordingly.
@@ -348,69 +415,110 @@ ipcMain.on("pet:regions", (_e, payload: unknown) => {
  * system-wide low-level mouse hook it replaces.
  */
 function pollCursor(): void {
-  if (!win || win.isDestroyed() || !win.isVisible()) return;
+  if (!win || win.isDestroyed()) return;
+
+  if (!win.isVisible()) {
+    // Reset, or re-showing restores whatever the flag happened to be.
+    if (interactive) {
+      interactive = false;
+      win.setIgnoreMouseEvents(true, { forward: true });
+    }
+    return;
+  }
+
+  // A drag with no movement for a beat is over, whatever the renderer said.
+  // Trusting drag-end alone means one lost message leaves the overlay
+  // permanently interactive, killing that corner of the screen.
+  if (dragging && Date.now() - lastDragAt > 1200) dragging = false;
+
   const b = win.getBounds();
   const c = screen.getCursorScreenPoint();
-  const x = c.x - b.x;
-  const y = c.y - b.y;
-  const over = shouldCapture(regions, x, y, dragging);
+  const over = shouldCapture(regions, c.x - b.x, c.y - b.y, dragging);
   if (over === interactive) return;
   interactive = over;
   win.setIgnoreMouseEvents(!over, { forward: true });
 }
 
-let interactive = false;
-let dragging = false;
+/** Registered only by the instance that won the single-instance lock. */
+function registerIpc(): void {
+  ipcMain.on("pet:regions", (_e, payload: unknown) => {
+    regions = Array.isArray(payload) ? (payload as Rect[]) : [];
+  });
 
-/**
- * Drag. The renderer cannot move the window itself, and `-webkit-app-region:
- * drag` is unusable here: it would make the dragged element swallow clicks, and
- * the pet must stay clickable. So the renderer reports the grab offset and we
- * follow the OS cursor.
- */
-ipcMain.on("pet:drag", (_e, payload: unknown) => {
-  if (!win || win.isDestroyed()) return;
-  dragging = true;
-  const { dx, dy } = payload as { dx: number; dy: number };
-  const cursor = screen.getCursorScreenPoint();
-  const { x, y } = clamp(cursor.x - dx, cursor.y - dy);
-  win.setBounds({ x, y, width: WINDOW.width, height: WINDOW.height });
-});
+  /**
+   * Drag. The renderer cannot move the window itself, and `-webkit-app-region:
+   * drag` is unusable here: it would make the dragged element swallow clicks,
+   * and the pet must stay clickable. So the renderer reports the grab offset
+   * and we follow the OS cursor.
+   */
+  ipcMain.on("pet:drag", (_e, payload: unknown) => {
+    if (!win || win.isDestroyed()) return;
+    // NaN survives every comparison in clamp and reaches setBounds, where
+    // Windows does something undefined with it.
+    if (!isRecord(payload)) return;
+    const { dx, dy } = payload;
+    if (typeof dx !== "number" || typeof dy !== "number") return;
+    if (!Number.isFinite(dx) || !Number.isFinite(dy)) return;
 
-ipcMain.on("pet:drag-end", () => {
-  dragging = false;
-  if (!win || win.isDestroyed()) return;
-  const b = win.getBounds();
-  settings.x = b.x;
-  settings.y = b.y;
-  saveSettings();
-});
+    dragging = true;
+    lastDragAt = Date.now();
+    const cursor = screen.getCursorScreenPoint();
+    const { x, y } = clamp(cursor.x - dx, cursor.y - dy);
+    win.setBounds({ x, y, width: WINDOW.width, height: WINDOW.height });
+  });
 
-/** Rev's state drives the tray glyph, so attention is visible with the pet hidden. */
-ipcMain.on("pet:state", (_e, state: unknown) => {
-  if (!tray || tray.isDestroyed()) return;
-  tray.setImage(apertureIcon(16, state === "found"));
-  tray.setToolTip(`ThreadRev — ${String(state)}`);
-});
+  ipcMain.on("pet:drag-end", () => {
+    dragging = false;
+    if (!win || win.isDestroyed()) return;
+    const b = win.getBounds();
+    settings.x = b.x;
+    settings.y = b.y;
+    saveSettings();
+  });
 
-ipcMain.on("pet:context-menu", () => {
-  buildMenu().popup({ window: win ?? undefined });
-});
+  /** Rev's state drives the tray glyph, so attention shows with the pet hidden. */
+  ipcMain.on("pet:state", (_e, state: unknown) => {
+    if (!tray || tray.isDestroyed()) return;
+    tray.setImage(trayImage(state === "found"));
+    tray.setToolTip(`ThreadRev — ${String(state)}`);
+  });
 
-ipcMain.on("pet:hide", () => {
-  win?.hide();
-  tray?.setContextMenu(buildMenu());
-});
+  ipcMain.on("pet:context-menu", () => {
+    buildMenu().popup({ window: win ?? undefined });
+  });
 
-ipcMain.on("pet:quit", () => app.quit());
+  ipcMain.on("pet:hide", () => {
+    win?.hide();
+    tray?.setContextMenu(buildMenu());
+  });
 
-ipcMain.on("pet:open-external", (_e, url: unknown) => {
-  if (typeof url !== "string") return;
-  try {
-    if (/^https?:$/.test(new URL(url).protocol)) void shell.openExternal(url);
-  } catch {
-    // Ignore anything that is not a usable URL.
-  }
-});
+  ipcMain.on("pet:set-setting", (_e, payload: unknown) => {
+    if (!isRecord(payload)) return;
+    const patch: Partial<Settings> = {};
+    // Validated field by field: this is the one channel that can change how the
+    // window behaves, and an unchecked value reaches setAlwaysOnTop.
+    if (typeof payload.alwaysOnTop === "boolean") patch.alwaysOnTop = payload.alwaysOnTop;
+    if (typeof payload.reducedMotion === "boolean") patch.reducedMotion = payload.reducedMotion;
+    if (
+      typeof payload.sleepAfterMin === "number" &&
+      Number.isFinite(payload.sleepAfterMin) &&
+      SLEEP_CHOICES.includes(payload.sleepAfterMin as (typeof SLEEP_CHOICES)[number])
+    ) {
+      patch.sleepAfterMin = payload.sleepAfterMin;
+    }
+    if (Object.keys(patch).length) applySettings(patch);
+  });
 
-app.on("window-all-closed", () => app.quit());
+  ipcMain.on("pet:reset-position", () => resetPosition());
+
+  ipcMain.on("pet:quit", () => app.quit());
+
+  ipcMain.on("pet:open-external", (_e, url: unknown) => openExternally(url));
+
+  app.on("before-quit", () => {
+    if (pollTimer) clearInterval(pollTimer);
+    pollTimer = undefined;
+  });
+
+  app.on("window-all-closed", () => app.quit());
+}

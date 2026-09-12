@@ -11,65 +11,44 @@
  * labelled as sample. It never passes invented findings off as real output.
  */
 
-/** Mirrors `reproducedValue` in the contract. */
-export interface Reproduced {
-  label: string;
-  printed?: number;
-  computed: number;
-  unit: string;
-  matches?: boolean;
-}
+import { cleanFeed, type CleanFeed, type CleanFinding } from "../logic.js";
 
-export interface Source {
-  kind: "document" | "message";
-  id: string;
-  revision?: string;
-  sha256?: string;
-  locator?: string;
-}
-
-/** The subset of `Finding` the panel renders. */
-export interface PetFinding {
-  finding_id: string;
-  status: "live" | "stale";
-  discrepancy: string;
-  why_it_matters: string;
-  resolution: string;
-  requirements_revision: string;
-  supersedes_reason?: string;
-  sources: Source[];
-  reproduced: Reproduced[];
-  inferred?: string[];
-  question?: { to: string; ask: string };
-}
-
-/** What the reviewer is doing right now. Drives Rev's aperture. */
-export type AgentPhase = "idle" | "reading" | "searching" | "checking";
-
-export interface Feed {
-  findings: PetFinding[];
-  phase?: AgentPhase;
-  /** Revision the reviewer is currently bound to. */
-  revision?: string;
-}
+export type Reproduced = CleanFinding["reproduced"][number];
+export type Source = CleanFinding["sources"][number];
+export type PetFinding = CleanFinding;
+export type Feed = CleanFeed;
 
 export type Connection =
   | { kind: "connected"; feed: Feed }
   | { kind: "offline"; reason: string };
 
-/** Served by apps/web (`/api/pet/findings`); the console preview runs on :3100. */
-export const DEFAULT_ENDPOINT = "http://localhost:3100/api/pet/findings";
+/** Where apps/web serves. The menu opens its pages; the poll hits its API. */
+export const WEB_ORIGIN = "http://localhost:3100";
+
+/**
+ * The review console the menu opens: the deployed build, on its evidence graph.
+ *
+ * A fixed deployment rather than WEB_ORIGIN, because the local origin only
+ * answers while someone is running `npm run dev:web`. The console should open
+ * from anyone's desktop, and it always has a graph to show.
+ */
+export const REVIEW_CONSOLE_URL = "https://threadrev-web.vercel.app/graph";
+
+/** `--endpoint=<url>` or PET_ENDPOINT on the main process arrives as a page query. */
 export const PET_ENDPOINT =
-  (typeof location !== "undefined" && new URLSearchParams(location.search).get("endpoint")) || DEFAULT_ENDPOINT;
+  (typeof location !== "undefined" && new URLSearchParams(location.search).get("endpoint")) ||
+  `${WEB_ORIGIN}/api/pet/findings`;
 
 const POLL_MS = 3000;
+/** Shorter than the poll, so a stalled request cannot outlive its own interval. */
+const REQUEST_TIMEOUT_MS = 2500;
 
 /**
  * Sample content, used only when the reviewer is unreachable. Drawn from the
  * Scenario A cross-channel case so the shape is honest even though the run is
  * not live.
  */
-export const SAMPLE: PetFinding[] = [
+const SAMPLE_RAW: unknown[] = [
   {
     finding_id: "fnd-sample-cross",
     status: "live",
@@ -112,6 +91,12 @@ export const SAMPLE: PetFinding[] = [
   },
 ];
 
+/**
+ * The sample goes through the same validator as a live response, so it cannot
+ * drift from the shape the panel actually renders.
+ */
+export const SAMPLE: PetFinding[] = cleanFeed({ findings: SAMPLE_RAW }).findings;
+
 /** Poll the reviewer. Returns a stop function. */
 export function watchFindings(onUpdate: (state: Connection) => void): () => void {
   let stopped = false;
@@ -119,19 +104,17 @@ export function watchFindings(onUpdate: (state: Connection) => void): () => void
 
   const tick = async (): Promise<void> => {
     try {
-      const res = await fetch(PET_ENDPOINT, { cache: "no-store" });
+      // Without a deadline a half-open socket parks the await forever and the
+            // poll chain stops: Rev freezes on its last state and never recovers.
+      const res = await fetch(PET_ENDPOINT, {
+        cache: "no-store",
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const body = (await res.json()) as Partial<Feed>;
-      if (!stopped) {
-        onUpdate({
-          kind: "connected",
-          feed: {
-            findings: body.findings ?? [],
-            phase: body.phase,
-            revision: body.revision,
-          },
-        });
-      }
+      // Coerced, never trusted: see cleanFeed. A malformed payload degrades to
+      // fewer findings, never to a blank panel.
+      const feed = cleanFeed(await res.json());
+      if (!stopped) onUpdate({ kind: "connected", feed });
     } catch (err) {
       // Not an error state: the reviewer simply is not running yet.
       if (!stopped) {

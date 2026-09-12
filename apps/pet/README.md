@@ -51,6 +51,34 @@ cursor is over the pet or the open panel. `forward: true` is what keeps
 `mousemove` arriving while click-through is on — without it the hit test never
 runs.
 
+## The menu
+
+Clicking Rev fans a semicircle of five destinations out around it:
+
+| Item | Goes to |
+| --- | --- |
+| Findings | the review panel, in the overlay |
+| Review console | `https://threadrev-web.vercel.app/graph` in the real browser |
+| Voice review | `http://localhost:3100/voice` |
+| Settings | the same native menu as the tray icon |
+| Hide Rev | hides the overlay; the tray icon brings it back |
+
+A full circle cannot fit in a screen corner, and against the right edge an arc
+can only open about 110 degrees before its items run off the screen. So Rev
+steps out of the corner while the menu is open and settles back after — that
+shift is what buys the full 180 degrees.
+
+The items travel out along the arc with a staggered spring, and collapse back in
+reverse order so the menu gathers into Rev rather than vanishing. A guide arc is
+drawn under them with `stroke-dashoffset`, sized from the same radius the items
+use, read back from the stylesheet so there is one source of truth.
+
+Hovering or focusing an item names it in a single shared label. At this radius
+the items are about 59px apart; five separate labels would collide.
+
+Arrow keys walk the arc and wrap at its ends, Escape closes it, and the closed
+menu is `inert` so it takes no Tab stops.
+
 ## The character
 
 Rev is a revision stamp with an aperture where a face would be — an instrument,
@@ -61,11 +89,10 @@ the look is a status display rather than decoration:
   there is something to decide. `--aperture` is one number the state machine
   drives; the iris is a scaled hexagon because that is a single composited
   transform, which matters inside a transparent window.
-- The **ring arc** carries the state colour, so status is legible across a room.
-- The **eye** carries severity: red when a card asserts a discrepancy or a
-  printed number did not reproduce, yellow when every live card is a question
-  and the numbers reproduce, green when nothing live is wrong. Only a critical
-  card makes Rev hop.
+- The **colour** is the severity while findings wait: red when a card asserts a
+  discrepancy or a printed number did not reproduce, yellow when every live card
+  is a question and the numbers reproduce, green when nothing live is wrong.
+  Only a red issue makes Rev react or swell; yellow is the badge alone.
 - The **tab** on top shows the revision the findings are bound to.
 - The **hairline crack** appears when a card has been superseded.
 - The **thread** unspools from Rev up to the panel as it opens, drawn with
@@ -73,18 +100,18 @@ the look is a status display rather than decoration:
 
 | State       | Look                                 | Means                         |
 | ----------- | ------------------------------------ | ----------------------------- |
-| `idle`      | half aperture, blue, still           | watching                      |
+| `idle`      | half aperture, blue, slow breathe    | watching                      |
 | `reading`   | open, pupil scanning                 | reading the thread            |
 | `searching` | wide, sonar ring                     | searching the workspace       |
 | `checking`  | stopped down, tick marks             | a checker is recomputing      |
-| `found`     | wide, red or yellow, hops until opened| live findings need a decision |
+| `found`     | wide, amber, alert hop               | live findings need a decision |
 | `clear`     | relaxed, green                       | nothing to flag               |
 | `stale`     | desaturated, fracture across the lens| superseded                    |
 | `asleep`    | shut, zzz                            | idle past the sleep threshold |
 
 ## What it does
 
-- Click to open the panel, click or Escape to close. Drag Rev anywhere; the
+- Click Rev for the menu, click again or press Escape to close it. Drag Rev anywhere; the
   position is saved and restored, clamped so it can never be stranded off-screen
   or on a monitor that has since been unplugged.
 - Right-click Rev, or the tray icon, for show/hide, always-on-top, reduce
@@ -111,7 +138,9 @@ The reviewer may also send `phase` (`reading` / `searching` / `checking`) and th
 `revision` it is bound to; those drive the aperture and the tab directly, so Rev
 shows what the agent is really doing rather than a generic spinner.
 
-`apps/web` serves that endpoint from the same evidence log as the console; `npm run dev:web` (or the :3100 preview) is enough. Pass `--endpoint=<url>` or `PET_ENDPOINT` to point elsewhere. When it is not up, the panel renders the sample
+`apps/web` serves that endpoint from the same evidence log as the console, so
+`npm run dev:web` (or the :3100 preview) is enough; pass `--endpoint=<url>` or
+`PET_ENDPOINT` to point elsewhere. When nothing answers, the panel renders the sample
 set from `findings.ts` and the footer reads "sample data — reviewer offline".
 The sample data is never presented as real output. Serve the endpoint and nothing
 else here needs to change.

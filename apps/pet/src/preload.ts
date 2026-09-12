@@ -34,19 +34,34 @@ contextBridge.exposeInMainWorld("pet", {
   hide(): void {
     ipcRenderer.send("pet:hide");
   },
+  /** Change a setting. Main validates, persists, and echoes the new state back. */
+  setSetting(patch: Partial<PetSettings>): void {
+    ipcRenderer.send("pet:set-setting", patch);
+  },
+  resetPosition(): void {
+    ipcRenderer.send("pet:reset-position");
+  },
   quit(): void {
     ipcRenderer.send("pet:quit");
   },
   openExternal(url: string): void {
     ipcRenderer.send("pet:open-external", url);
   },
+  /*
+   * One listener per channel, replaced rather than appended. Registering twice
+   * used to stack handlers with no way to remove them, so a reloaded renderer
+   * would open the panel once per past registration.
+   */
   onSettings(handler: (settings: PetSettings) => void): void {
+    ipcRenderer.removeAllListeners("pet:settings");
     ipcRenderer.on("pet:settings", (_e, settings: PetSettings) => handler(settings));
   },
   onOpen(handler: () => void): void {
+    ipcRenderer.removeAllListeners("pet:open");
     ipcRenderer.on("pet:open", () => handler());
   },
   onForceState(handler: (state: string) => void): void {
+    ipcRenderer.removeAllListeners("pet:force-state");
     ipcRenderer.on("pet:force-state", (_e, state: string) => handler(state));
   },
 });

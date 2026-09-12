@@ -21,13 +21,20 @@ import {
   type PetFinding,
   type Reproduced,
 } from "./findings.js";
-import { applyFilter, formatValue, severityOf, unreadCount, type Filter } from "../logic.js";
+import {
+  applyFilter,
+  arrivalReaction,
+  severityOf,
+  arrivals,
+  fitSweep,
+  formatValue,
+  isDrag,
+  unreadCount,
+  type Filter,
+} from "../logic.js";
+import { PET_ENDPOINT, REVIEW_CONSOLE_URL, WEB_ORIGIN } from "./findings.js";
 
-interface PetSettings {
-  alwaysOnTop: boolean;
-  sleepAfterMin: number;
-  reducedMotion: boolean;
-}
+import type { PetSettings } from "../preload.js";
 
 declare global {
   interface Window {
@@ -36,6 +43,8 @@ declare global {
       drag(dx: number, dy: number): void;
       dragEnd(): void;
       reportState(state: string): void;
+      setSetting(patch: Partial<PetSettings>): void;
+      resetPosition(): void;
       contextMenu(): void;
       hide(): void;
       quit(): void;
@@ -47,18 +56,33 @@ declare global {
   }
 }
 
-type PetState =
-  | "idle"
-  | "reading"
-  | "searching"
-  | "checking"
-  | "found"
-  | "clear"
-  | "stale"
-  | "asleep";
+const PET_STATES = [
+  "idle",
+  "reading",
+  "searching",
+  "checking",
+  "found",
+  "clear",
+  "stale",
+  "asleep",
+] as const;
 
-const $ = <T extends HTMLElement>(id: string): T =>
-  document.getElementById(id) as T;
+type PetState = (typeof PET_STATES)[number];
+
+/**
+ * Look up a required element, failing loudly at startup.
+ *
+ * The previous cast through `unknown` hid a null, so an id typo or an HTML edit
+ * surfaced later as "cannot set properties of null" from whichever handler
+ * happened to touch it first.
+ */
+function need<T extends Element>(id: string): T {
+  const node = document.getElementById(id);
+  if (!node) throw new Error(`Rev: missing required element #${id}`);
+  return node as unknown as T;
+}
+
+const $ = <T extends HTMLElement>(id: string): T => need<T>(id);
 
 const petEl = $("pet");
 const hitEl = $<HTMLButtonElement>("pet-hit");
@@ -66,18 +90,71 @@ const panelEl = $("panel");
 const bodyEl = $("panel-body");
 const subEl = $("panel-sub");
 const revChip = $("rev-chip");
-const petRev = document.getElementById("pet-rev") as unknown as SVGTextElement;
 const countEl = $("pet-count");
 const connEl = $("conn");
 const connLabel = $("conn-label");
 const threadEl = $("thread");
-const threadPath = document.getElementById("thread-path") as unknown as SVGPathElement;
+const threadPath = need<SVGPathElement>("thread-path");
+const radialEl = $("radial");
+const radialLabel = $("radial-label");
+const radialBadge = $("radial-badge");
+const radialArc = need<SVGPathElement>("radial-arc");
+const radialItems = [...document.querySelectorAll<HTMLButtonElement>(".radial__item")];
+const panelTitle = $("panel-title");
+const liveRegion = $("live-region");
 const liveCount = $("count-live");
 const staleCount = $("count-stale");
 
 let open = false;
+let menuOpen = false;
+
+/**
+ * Whether the user is driving with the keyboard right now.
+ *
+ * The menu moves focus to its first item when it opens, which keyboard users
+ * need. The label used to follow focus unconditionally, so every mouse click
+ * that opened the menu also announced "Findings" — the menu appeared to be
+ * titled after its first item. The label now follows focus only while the
+ * keyboard is in use; with a mouse it follows hover and nothing else.
+ */
+let keyboardNav = false;
+document.addEventListener(
+  "keydown",
+  (e) => {
+    if (e.key === "Tab" || e.key.startsWith("Arrow") || e.key === "Home" || e.key === "End") {
+      keyboardNav = true;
+    }
+  },
+  true,
+);
+document.addEventListener("pointerdown", () => (keyboardNav = false), true);
+
+/**
+ * Whether a hover can name a menu item yet.
+ *
+ * The items fly out from Rev. Click the lower-left of the glyph and the first
+ * item, Findings, emerges straight under a cursor that has not moved — which
+ * the browser reports as the pointer entering it, and the label announced
+ * "Findings" nobody pointed at. Hover now only counts once the opening
+ * animation has finished and the pointer has actually moved.
+ */
+let hoverArmed = false;
+let hoverArmTimer: ReturnType<typeof setTimeout> | undefined;
+const OPEN_SETTLE_MS = 420;
+
+type View = "findings" | "status" | "settings";
+
+const VIEW_TITLE: Record<View, string> = {
+  findings: "Findings",
+  status: "Status",
+  settings: "Settings",
+};
+
+let view: View = "findings";
 let dragging = false;
 let grab = { dx: 0, dy: 0 };
+/** Where the press started, so a click is not mistaken for a zero-distance drag. */
+let pressAt = { x: 0, y: 0 };
 let moved = false;
 let state: PetState = "idle";
 let filter: Filter = "live";
@@ -85,6 +162,12 @@ let findings: PetFinding[] = [];
 let isSample = true;
 let settings: PetSettings = { alwaysOnTop: true, sleepAfterMin: 5, reducedMotion: false };
 let lastActivity = Date.now();
+/**
+ * The OS-level preference. The tray toggle is an override on top of it, so a
+ * user who set reduced motion system-wide gets it without discovering the menu.
+ */
+const osReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+const reducedMotion = (): boolean => settings.reducedMotion || osReducedMotion.matches;
 let seen = new Set<string>();
 /** Set by --state=<name>; freezes the aperture for visual verification. */
 let pinnedState: PetState | null = null;
@@ -99,12 +182,29 @@ let pinnedState: PetState | null = null;
  * feel broken. Main polls the OS cursor against these, so click-through keeps
  * working even when forwarded mouse events stop arriving.
  */
+let lastRegions = "";
+
 function publishRegions(): void {
   const r = (el: Element) => {
     const b = el.getBoundingClientRect();
-    return { left: b.left, top: b.top, right: b.right, bottom: b.bottom };
+    return {
+      left: Math.round(b.left),
+      top: Math.round(b.top),
+      right: Math.round(b.right),
+      bottom: Math.round(b.bottom),
+    };
   };
-  window.pet.setRegions(open ? [r(petEl), r(panelEl)] : [r(petEl)]);
+  const regions = [r(petEl)];
+  if (open) regions.push(r(panelEl));
+  // Each item is its own small circle out on the arc; publishing one big box
+  // would make the whole quadrant swallow clicks meant for the app underneath.
+  if (menuOpen) for (const item of radialItems) regions.push(r(item));
+  // Rounded and compared, so the 500ms safety sweep is silent while nothing
+  // moves instead of posting an identical message twice a second forever.
+  const key = JSON.stringify(regions);
+  if (key === lastRegions) return;
+  lastRegions = key;
+  window.pet.setRegions(regions);
 }
 
 /* ----------------------------------------------------------------- gaze --- */
@@ -123,8 +223,9 @@ function gaze(x: number, y: number): void {
 document.addEventListener("mousemove", (e) => {
   gaze(e.clientX, e.clientY);
   if (dragging) {
-    moved = true;
-    window.pet.drag(grab.dx, grab.dy);
+    // Only past the threshold; a press alone jiggles the cursor a pixel or two.
+    if (!moved && isDrag(pressAt.x, pressAt.y, e.screenX, e.screenY)) moved = true;
+    if (moved) window.pet.drag(grab.dx, grab.dy);
   }
   wake();
 });
@@ -135,12 +236,13 @@ hitEl.addEventListener("mousedown", (e) => {
   if (e.button !== 0) return;
   dragging = true;
   moved = false;
+  pressAt = { x: e.screenX, y: e.screenY };
   grab = { dx: e.screenX - window.screenX, dy: e.screenY - window.screenY };
   petEl.dataset.dragging = "true";
   petEl.dataset.press = "true";
 });
 
-window.addEventListener("mouseup", () => {
+function endDrag(): void {
   if (!dragging) return;
   dragging = false;
   delete petEl.dataset.dragging;
@@ -148,11 +250,22 @@ window.addEventListener("mouseup", () => {
   if (moved) {
     window.pet.dragEnd();
   } else {
-    // A click, not a drag.
+    // A click, not a drag. Rev opens the menu; the menu opens everything else.
     pop();
-    setOpen(!open);
+    if (open) setOpen(false);
+    else setMenuOpen(!menuOpen);
   }
-});
+}
+
+window.addEventListener("mouseup", endDrag);
+// A release outside the window never reaches us as mouseup. Without this the
+// drag would never end: the overlay would stay permanently interactive and eat
+// every click in that corner of the screen.
+window.addEventListener("blur", endDrag);
+// Any exit ends the press. Guarding this on `moved` left a sub-threshold press
+// armed: the release happened over the desktop, no blur fired, and the next
+// time the cursor came back the stale press position made it a drag.
+document.addEventListener("mouseleave", () => endDrag());
 
 hitEl.addEventListener("contextmenu", (e) => {
   e.preventDefault();
@@ -178,21 +291,39 @@ const SUBTITLE: Record<PetState, string> = {
   asleep: "dozing",
 };
 
+/** Write a state to the DOM unconditionally. */
+function applyState(next: PetState): void {
+  state = next;
+  petEl.dataset.state = next;
+  panelEl.dataset.state = next;
+  renderSubtitle();
+  hitEl.setAttribute("aria-label", `Rev, ${SUBTITLE[next]}. ${open ? "Close" : "Open"} findings.`);
+  window.pet.reportState(next);
+}
+
+/**
+ * The header subtitle depends on which view is open.
+ *
+ * On Findings it is Rev's state ("needs a decision"). On Settings that same
+ * text sat under a "Settings" title, describing findings on a page with none.
+ */
+function renderSubtitle(): void {
+  if (view === "findings") subEl.textContent = SUBTITLE[state];
+  else if (view === "status") subEl.textContent = isSample ? "reviewer offline" : "reviewer connected";
+  else subEl.textContent = "preferences";
+}
+
 function setState(next: PetState): void {
   if (pinnedState) next = pinnedState;
   if (next === state) return;
-  state = next;
-  petEl.dataset.state = next;
-  subEl.textContent = SUBTITLE[next];
-  hitEl.setAttribute("aria-label", `Rev, ${SUBTITLE[next]}. ${open ? "Close" : "Open"} findings.`);
-  window.pet.reportState(next);
+  applyState(next);
 }
 
 /** Blink on a randomised cadence. A creature that never blinks reads as dead. */
 function scheduleBlink(): void {
   const wait = 2600 + Math.random() * 4200;
   window.setTimeout(() => {
-    if (state !== "asleep" && !settings.reducedMotion) {
+    if (state !== "asleep" && !reducedMotion()) {
       petEl.dataset.blink = "true";
       window.setTimeout(() => delete petEl.dataset.blink, 110);
     }
@@ -213,6 +344,392 @@ window.setInterval(() => {
   if (idleMs > settings.sleepAfterMin * 60_000 && state !== "found") setState("asleep");
 }, 5000);
 
+/* -------------------------------------------------------------- arrival --- */
+
+/** Live finding ids Rev has already reacted to. Never cleared: see `arrivals`. */
+const announced = new Set<string>();
+/** From the monotonic clock, so a system clock change cannot skew the cooldown. */
+let lastStartleAt: number | null = null;
+/** An arrival that landed while the window was hidden, played once it shows. */
+let arrivalHeld = false;
+/** Bumped per reaction, so an earlier one finishing cannot clear a later one. */
+let arrivalToken = 0;
+
+/**
+ * React to an issue arriving: a startle, or a nudge of the badge.
+ *
+ * The motion is CSS keyframes keyed off `data-arrival`, so the reduced-motion
+ * rules that stop every other animation stop this one too. The attribute is
+ * cleared when those animations finish rather than on a timer, so the timing
+ * lives in the stylesheet alone — and with motion off there is nothing to wait
+ * for, so it clears at once.
+ */
+function react(): void {
+  // A hidden window does not paint; a reaction now would play to nobody.
+  if (document.hidden) {
+    arrivalHeld = true;
+    return;
+  }
+  const now = performance.now();
+  // Only a critical (red) issue moves Rev. Anything less is the badge alone.
+  const kind =
+    severityOf(findings) === "critical"
+      ? arrivalReaction({ now, lastStartleAt, engaged: open || menuOpen })
+      : "nudge";
+  if (kind === "startle") lastStartleAt = now;
+
+  const token = ++arrivalToken;
+  const targets = [petEl, radialEl];
+  // Clear and reflow first, so an arrival during a reaction restarts it
+  // instead of being swallowed by the one already playing.
+  for (const node of targets) delete node.dataset.arrival;
+  void petEl.offsetWidth;
+  for (const node of targets) node.dataset.arrival = kind;
+
+  const playing = targets
+    .flatMap((node) => node.getAnimations({ subtree: true }))
+    .filter((a) => a instanceof CSSAnimation && a.animationName.startsWith("arrival-"));
+  // allSettled: opening the menu cancels a startle, which rejects `finished`.
+  void Promise.allSettled(playing.map((a) => a.finished)).then(() => {
+    if (token !== arrivalToken) return;
+    for (const node of targets) delete node.dataset.arrival;
+  });
+}
+
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden || !arrivalHeld) return;
+  arrivalHeld = false;
+  react();
+});
+
+/* --------------------------------------------------------------- views --- */
+
+/**
+ * Show one view and hide the rest.
+ *
+ * `hidden` rather than display:none from a class, so the hidden views are out of
+ * the accessibility tree and out of the focus trap's reach without a second
+ * mechanism to keep in step.
+ */
+function setView(next: View): void {
+  view = next;
+  for (const name of ["findings", "status", "settings"] as View[]) {
+    $(`view-${name}`).hidden = name !== next;
+  }
+  panelTitle.textContent = VIEW_TITLE[next];
+  panelEl.setAttribute("aria-label", `ThreadRev ${VIEW_TITLE[next]}`);
+  panelEl.dataset.view = next;
+  renderSubtitle();
+  if (next === "status") renderStatus();
+  if (next === "settings") renderSettings();
+}
+
+/* -------------------------------------------------------------- status --- */
+
+/** When the reviewer last answered, for the status view's "Last answer" row. */
+let lastAnswerAt: number | null = null;
+
+function ago(ms: number): string {
+  const s = Math.round(ms / 1000);
+  if (s < 2) return "just now";
+  if (s < 60) return `${s}s ago`;
+  const m = Math.round(s / 60);
+  if (m < 60) return `${m}m ago`;
+  return `${Math.round(m / 60)}h ago`;
+}
+
+function renderStatus(): void {
+  const conn = $("fact-conn");
+  conn.textContent = isSample ? "not connected" : "connected";
+  conn.dataset.tone = isSample ? "warn" : "ok";
+
+  $("fact-age").textContent = lastAnswerAt === null ? "never" : ago(Date.now() - lastAnswerAt);
+
+  const live = findings.filter((f) => f.status === "live").length;
+  const stale = findings.length - live;
+  $("fact-counts").textContent = `${live} live, ${stale} superseded${isSample ? " (sample)" : ""}`;
+  $("fact-rev").textContent = revChip.textContent ?? "—";
+
+  const endpoint = $("fact-endpoint");
+  // Without the scheme it fits, and the host and path are what identify it.
+  endpoint.textContent = PET_ENDPOINT.replace(/^https?:\/\//, "");
+  endpoint.title = PET_ENDPOINT;
+}
+
+// The age is the only thing that goes stale on its own.
+window.setInterval(() => {
+  if (open && view === "status") {
+    $("fact-age").textContent = lastAnswerAt === null ? "never" : ago(Date.now() - lastAnswerAt);
+  }
+}, 1000);
+
+$("go-console").addEventListener("click", () =>
+  openOutside(REVIEW_CONSOLE_URL, "Opening review console"),
+);
+$("go-voice").addEventListener("click", () =>
+  openOutside(`${WEB_ORIGIN}/voice`, "Opening voice review"),
+);
+
+/* ------------------------------------------------------------ settings --- */
+
+const sleepOpts = [...document.querySelectorAll<HTMLButtonElement>(".segmented__opt")];
+
+function renderSettings(): void {
+  $<HTMLInputElement>("set-ontop").checked = settings.alwaysOnTop;
+  $<HTMLInputElement>("set-motion").checked = settings.reducedMotion;
+  for (const opt of sleepOpts) {
+    opt.setAttribute("aria-checked", String(Number(opt.dataset.min) === settings.sleepAfterMin));
+  }
+}
+
+$<HTMLInputElement>("set-ontop").addEventListener("change", (e) => {
+  window.pet.setSetting({ alwaysOnTop: (e.target as HTMLInputElement).checked });
+});
+
+$<HTMLInputElement>("set-motion").addEventListener("change", (e) => {
+  window.pet.setSetting({ reducedMotion: (e.target as HTMLInputElement).checked });
+});
+
+for (const opt of sleepOpts) {
+  opt.addEventListener("click", () => {
+    const min = Number(opt.dataset.min);
+    if (Number.isFinite(min)) window.pet.setSetting({ sleepAfterMin: min });
+  });
+}
+
+$("set-reset").addEventListener("click", () => {
+  window.pet.resetPosition();
+  announce("Rev moved back to the corner.");
+});
+
+$("set-quit").addEventListener("click", () => window.pet.quit());
+
+/* --------------------------------------------------------------- menu --- */
+
+/** What each arc item does, and what the shared label calls it. */
+const MENU: Record<string, { label: string; run: () => void }> = {
+  findings: {
+    label: "Findings",
+    run: () => openView("findings"),
+  },
+  console: {
+    label: "Review console",
+    run: () => openOutside(REVIEW_CONSOLE_URL, "Opening review console"),
+  },
+  status: {
+    label: "Status",
+    run: () => openView("status"),
+  },
+  settings: {
+    label: "Settings",
+    run: () => openView("settings"),
+  },
+  hide: {
+    label: "Hide Rev",
+    run: () => {
+      setMenuOpen(false);
+      window.pet.hide();
+    },
+  },
+};
+
+/**
+ * Draw the guide arc through the item centres, using the same radius and sweep
+ * the items use so the stroke lands under them rather than near them.
+ */
+function drawArc(): void {
+  const css = getComputedStyle(radialEl);
+  const r = parseFloat(css.getPropertyValue("--r"));
+  if (!Number.isFinite(r)) return;
+
+  const pet = petEl.getBoundingClientRect();
+  const { from, step } = fitSweep(
+    { x: pet.left + pet.width / 2, y: pet.top + pet.height / 2 },
+    r,
+    radialItems.length,
+    { width: window.innerWidth, height: window.innerHeight },
+    // Half an item, so the whole circle clears the edge.
+    26,
+  );
+  radialEl.style.setProperty("--sweep-from", `${from}deg`);
+  radialEl.style.setProperty("--sweep-step", `${step}deg`);
+
+  // Remembered so the label can be parked beside whichever item it names.
+  itemAngles = radialItems.map((_, i) => ((from + step * i) * Math.PI) / 180);
+
+  const last = from + step * (radialItems.length - 1);
+  const rad = (deg: number) => (deg * Math.PI) / 180;
+  // The guide svg is 300x300 with its own centre at 150,150.
+  const pt = (deg: number) => [150 + r * Math.cos(rad(deg)), 150 + r * Math.sin(rad(deg))];
+  const [x1, y1] = pt(from);
+  const [x2, y2] = pt(last);
+  const large = Math.abs(last - from) > 180 ? 1 : 0;
+  radialArc.setAttribute("d", `M${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2}`);
+  radialEl.style.setProperty("--arc-len", String(Math.ceil(radialArc.getTotalLength())));
+}
+
+/** Where each item sits on the arc, in radians. Filled in by drawArc. */
+let itemAngles: number[] = [];
+
+/**
+ * Name an item, with the label parked just outside that item.
+ *
+ * A single shared label is the only thing that fits — at this radius the items
+ * are about 68px apart and five labels would collide — but it has to appear
+ * beside whatever it is describing, or it reads as a caption for the wrong icon.
+ */
+function showMenuLabel(item: HTMLElement | null, hint = false): void {
+  if (!item) {
+    radialLabel.dataset.show = "false";
+    return;
+  }
+  const text = item.getAttribute("aria-label");
+  if (text) radialLabel.textContent = text;
+
+  const i = radialItems.indexOf(item as HTMLButtonElement);
+  const angle = itemAngles[i];
+  if (angle !== undefined) {
+    const r = parseFloat(getComputedStyle(radialEl).getPropertyValue("--r")) + 48;
+    let lx = r * Math.cos(angle);
+    let ly = r * Math.sin(angle);
+
+    // Keep the whole label on screen. It is placed outward from its icon, and
+    // the last icon on the arc sits near the right edge, so "Hide Rev" ran off
+    // it. The label is centred on (lx, ly), so clamp that centre by half its size.
+    const origin = radialEl.getBoundingClientRect();
+    const w = radialLabel.offsetWidth;
+    const h = radialLabel.offsetHeight;
+    const pad = 8;
+    const cx = Math.min(Math.max(origin.left + lx, pad + w / 2), window.innerWidth - pad - w / 2);
+    const cy = Math.min(Math.max(origin.top + ly, pad + h / 2), window.innerHeight - pad - h / 2);
+    lx = cx - origin.left;
+    ly = cy - origin.top;
+
+    radialLabel.style.setProperty("--lx", `${lx.toFixed(1)}px`);
+    radialLabel.style.setProperty("--ly", `${ly.toFixed(1)}px`);
+  }
+  radialLabel.dataset.show = "true";
+  radialLabel.dataset.hint = String(hint);
+}
+
+/** Used for the transient "Opening…" acknowledgement, which has no item. */
+function flashMenuLabel(text: string): void {
+  radialLabel.textContent = text;
+  radialLabel.dataset.show = "true";
+  radialLabel.dataset.hint = "false";
+}
+
+/**
+ * Open a page in the real browser and say so.
+ *
+ * The effect of these two items happens in another application, which may take
+ * a second to surface and may land behind this window. Without an acknowledgement
+ * the click reads as having done nothing, and the natural response is to click
+ * again.
+ */
+function openView(next: View): void {
+  setView(next);
+  setMenuOpen(false);
+  setOpen(true);
+}
+
+function openOutside(url: string, message: string): void {
+  window.pet.openExternal(url);
+  flashMenuLabel(`${message}…`);
+  announce(`${message} in your browser.`);
+  window.setTimeout(() => setMenuOpen(false), 620);
+}
+
+function setMenuOpen(next: boolean): void {
+  if (next === menuOpen) return;
+  menuOpen = next;
+  radialEl.dataset.open = String(next);
+  radialEl.toggleAttribute("inert", !next);
+  petEl.dataset.menu = String(next);
+  hitEl.setAttribute("aria-expanded", String(next));
+  publishRegions();
+
+  if (next) {
+    hoverArmed = false;
+    if (hoverArmTimer) clearTimeout(hoverArmTimer);
+    hoverArmTimer = setTimeout(() => {
+      // Armed, but still waiting for real movement: see the pointermove below.
+      hoverArmTimer = undefined;
+    }, OPEN_SETTLE_MS);
+    drawArc();
+    // The panel and the menu are two ways to look at the same thing; showing
+    // both at once would put the arc on top of the cards.
+    if (open) setOpen(false);
+    const first = radialItems[0];
+    if (first) {
+      window.setTimeout(() => {
+        first.focus({ preventScroll: true });
+        // Only a keyboard user is "on" an item when the menu opens. A mouse user
+        // is on nothing yet, and naming the first item reads as a menu title.
+        if (keyboardNav) showMenuLabel(first);
+      }, 160);
+    }
+  } else {
+    showMenuLabel(null);
+  }
+  wake();
+}
+
+for (const item of radialItems) {
+  const action = item.dataset.action ?? "";
+  const entry = MENU[action];
+  if (!entry) continue;
+
+  item.setAttribute("aria-label", entry.label);
+  item.title = entry.label;
+  item.addEventListener("click", entry.run);
+  // pointermove rather than mouseenter: it fires only when the pointer really
+  // moves, never because an item slid underneath a still cursor.
+  item.addEventListener("pointermove", () => {
+    if (hoverArmed) showMenuLabel(item);
+  });
+  item.addEventListener("focus", () => {
+    if (keyboardNav) showMenuLabel(item);
+  });
+  // Leaving an item clears the label. It used to fall back to naming whichever
+  // item held focus — the first one, after a mouse open — so moving the cursor
+  // off any icon brought "Findings" straight back.
+  const clear = () => {
+    if (!menuOpen) return;
+    const focused = (document.activeElement as HTMLElement | null)?.closest<HTMLElement>(
+      ".radial__item",
+    );
+    if (keyboardNav && focused) showMenuLabel(focused);
+    else showMenuLabel(null);
+  };
+  item.addEventListener("pointerleave", clear);
+  item.addEventListener("blur", () => window.setTimeout(clear, 0));
+}
+
+document.addEventListener("pointermove", (e) => {
+  if (!menuOpen || hoverArmed || hoverArmTimer !== undefined) return;
+  // A zero-distance "move" is what a browser emits when content shifts under a
+  // stationary pointer; only a real displacement counts as intent.
+  if (e.movementX === 0 && e.movementY === 0) return;
+  hoverArmed = true;
+  const under = (document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null)?.closest<HTMLElement>(
+    ".radial__item",
+  );
+  if (under) showMenuLabel(under);
+});
+
+/** Arrows walk the arc; the arc is a line, so Up/Left and Down/Right pair up. */
+radialEl.addEventListener("keydown", (e) => {
+  const i = radialItems.indexOf(document.activeElement as HTMLButtonElement);
+  if (i < 0) return;
+  const back = e.key === "ArrowUp" || e.key === "ArrowLeft";
+  const fwd = e.key === "ArrowDown" || e.key === "ArrowRight";
+  if (!back && !fwd) return;
+  e.preventDefault();
+  const n = radialItems.length;
+  radialItems[(i + (fwd ? 1 : -1) + n) % n].focus();
+});
+
 /* --------------------------------------------------------------- panel --- */
 
 /**
@@ -221,12 +738,14 @@ window.setInterval(() => {
  * Rev end up.
  */
 function drawThread(): void {
-  const p = panelEl.getBoundingClientRect();
+  // offset* rather than getBoundingClientRect: the panel is mid-transform while
+  // it opens, so its client rect is wherever the animation currently has it.
+  // The thread has to target where the panel will come to rest.
+  const x2 = panelEl.offsetLeft + panelEl.offsetWidth - 26;
+  const y2 = panelEl.offsetTop + panelEl.offsetHeight;
   const r = petEl.getBoundingClientRect();
   const x1 = r.left + r.width * 0.5;
   const y1 = r.top + r.height * 0.18;
-  const x2 = p.right - 26;
-  const y2 = p.bottom;
   const d = `M${x1} ${y1} C ${x1} ${y1 - 30}, ${x2} ${y2 + 34}, ${x2} ${y2}`;
   threadPath.setAttribute("d", d);
   const len = threadPath.getTotalLength();
@@ -234,9 +753,13 @@ function drawThread(): void {
 }
 
 function setOpen(next: boolean): void {
+  if (next && menuOpen) setMenuOpen(false);
   open = next;
   panelEl.dataset.open = String(next);
-  panelEl.setAttribute("aria-hidden", String(!next));
+  // `inert` rather than aria-hidden: aria-hidden on a container whose children
+  // are still tabbable is a contradiction, and lets Tab land on invisible
+  // controls. inert removes them from focus and the accessibility tree at once.
+  panelEl.toggleAttribute("inert", !next);
   hitEl.setAttribute("aria-expanded", String(next));
   petEl.dataset.open = String(next);
 
@@ -247,7 +770,8 @@ function setOpen(next: boolean): void {
     // Opening is acknowledgement: clear the unread badge.
     for (const f of findings) seen.add(f.finding_id);
     renderBadge();
-    window.setTimeout(() => $<HTMLButtonElement>("panel-close").focus(), 60);
+    // After the unroll, or focus lands on a control that is still clipped.
+    window.setTimeout(() => $<HTMLButtonElement>("panel-close").focus(), 180);
   } else {
     delete threadEl.dataset.open;
     hitEl.focus();
@@ -261,18 +785,85 @@ $("btn-hide").addEventListener("click", () => {
   window.pet.hide();
 });
 
+/** Controls inside the panel, in DOM order, that can currently take focus. */
+function focusables(): HTMLElement[] {
+  const all = panelEl.querySelectorAll<HTMLElement>(
+    'button:not([disabled]), [href], [tabindex]:not([tabindex="-1"])',
+  );
+  return [...all].filter((node) => node.offsetParent !== null);
+}
+
 document.addEventListener("keydown", (e) => {
   wake();
-  if (e.key === "Escape" && open) setOpen(false);
+
+  if (menuOpen && e.key === "Escape") {
+    e.preventDefault();
+    setMenuOpen(false);
+    hitEl.focus();
+    return;
+  }
+
+  if (!open) return;
+
+  if (e.key === "Escape") {
+    e.preventDefault();
+    setOpen(false);
+    return;
+  }
+
+  // Trap Tab inside the panel. The window is an overlay with nothing else in
+  // it, so tabbing past the panel would otherwise strand focus on nothing.
+  if (e.key === "Tab") {
+    const items = focusables();
+    if (!items.length) return;
+    const first = items[0];
+    const last = items[items.length - 1];
+    const active = document.activeElement as HTMLElement | null;
+    if (e.shiftKey && (active === first || !panelEl.contains(active))) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && active === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  }
 });
 
-for (const tab of document.querySelectorAll<HTMLButtonElement>(".tab")) {
-  tab.addEventListener("click", () => {
-    filter = tab.dataset.filter as Filter;
-    for (const t of document.querySelectorAll(".tab")) {
-      t.setAttribute("aria-selected", String(t === tab));
+const tabEls = [...document.querySelectorAll<HTMLButtonElement>(".tab")];
+
+/**
+ * Roving tabindex: the tablist is one tab stop and the arrows move between the
+ * tabs inside it. That is what role="tablist" promises, and it stops three
+ * filters eating three Tab presses on the way to the findings.
+ */
+function selectTab(tab: HTMLButtonElement, moveFocus = false): void {
+  const next = tab.dataset.filter;
+  if (next !== "live" && next !== "stale" && next !== "all") return;
+  filter = next;
+  for (const t of tabEls) {
+    const on = t === tab;
+    t.setAttribute("aria-selected", String(on));
+    t.tabIndex = on ? 0 : -1;
+  }
+  bodyEl.setAttribute("aria-labelledby", tab.id);
+  if (moveFocus) tab.focus();
+  renderList();
+}
+
+for (const [i, tab] of tabEls.entries()) {
+  tab.addEventListener("click", () => selectTab(tab));
+  tab.addEventListener("keydown", (e) => {
+    const delta = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
+    if (delta !== 0) {
+      e.preventDefault();
+      selectTab(tabEls[(i + delta + tabEls.length) % tabEls.length], true);
+    } else if (e.key === "Home") {
+      e.preventDefault();
+      selectTab(tabEls[0], true);
+    } else if (e.key === "End") {
+      e.preventDefault();
+      selectTab(tabEls[tabEls.length - 1], true);
     }
-    renderList();
   });
 }
 
@@ -291,29 +882,47 @@ function el<K extends keyof HTMLElementTagNameMap>(
 
 function reproTable(rows: Reproduced[]): HTMLElement {
   const table = el("table", "repro");
+  table.append(el("caption", "sr-only", "Values the checker recomputed"));
+
+  const thead = el("thead");
   const head = el("tr");
   for (const [label, cls] of [
-    ["", ""],
+    ["value", ""],
     ["printed", ""],
     ["computed", ""],
-    ["", "repro__flag"],
+    ["reproduces", "repro__flag"],
   ] as const) {
     const th = el("th", cls || undefined, label);
+    th.setAttribute("scope", "col");
+    // First and last headers are for screen readers only: on screen the columns
+    // are self-evident and the labels would crowd a 348px panel.
+    if (label === "value" || label === "reproduces") th.classList.add("sr-only");
     head.append(th);
   }
-  table.append(head);
+  thead.append(head);
+  table.append(thead);
+
+  const tbody = el("tbody");
 
   for (const r of rows) {
     const tr = el("tr");
     if (r.matches !== undefined) tr.dataset.match = String(r.matches);
-    tr.append(el("td", undefined, r.label));
+    const rowHead = el("th", undefined, r.label);
+    rowHead.setAttribute("scope", "row");
+    tr.append(rowHead);
     tr.append(el("td", undefined, r.printed === undefined ? "—" : formatValue(r.printed)));
     tr.append(el("td", undefined, `${formatValue(r.computed)}${r.unit ? ` ${r.unit}` : ""}`));
     const flag = el("td", "repro__flag");
+    // The glyph is decorative; the word is what a screen reader should read.
     flag.textContent = r.matches === undefined ? "" : r.matches ? "✓" : "✗";
+    flag.setAttribute("aria-hidden", "true");
     tr.append(flag);
-    table.append(tr);
+    if (r.matches !== undefined) {
+      tr.append(el("td", "sr-only", r.matches ? "reproduces" : "does not reproduce"));
+    }
+    tbody.append(tr);
   }
+  table.append(tbody);
   return table;
 }
 
@@ -323,6 +932,16 @@ function section(label: string, node: Node): HTMLElement {
   return wrap;
 }
 
+/**
+ * Expand or collapse one card, keeping the visual state and the announced state
+ * in step. They were set in two different places before, so the first card —
+ * opened by default — reported itself collapsed until it had been clicked twice.
+ */
+function setCardExpanded(card: HTMLElement, expanded: boolean): void {
+  card.dataset.expanded = String(expanded);
+  card.querySelector(".finding__top")?.setAttribute("aria-expanded", String(expanded));
+}
+
 function findingNode(f: PetFinding, i: number): HTMLElement {
   const card = el("article", "finding");
   card.dataset.status = f.status;
@@ -330,6 +949,8 @@ function findingNode(f: PetFinding, i: number): HTMLElement {
 
   const top = el("button", "finding__top");
   top.type = "button";
+  top.id = `fh-${f.finding_id}`;
+  top.setAttribute("aria-expanded", "false");
   top.append(el("p", "finding__what", f.discrepancy));
 
   const caret = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -341,6 +962,10 @@ function findingNode(f: PetFinding, i: number): HTMLElement {
   top.append(caret);
 
   const detail = el("div", "finding__detail");
+  detail.id = `fd-${f.finding_id}`;
+  detail.setAttribute("role", "region");
+  detail.setAttribute("aria-labelledby", top.id);
+  top.setAttribute("aria-controls", detail.id);
   const inner = el("div", "finding__inner");
   const pad = el("div", "finding__pad");
 
@@ -352,14 +977,19 @@ function findingNode(f: PetFinding, i: number): HTMLElement {
   );
 
   if (f.reproduced.length) {
-    pad.append(section("Reproduced by the checker", reproTable(f.reproduced)));
+    const scroll = el("div", "repro__scroll");
+    scroll.append(reproTable(f.reproduced));
+    pad.append(section("Reproduced by the checker", scroll));
   }
 
   if (f.sources.length) {
     const list = el("div");
     for (const s of f.sources) {
       const row = el("div", "source");
-      row.append(el("span", "source__id", s.id));
+      const id = el("span", "source__id", s.id);
+      // The id is ellipsised to fit; the full value has to stay reachable.
+      id.title = s.id;
+      row.append(id);
       const meta = [s.revision, s.locator, s.sha256?.slice(0, 8)].filter(Boolean).join(" · ");
       row.append(el("span", "source__meta", meta));
       list.append(row);
@@ -386,10 +1016,7 @@ function findingNode(f: PetFinding, i: number): HTMLElement {
   detail.append(inner);
   card.append(top, detail);
 
-  top.addEventListener("click", () => {
-    const expanded = card.dataset.expanded === "true";
-    card.dataset.expanded = String(!expanded);
-  });
+  top.addEventListener("click", () => setCardExpanded(card, card.dataset.expanded !== "true"));
 
   return card;
 }
@@ -401,30 +1028,77 @@ function renderEmpty(title: string, detail: string): void {
   bodyEl.replaceChildren(box);
 }
 
+let everConnected = false;
+let lastSignature = "";
+
+/**
+ * Identity of what the list is currently showing. Cheap to compute and stable
+ * across polls that return the same findings, which is the common case.
+ */
+function feedSignature(items: readonly PetFinding[], f: Filter, sample: boolean): string {
+  return [
+    f,
+    sample ? "s" : "l",
+    ...items.map((x) => `${x.finding_id}:${x.status}:${x.discrepancy.length}`),
+  ].join("|");
+}
+let lastAnnounced = "";
+
+/**
+ * Announce what the panel now shows.
+ *
+ * Deduplicated: the feed polls every 3s and re-announcing an unchanged count
+ * would make the panel unusable with a screen reader running.
+ */
+function announce(message: string): void {
+  if (message === lastAnnounced) return;
+  lastAnnounced = message;
+  liveRegion.textContent = message;
+}
+
 function renderList(): void {
+  lastSignature = feedSignature(findings, filter, isSample);
   const shown = applyFilter(findings, filter);
 
+  announce(
+    shown.length === 0
+      ? `No ${filter === "all" ? "" : filter} findings.`
+      : `${shown.length} ${filter === "all" ? "" : filter} finding${shown.length === 1 ? "" : "s"}.`,
+  );
+
   if (!shown.length) {
-    renderEmpty(
-      filter === "stale" ? "No superseded cards" : "Nothing to flag",
-      filter === "stale"
-        ? "Cards move here when a later revision invalidates them."
-        : "Rev is watching the thread. It speaks up when a number stops reproducing.",
-    );
+    if (filter === "stale") {
+      renderEmpty(
+        "No superseded cards",
+        "Cards move here when a later revision invalidates them.",
+      );
+    } else if (!everConnected) {
+      // Saying "nothing to flag" before the reviewer has ever answered would
+      // claim a clean result that nobody has actually computed.
+      renderEmpty("Not connected", "Waiting for the reviewer to answer.");
+    } else {
+      renderEmpty(
+        "Nothing to flag",
+        "Rev is watching the thread. It speaks up when a number stops reproducing.",
+      );
+    }
     return;
   }
   bodyEl.replaceChildren(...shown.map(findingNode));
   // First card opens by default; the rest stay collapsed.
   const first = bodyEl.firstElementChild as HTMLElement | null;
-  if (first) first.dataset.expanded = "true";
+  if (first) setCardExpanded(first, true);
 }
 
 function renderBadge(): void {
   const unread = unreadCount(findings, seen);
+  const text = String(unread);
   countEl.hidden = unread === 0;
-  countEl.textContent = String(unread);
-  // The CSS hop keys off this, so Rev only moves while something red is unseen.
-  petEl.dataset.unread = String(unread > 0);
+  countEl.textContent = text;
+  // Mirrored onto the menu's findings item, so the count is visible once the
+  // arc is out and Rev's own badge is behind it.
+  radialBadge.hidden = unread === 0;
+  radialBadge.textContent = text;
 }
 
 function recomputeState(): void {
@@ -435,26 +1109,26 @@ function recomputeState(): void {
 }
 
 function render(conn: Connection): void {
-  const wasSample = isSample;
   isSample = conn.kind === "offline";
 
   if (conn.kind === "offline") {
     findings = SAMPLE;
+    everConnected = false;
     connEl.dataset.state = "offline";
     connLabel.textContent = "sample data — reviewer offline";
     revChip.textContent = "sample";
-    petRev.textContent = "r?";
   } else {
+    everConnected = true;
+    lastAnswerAt = Date.now();
     findings = conn.feed.findings;
     connEl.dataset.state = "connected";
     connLabel.textContent = "connected to reviewer";
     const rev = conn.feed.revision ?? findings[0]?.requirements_revision ?? "—";
     revChip.textContent = rev;
-    petRev.textContent = rev.length <= 3 ? rev : rev.slice(0, 3);
-  }
+    }
 
-  // The eye colour: red for a number that did not reproduce, yellow for an open
-  // discrepancy, green when nothing live is wrong.
+  // Rev's colour: red when a document is shown wrong, yellow for an open
+  // question, green when nothing live is wrong.
   petEl.dataset.severity = severityOf(findings);
   liveCount.textContent = String(findings.filter((f) => f.status === "live").length);
   staleCount.textContent = String(findings.filter((f) => f.status === "stale").length);
@@ -468,17 +1142,41 @@ function render(conn: Connection): void {
 
   if (isSample) seen = new Set(findings.map((f) => f.finding_id));
   renderBadge();
-  if (wasSample !== isSample || !bodyEl.childElementCount) renderList();
-  else renderList();
+
+  // After the badge, so the badge is displayed and its animation is one the
+  // reaction waits for. The sample set is never news: only a real answer is.
+  if (!isSample) {
+    const fresh = arrivals(findings, announced);
+    for (const f of fresh) announced.add(f.finding_id);
+    if (fresh.length) react();
+  }
+
+  // Only rebuild when the content actually changed. The feed polls every 3s and
+  // replaceChildren() destroys the cards, so re-rendering unconditionally
+  // collapsed whatever the user had expanded, mid-read, on a timer.
+  const signature = feedSignature(findings, filter, isSample);
+  if (signature !== lastSignature || !bodyEl.childElementCount) {
+    lastSignature = signature;
+    renderList();
+  }
+  if (open && view === "status") renderStatus();
   if (open) drawThread();
 }
 
 /* ----------------------------------------------------------------- boot --- */
 
+function applyMotionPreference(): void {
+  document.body.dataset.reducedMotion = String(reducedMotion());
+}
+
 window.pet.onSettings((s) => {
   settings = s;
-  document.body.dataset.reducedMotion = String(s.reducedMotion);
+  applyMotionPreference();
+  // The tray menu can change these too; the view must not show a stale state.
+  renderSettings();
 });
+osReducedMotion.addEventListener("change", applyMotionPreference);
+applyMotionPreference();
 
 publishRegions();
 // Rev bleeds past the corner and shifts on hover, so republish as it settles.
@@ -486,14 +1184,22 @@ window.setInterval(publishRegions, 500);
 
 window.pet.onOpen(() => setOpen(true));
 window.pet.onForceState((s) => {
+  if (!(PET_STATES as readonly string[]).includes(s)) {
+    // An unknown name would set a data-state no CSS matches and print
+    // "undefined" as the subtitle — the opposite of what the flag is for.
+    console.warn(`--state: unknown state "${s}". Expected one of ${PET_STATES.join(", ")}.`);
+    return;
+  }
   pinnedState = s as PetState;
-  state = "idle";
-  setState(pinnedState);
+  applyState(pinnedState);
 });
 
 setState("idle");
 renderEmpty("Starting up", "Looking for the reviewer…");
-watchFindings(render);
+const stopWatching = watchFindings(render);
+// The renderer dies with the window, but holding the handle means a reload
+// cannot leave two poll loops racing to render different responses.
+window.addEventListener("pagehide", stopWatching);
 window.addEventListener("resize", () => {
   if (open) drawThread();
 });
