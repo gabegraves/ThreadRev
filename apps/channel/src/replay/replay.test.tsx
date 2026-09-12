@@ -253,3 +253,4 @@ it("normalization keeps distinct ids distinct and repeated ids identical", () =>
   assert.equal(out.posted_cards[0]!.checker_run.run_id, out.posted_cards[1]!.checker_run.run_id,
     "the same run referenced twice must stay one id");
 });
+

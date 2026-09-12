@@ -523,3 +523,51 @@ test("the work trail shows the cross-channel search, not just its results", () =
   assert.match(rendered, /1 workspace search/);
   assert.match(rendered, /1 message from other channels/);
 });
+
+import { decideMessage } from "./gate";
+
+/**
+ * The speak/stay-silent policy.
+ *
+ * This branching used to live inline in channel.onMessage, which the replay
+ * harness cannot reach — it builds its own channel and registers only the
+ * tools. Every branch here ran untested while the suite looked green.
+ */
+const incoming = (text: string, over: Partial<Parameters<typeof decideMessage>[0]> = {}) =>
+  decideMessage({ text, hasFiles: false, isHuman: true, muted: false, ...over });
+
+test("a person telling the reviewer to stop is heard before anything else", () => {
+  assert.deepEqual(incoming("reviewer, stand down"), { kind: "control", control: "mute" });
+  // Even when the message would otherwise be a review moment.
+  assert.deepEqual(
+    incoming("reviewer, stand down — I'll check the r2 doc myself"),
+    { kind: "control", control: "mute" },
+  );
+});
+
+test("resume works while muted, which is the only way to undo a mute", () => {
+  assert.deepEqual(
+    incoming("reviewer, resume", { muted: true }),
+    { kind: "control", control: "resume" },
+  );
+  assert.deepEqual(
+    incoming("@reviewer show your work", { muted: true }),
+    { kind: "control", control: "explain" },
+  );
+});
+
+test("a muted thread is silent even for a real review moment", () => {
+  assert.deepEqual(incoming("can you check section 3 of the r2 doc?", { muted: true }), { kind: "muted" });
+  assert.deepEqual(incoming("r2 review doc is up", { hasFiles: true, muted: true }), { kind: "muted" });
+});
+
+test("ordinary chatter is silent, review moments run", () => {
+  assert.deepEqual(incoming("lunch at 12:30?"), { kind: "gate_closed" });
+  assert.deepEqual(incoming("anything at all", { isHuman: false }), { kind: "gate_closed" });
+  assert.deepEqual(incoming("can you check section 3 of the r2 doc?"), { kind: "review" });
+  assert.deepEqual(incoming("r2 review doc is up", { hasFiles: true }), { kind: "review" });
+});
+
+test("a bot cannot mute the reviewer by repeating the words", () => {
+  assert.deepEqual(incoming("reviewer, stand down", { isHuman: false }), { kind: "gate_closed" });
+});
