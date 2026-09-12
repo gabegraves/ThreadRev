@@ -32,3 +32,9 @@ export function runContext(threadId: string): RunContext {
   }
   return c;
 }
+
+/** Stable conversation identity from whichever Thread shape the SDK hands us. */
+export function threadKey(thread: object): string {
+  const t = thread as { conversationKey?: string; threadId?: string; id?: string };
+  return t.conversationKey ?? t.threadId ?? t.id ?? "unknown-thread";
+}

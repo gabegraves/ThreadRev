@@ -21,7 +21,7 @@ import {
 import { runChecker } from "./replay/run-checker";
 import { guardPublish, markStale } from "./replay/publish-guard";
 import { CHANGE_PATTERN, latestRevision } from "./revision";
-import { record, runContext } from "./evidence";
+import { record, runContext, threadKey } from "./evidence";
 import { renderFindingCard } from "./finding-card";
 
 export const REPO_ROOT = resolve(import.meta.dirname, "../../..");
@@ -51,7 +51,7 @@ export const readThread = defineChannelTool({
     if (messages.length === 0) {
       return "No conversation history is available on this surface. Say so and ask for the document name and the values to check.";
     }
-    const ctx = runContext(thread.conversationKey);
+    const ctx = runContext(threadKey(thread));
     const humans = messages.filter((m) => !m.isBot && m.ts);
     ctx.trigger_ts = humans.at(-1)?.ts ?? ctx.trigger_ts;
     ctx.changes = humans.filter((m) => CHANGE_PATTERN.test(m.text)).map((m) => m.ts!);
@@ -59,7 +59,7 @@ export const readThread = defineChannelTool({
       if (!m.ts) continue;
       record({
         kind: "message_read",
-        thread: thread.conversationKey,
+        thread: threadKey(thread),
         trigger_ts: ctx.trigger_ts,
         ts: m.ts,
         from: m.user?.name ?? m.user?.handle ?? (m.isBot ? "bot" : "unknown"),
@@ -125,12 +125,12 @@ export const readEvidence = defineChannelTool({
       return { error: `Could not read ${name}: ${parsed.error ?? "no text"}. Do not guess its contents.` };
     }
     const revision = /-(r\d+)\b/.exec(name)?.[1];
-    const ctx = runContext(thread.conversationKey);
+    const ctx = runContext(threadKey(thread));
     ctx.documents = ctx.documents.filter((d) => d.sha256 !== parsed.sha256);
     ctx.documents.push({ sha256: parsed.sha256 });
     record({
       kind: "document_read",
-      thread: thread.conversationKey,
+      thread: threadKey(thread),
       trigger_ts: ctx.trigger_ts,
       document: name,
       revision,
@@ -186,10 +186,10 @@ export const runCheck = defineChannelTool({
     try {
       const res = await runChecker({ checker, version: "1", inputs });
       rememberRun(res);
-      const ctx = runContext(thread.conversationKey);
+      const ctx = runContext(threadKey(thread));
       record({
         kind: "check_run",
-        thread: thread.conversationKey,
+        thread: threadKey(thread),
         trigger_ts: ctx.trigger_ts,
         run_id: res.run_id,
         checker: res.checker,
@@ -320,8 +320,8 @@ export const publishResult = defineChannelTool({
       await thread.setState(state);
       record({
         kind: "publish_refused",
-        thread: thread.conversationKey,
-        trigger_ts: runContext(thread.conversationKey).trigger_ts,
+        thread: threadKey(thread),
+        trigger_ts: runContext(threadKey(thread)).trigger_ts,
         run_id: args.run_id,
         bound_revision: args.requirements_revision,
         current_revision: current,
@@ -371,8 +371,8 @@ export const publishResult = defineChannelTool({
         await thread.update(prior.ref, renderFindingCard(prior.finding));
         record({
           kind: "finding_superseded",
-          thread: thread.conversationKey,
-          trigger_ts: runContext(thread.conversationKey).trigger_ts,
+          thread: threadKey(thread),
+          trigger_ts: runContext(threadKey(thread)).trigger_ts,
           finding_id: prior.finding.finding_id,
           superseded_by: f.finding_id,
           cause_ts: f.requirements_revision,
@@ -385,8 +385,8 @@ export const publishResult = defineChannelTool({
     await thread.setState(state);
     record({
       kind: "finding_published",
-      thread: thread.conversationKey,
-      trigger_ts: runContext(thread.conversationKey).trigger_ts,
+      thread: threadKey(thread),
+      trigger_ts: runContext(threadKey(thread)).trigger_ts,
       finding: f,
       message_ref: typeof ref?.id === "string" ? ref.id : undefined,
     });
