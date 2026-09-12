@@ -23,6 +23,8 @@ One JSON array per file, one object per message, in `ts` order. Fields: `ts`, `c
 
 `role` values: `seed` (corpus before the trigger), `trigger` (the `@reviewer` request the harness replays), `change` (requirement-change message that must invalidate the live card), `evaluator_only` (after the replay cutoff, visible to the scorer only).
 
+Optional `edit_of: "<ts>"` marks a message as a Slack `message_changed` edit of the earlier message with that `ts`. The edit keeps its own `ts` (later than the original), its own `text`, and its own `role`. The replay loader emits it as a new revision of the original: same `logicalMessageId`, new `revisionId`, and both entries stay in the transcript in `ts` order, which is how a thread reads after an edit. `edit_of` must name a `ts` present in the same file; an edit of an edit resolves to the root message. Use it for adversarial cases where a requirement changes by editing an earlier message instead of posting a new one.
+
 Timestamps are workspace-local UTC-5 converted to epoch seconds. The four `ts` values the spec cites are used verbatim (`.000100`, `.000200`, `.000300`, `.000400`). Messages the spec does not cite by `ts` use the same epoch convention with sequence suffixes `.000500` onward so no two messages collide.
 
 | File | Scenario / replay case | Channel | Messages | Cutoff and notes |
