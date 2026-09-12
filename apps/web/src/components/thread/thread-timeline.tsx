@@ -165,15 +165,17 @@ export function Message({
           {docs.length > 0 && (
             <ul className="mt-2 flex flex-wrap gap-1.5">
               {docs.map((d) => (
-                <li
-                  key={d.sha256}
-                  title={d.sha256}
-                  className="inline-flex items-center gap-1.5 rounded-[var(--radius-sm)] border border-hairline bg-overlay px-2 py-1 text-[11.5px] text-subtle"
-                >
-                  <FileText className="size-3.5 text-faint" strokeWidth={1.75} />
-                  <span className="text-foreground">{d.document}</span>
-                  <span className="font-mono text-[10.5px] uppercase text-faint">{d.revision ?? "—"}</span>
-                  <code className="font-mono text-[10.5px] text-faint">{d.sha256.slice(0, 12)}</code>
+                <li key={d.sha256}>
+                  <Link
+                    href={`/documents?id=${encodeURIComponent(d.sha256)}`}
+                    title={d.sha256}
+                    className="inline-flex items-center gap-1.5 rounded-[var(--radius-sm)] border border-hairline bg-overlay px-2 py-1 text-[11.5px] text-subtle hover:border-hairline-strong hover:text-foreground"
+                  >
+                    <FileText className="size-3.5 text-faint" strokeWidth={1.75} />
+                    <span className="text-foreground">{d.document}</span>
+                    <span className="font-mono text-[10.5px] uppercase text-faint">{d.revision ?? "—"}</span>
+                    <code className="font-mono text-[10.5px] text-faint">{d.sha256.slice(0, 12)}</code>
+                  </Link>
                 </li>
               ))}
             </ul>

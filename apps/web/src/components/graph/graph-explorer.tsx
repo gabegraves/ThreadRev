@@ -8,10 +8,11 @@
  * the reviewer run's event timeline.
  */
 import { Maximize2, Minimize2 } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { PillGroup } from "@/civic-ui/components/Tile";
 import { cn } from "@/civic-ui/lib/cn";
-import { EvidenceGraphMap, MapLegend } from "@/components/graph/graph-map";
+import { EvidenceGraphNetwork, MapLegend } from "@/components/graph/graph-network";
 import { EdgeLegend, EvidenceGraphSvg } from "@/components/graph/graph-svg";
 import { NodeDetail } from "@/components/graph/node-detail";
 import { PageHeader } from "@/components/shell/page-header";
@@ -73,7 +74,28 @@ export function GraphExplorer() {
   };
 
   const { graph, events } = useEvidence();
-  const [selected, setSelected] = useState<string | null>(null);
+
+  // `?node=` ↔ selection. The canvas / panel write the URL through `select`;
+  // only an external change (deep link, back / forward) flows back in.
+  const router = useRouter();
+  const params = useSearchParams();
+  const paramNode = params.get("node");
+  const selfPushedRef = useRef<string | null>(paramNode);
+  const [selected, setSelected] = useState<string | null>(paramNode);
+  useEffect(() => {
+    if (paramNode !== selfPushedRef.current) {
+      selfPushedRef.current = paramNode;
+      setSelected(paramNode);
+    }
+  }, [paramNode]);
+  const select = useCallback(
+    (id: string | null) => {
+      setSelected(id);
+      selfPushedRef.current = id;
+      router.replace(id ? `/graph?node=${encodeURIComponent(id)}` : "/graph", { scroll: false });
+    },
+    [router],
+  );
   const node = selected ? (graph.nodes.find((n) => n.id === selected) ?? null) : null;
 
   const [notes, setNote] = useLocalMap(NOTES_KEY);
@@ -143,9 +165,9 @@ export function GraphExplorer() {
           <section className="flex min-w-0 flex-1 flex-col gap-2 p-3 sm:p-4 lg:px-6">
             <div className={cn("min-h-0 flex-1", view === "columns" && "overflow-y-auto custom-scrollbar")}>
               {view === "map" ? (
-                <EvidenceGraphMap graph={graph} selected={selected} onSelect={setSelected} fill labels={labels} noted={noted} />
+                <EvidenceGraphNetwork graph={graph} selected={selected} onSelect={select} labels={labels} noted={noted} />
               ) : (
-                <EvidenceGraphSvg graph={graph} selected={selected} onSelect={setSelected} labels={labels} noted={noted} />
+                <EvidenceGraphSvg graph={graph} selected={selected} onSelect={select} labels={labels} noted={noted} />
               )}
             </div>
             <div className="flex flex-wrap items-center justify-between gap-3 px-1">
@@ -158,7 +180,7 @@ export function GraphExplorer() {
               graph={graph}
               events={events}
               node={node}
-              onPick={setSelected}
+              onPick={select}
               className="min-h-full rounded-none border-0 shadow-none"
               label={node ? labels[node.id] : undefined}
               note={node ? notes[node.id] : undefined}
