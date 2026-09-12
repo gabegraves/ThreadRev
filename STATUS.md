@@ -7,10 +7,12 @@ One line per lane. Update yours after every push. Read all four before you start
 | Backend / reviewer | Gabe | 1:05 `search_workspace` tool plus workspace index (`apps/channel/src/workspace.ts`), workspace export fixture (39 msgs, 5 channels) with generator, `scenario-a-cross` fixture + script + replay test, record `evals/records/scripted/scenario-a-cross.1.json`; contract additions announced below; `npm run verify` green (56 + 44 + 34 tests, 10 checker tests) | G2 model mode (blocked), then fixes from eval results | `OPENAI_API_KEY` for G2 |
 | Web console | Gabe (until a web owner is named) | 12:55 `78b70e5` console live: thread view, drawer (Issues, Diffs, Evidence graph, Chat), change-hover mini graph; `npm run build --workspace web` passes; preview on :3100 serves `/api/evidence` (sample) | nothing; CSS polish and light-theme check open for the web owner | none |
 | Demo and submission | fill in | nothing yet, `submission/` does not exist | fill in | Slack lane: Path A (live Slack) or Path B (offline harness) decision by 3:00 PM |
-| Slack environment and credentials | fill in | nothing yet; `OPENAI_API_KEY`, `CHANNEL_CODE`, `INTELLIGENCE_API_KEY` blank, no demo workspace confirmed | fill in | account holder for OpenAI billing and Slack workspace |
+| Slack environment and credentials | computer-use agent (handoff `research/handoff-slack-lane.md`) | 1:20 handoff written; `channel:status` at 1:09 returned `CLI_CHANNELS_PROJECT_NOT_SELECTED`; `OPENAI_API_KEY`, `CHANNEL_CODE`, `INTELLIGENCE_API_KEY` still blank | A1 login + project select | human: CopilotKit login, Slack workspace admin, OpenAI key (Q1 to Q3 in the handoff) |
 | Eval / red team | fill in (ML teammate) | nothing yet; human handoff `research/handoff-eval-lane.md`, agent brief `research/agent-briefs/w5-eval-mechanics.md` | fill in | backend lane: run records (G1) by 1:00 PM; Slack lane: `OPENAI_API_KEY` for model mode |
 
 ## Decisions and announcements
+
+- 1:20 Slack lane handoff for a computer-use agent is in `research/handoff-slack-lane.md`: A1 CopilotKit login and project select, A2 Channel create and Slack install, A3 model key, A4 live Card 1 and stale-to-Card 2 with screenshots. Report format and stop conditions are in the file. 3:00 PM Path B checkpoint unchanged.
 
 - 12:59 Historical-research demonstration plan and example-customer profile ready in `docs/plans/2026-09-12-1250-feat-historical-research-demo-plan.md`. Aligned with Kestrel Motors reframe; plan-only, no contract or runtime changes. Independent model recovery and live Slack delivery remain separate unproven gates; implementation awaits selection.
 - 12:25 Contracts in `contracts/` and `packages/agent-core/src/contracts/` are frozen unless the backend lane announces a change here.
