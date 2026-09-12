@@ -1,0 +1,72 @@
+[
+  {
+    "ts": "1783092000.000700",
+    "channel": "C00SYN02",
+    "channel_name": "ks4-strategy-sim",
+    "user": "U00SYN02",
+    "user_name": "Milo Trent",
+    "thread_ts": null,
+    "text": "Sim inputs v2-0 posted for the summer runs.",
+    "files": [
+      "documents/ks4-sim-inputs-v2-0.xlsx"
+    ],
+    "role": "seed"
+  },
+  {
+    "ts": "1784929680.000300",
+    "channel": "C00SYN02",
+    "channel_name": "ks4-strategy-sim",
+    "user": "U00SYN02",
+    "user_name": "Milo Trent",
+    "thread_ts": null,
+    "text": "Found why last week's numbers looked optimistic: we were still on KS-3 mass and Crr.\nv2-1 has the post-suspension values (318 kg, Crr 0.0048). Use v2-1 for anything after today.",
+    "files": [
+      "documents/ks4-sim-inputs-v2-1.xlsx"
+    ],
+    "role": "seed"
+  },
+  {
+    "ts": "1784930520.000400",
+    "channel": "C00SYN02",
+    "channel_name": "ks4-strategy-sim",
+    "user": "U00SYN03",
+    "user_name": "Ines Calder",
+    "thread_ts": "1784929680.000300",
+    "text": "Confirmed, corner weights from Tuesday add up to 318 with driver.",
+    "files": [],
+    "role": "seed"
+  },
+  {
+    "ts": "1785427200.001000",
+    "channel": "C00SYN02",
+    "channel_name": "ks4-strategy-sim",
+    "user": "U00SYN02",
+    "user_name": "Milo Trent",
+    "thread_ts": null,
+    "text": "v2-1 mass may be 8 kg high, the ballast was on the scale. Re-weigh pending.",
+    "files": [],
+    "role": "seed"
+  },
+  {
+    "ts": "1786472100.000800",
+    "channel": "C00SYN02",
+    "channel_name": "ks4-strategy-sim",
+    "user": "U00SYN06",
+    "user_name": "Juno Marsh",
+    "thread_ts": null,
+    "text": "@reviewer run the Northgate to Ferris segment (220 km, no optional loop), start SoC 96%, end SoC 40%, two 20-minute driver swaps, 22 m/s constant. I grabbed the params from the July 3 sheet.",
+    "files": [],
+    "role": "trigger"
+  },
+  {
+    "ts": "1786474920.000900",
+    "channel": "C00SYN02",
+    "channel_name": "ks4-strategy-sim",
+    "user": "U00SYN02",
+    "user_name": "Milo Trent",
+    "thread_ts": "1786472100.000800",
+    "text": "Race director allows end SoC 35% for this segment now, not 40%.",
+    "files": [],
+    "role": "evaluator_only"
+  }
+]

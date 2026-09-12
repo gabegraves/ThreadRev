@@ -1,0 +1,37 @@
+[
+  {
+    "ts": "1787062320.000100",
+    "channel": "C00SYN01",
+    "channel_name": "ks4-electrical",
+    "user": "U00SYN01",
+    "user_name": "Dara Voss",
+    "thread_ts": null,
+    "text": "Precharge board r2 review doc is up. Dropped one film cap, bus is now 680 uF.",
+    "files": [
+      "documents/precharge-review-r2-clean.docx"
+    ],
+    "role": "seed"
+  },
+  {
+    "ts": "1787064000.000500",
+    "channel": "C00SYN01",
+    "channel_name": "ks4-electrical",
+    "user": "U00SYN05",
+    "user_name": "Tam Holloway",
+    "thread_ts": "1787062320.000100",
+    "text": "Relay close timer in firmware is 2.5 s, matches the doc.",
+    "files": [],
+    "role": "seed"
+  },
+  {
+    "ts": "1787166300.000600",
+    "channel": "C00SYN01",
+    "channel_name": "ks4-electrical",
+    "user": "U00SYN06",
+    "user_name": "Juno Marsh",
+    "thread_ts": "1787062320.000100",
+    "text": "@reviewer can you check section 3 of the r2 doc before I sign the review?",
+    "files": [],
+    "role": "trigger"
+  }
+]
