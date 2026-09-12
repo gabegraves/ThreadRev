@@ -25,6 +25,15 @@ export type Connection =
 /** Where apps/web serves. The menu opens its pages; the poll hits its API. */
 export const WEB_ORIGIN = "http://localhost:3000";
 
+/**
+ * The review console the menu opens: the deployed build, on its evidence graph.
+ *
+ * A fixed deployment rather than WEB_ORIGIN, because the local origin only
+ * answers while someone is running `npm run dev:web`. The console should open
+ * from anyone's desktop, and it always has a graph to show.
+ */
+export const REVIEW_CONSOLE_URL = "https://threadrev-web.vercel.app/graph";
+
 export const PET_ENDPOINT = `${WEB_ORIGIN}/api/pet/findings`;
 
 const POLL_MS = 3000;

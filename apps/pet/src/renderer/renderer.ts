@@ -31,7 +31,7 @@ import {
   unreadCount,
   type Filter,
 } from "../logic.js";
-import { PET_ENDPOINT, WEB_ORIGIN } from "./findings.js";
+import { PET_ENDPOINT, REVIEW_CONSOLE_URL, WEB_ORIGIN } from "./findings.js";
 
 import type { PetSettings } from "../preload.js";
 
@@ -459,7 +459,7 @@ window.setInterval(() => {
 }, 1000);
 
 $("go-console").addEventListener("click", () =>
-  openOutside(`${WEB_ORIGIN}/`, "Opening review console"),
+  openOutside(REVIEW_CONSOLE_URL, "Opening review console"),
 );
 $("go-voice").addEventListener("click", () =>
   openOutside(`${WEB_ORIGIN}/voice`, "Opening voice review"),
@@ -509,7 +509,7 @@ const MENU: Record<string, { label: string; run: () => void }> = {
   },
   console: {
     label: "Review console",
-    run: () => openOutside(`${WEB_ORIGIN}/`, "Opening review console"),
+    run: () => openOutside(REVIEW_CONSOLE_URL, "Opening review console"),
   },
   status: {
     label: "Status",
