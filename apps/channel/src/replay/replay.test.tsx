@@ -277,6 +277,7 @@ it("propose_edit refuses a replacement value the checker did not produce", { tim
   const refusal = result.agentMessages.find((m) => m.role === "tool" && String(m.content).includes('"proposed":false'));
   assert.ok(refusal, "expected a refusal from propose_edit");
   assert.match(String(refusal.content), /7\.0.*not a value from run/);
+});
 
 /**
  * Live/fixture divergence guard.
