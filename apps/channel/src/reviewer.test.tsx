@@ -848,7 +848,7 @@ test("a complete search does not cry incomplete", async () => {
   assert.doesNotMatch(String(out.note), /INCOMPLETE/);
 });
 
-import { buildIndex, queryIndex } from "./workspace";
+import { buildIndex, indexMessage, queryIndex } from "./workspace";
 
 const PEOPLE = buildIndex([
   { ts: "100.000100", channel: "C1", channel_name: "ks4-electrical", user: "U1", user_name: "Dara Voss", thread_ts: null, text: "bus is now 680 uF", files: [] },
@@ -900,4 +900,23 @@ test("a document search works from the name as written in a sentence", () => {
   // A revision is not a prefix match: r2 must never answer for r3.
   assert.equal(queryIndex(DOCS, { document: "precharge-review" }).total, 0);
   assert.equal(queryIndex(DOCS, { document: "precharge-review-r3" }).total, 1);
+});
+
+test("a document named in prose is indexed, not only one attached", () => {
+  // This regressed silently: DOC_RE was corrupted and matched nothing, so the
+  // index knew only about attachments. Nothing failed, because the demo path
+  // searches by unit. A document mentioned in another channel is exactly the
+  // kind of evidence this index exists to reach.
+  const m = indexMessage({
+    ts: "1", channel: "C", channel_name: "c", user: "u", user_name: "U",
+    thread_ts: null, text: "superseded by precharge-review-r3.docx, see also ks4-sim-inputs-v2-1.xlsx", files: [],
+  });
+  assert.deepEqual(m.documents.sort(), ["ks4-sim-inputs-v2-1.xlsx", "precharge-review-r3.docx"]);
+
+  // Attachments and prose both, de-duplicated by basename.
+  const both = indexMessage({
+    ts: "2", channel: "C", channel_name: "c", user: "u", user_name: "U",
+    thread_ts: null, text: "as in precharge-review-r2.docx", files: ["documents/precharge-review-r2.docx"],
+  });
+  assert.deepEqual(both.documents, ["precharge-review-r2.docx"]);
 });
