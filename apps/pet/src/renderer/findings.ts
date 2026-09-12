@@ -39,6 +39,9 @@ export const PET_ENDPOINT =
   (typeof location !== "undefined" && new URLSearchParams(location.search).get("endpoint")) ||
   `${WEB_ORIGIN}/api/pet/findings`;
 
+/** Where apps/web serves. The menu opens its pages; the poll hits its API. */
+export const WEB_ORIGIN = new URL(PET_ENDPOINT).origin;
+
 const POLL_MS = 3000;
 /** Shorter than the poll, so a stalled request cannot outlive its own interval. */
 const REQUEST_TIMEOUT_MS = 2500;
