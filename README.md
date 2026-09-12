@@ -234,7 +234,7 @@ Slack AI tells you what was said. ThreadRev tells you what was decided, and whet
 
 | | Slack AI summary or search | ThreadRev card |
 |---|---|---|
-| Numbers | Repeats what the text says | Recomputed by a stdlib Python checker. The model never writes a number on a card. |
+| Numbers | Repeats what the text says | *Reproduced by checker* rows are copied from a stdlib Python checker run; narrative remains model-authored. |
 | Version | Answers about "the doc" | Names the docx revision and SHA-256, and binds the card to the timestamp of the latest requirement change. |
 | Later corrections | The earlier summary stays as written next to the new one | The earlier card is edited to STALE in place and a new card bound to the new revision is posted. A result whose revision moved mid-run is refused. |
 | Fixing the document | An integration edits a page when told to | Proposes the exact replacement with the checker's value and two buttons. Writes a new copy only after approval; the original keeps its hash. |
@@ -406,7 +406,6 @@ evals/                 Recorded harness runs, scripted and model
 research/              Research, fixture spec, design decisions, lane handoffs
 submission/            Final submission text and video plan
 AGENTS.md              Lane ownership, workspace rules, conventions for coding agents
-STATUS.md              Live status board, one line per lane
 SCRATCHPAD.md          Accepted decisions
 SETUP.md               Environment setup record and verification history
 ```
@@ -416,7 +415,7 @@ SETUP.md               Environment setup record and verification history
 <details>
 <summary>Team and working rules</summary>
 
-Five lanes worked on this repo in parallel: backend, web console, demo and submission, Slack environment, and eval / red team. [`AGENTS.md`](AGENTS.md) has the lane table (who owns which directories), the workspace rules (one checkout per agent, stage by explicit path, `main` must always verify, pull-rebase before push), and the Channels API conventions. [`STATUS.md`](STATUS.md) is the board everyone updated after each push. [`CLAUDE.md`](CLAUDE.md) points coding agents at both.
+Five lanes worked on this repo in parallel: backend, web console, demo and submission, Slack environment, and eval / red team. [`AGENTS.md`](AGENTS.md) has the lane table, workspace rules, and Channels API conventions. [`CLAUDE.md`](CLAUDE.md) points coding agents at both.
 
 </details>
 
