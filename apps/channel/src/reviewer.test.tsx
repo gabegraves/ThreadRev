@@ -887,3 +887,17 @@ test("a channel search accepts what someone would actually type", () => {
   // And a fragment is still not a channel.
   assert.equal(queryIndex(PEOPLE, { channel: "purchas" }).total, 0);
 });
+
+const DOCS = buildIndex([
+  { ts: "100.000100", channel: "C1", channel_name: "ks4-electrical", user: "U1", user_name: "Dara Voss", thread_ts: null, text: "r2 review is up", files: ["documents/precharge-review-r2.docx"] },
+  { ts: "100.000200", channel: "C1", channel_name: "ks4-electrical", user: "U1", user_name: "Dara Voss", thread_ts: null, text: "and precharge-review-r3.docx supersedes it", files: [] },
+]);
+
+test("a document search works from the name as written in a sentence", () => {
+  assert.equal(queryIndex(DOCS, { document: "precharge-review-r2.docx" }).total, 1);
+  // Read off prose, without the extension.
+  assert.equal(queryIndex(DOCS, { document: "precharge-review-r2" }).total, 1);
+  // A revision is not a prefix match: r2 must never answer for r3.
+  assert.equal(queryIndex(DOCS, { document: "precharge-review" }).total, 0);
+  assert.equal(queryIndex(DOCS, { document: "precharge-review-r3" }).total, 1);
+});

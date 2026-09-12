@@ -214,6 +214,22 @@ function authorMatches(m: IndexedMessage, from: string): boolean {
 }
 
 /**
+ * Whether a named document is the one the query means.
+ *
+ * Third instance of the same shape: the index stores `precharge-review-r2.docx`
+ * and a reviewer reasonably asks for `precharge-review-r2`, having read the
+ * name off a sentence rather than a filename. Dropping the extension counts;
+ * a prefix does not, so r2 never answers for r3.
+ */
+function documentMatches(indexed: string, query: string): boolean {
+  const a = indexed.toLowerCase();
+  const b = query.toLowerCase();
+  if (a === b) return true;
+  const strip = (n: string) => n.replace(/\.(docx|xlsx|pdf)$/, "");
+  return strip(a) === strip(b);
+}
+
+/**
  * Whether a message is in the channel the query named.
  *
  * Same reasoning as authorMatches: `#ks4-purchasing` is what the channel is
@@ -240,7 +256,7 @@ export function queryIndex(index: WorkspaceIndex, q: WorkspaceQuery): WorkspaceR
   const matches: IndexedMessage[] = [];
   for (const m of index.messages) {
     if (cutoff !== undefined && tsNum(m.ts) > cutoff) continue;
-    if (doc && !m.documents.some((d) => d.toLowerCase() === doc)) continue;
+    if (doc && !m.documents.some((d) => documentMatches(d, doc))) continue;
     if (unit && !m.quantities.some((x) => x.unit === unit)) continue;
     if (qtoks.length) {
       const have = new Set(tokens(m.text).map(stem));
