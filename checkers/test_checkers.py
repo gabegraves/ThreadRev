@@ -107,6 +107,21 @@ class CheckRcTest(unittest.TestCase, ResponseEnvelope):
                 "capacitances": [{"label": "a", "C_F": 0.001}],
                 "printed": [{"label": "p", "value_s": 1.0, "against": ["missing"]}],
             }}),
+            # A non-positive timer makes fraction_at_timer negative, which would
+            # otherwise be reported as a confident "does not reach threshold".
+            json.dumps({"checker": "rc", "version": "1", "inputs": {
+                "R_ohm": 470, "threshold": 0.999, "timer_s": -2.5,
+                "capacitances": [{"label": "a", "C_F": 0.001}],
+            }}),
+            json.dumps({"checker": "rc", "version": "1", "inputs": {
+                "R_ohm": 470, "threshold": 0.999, "timer_s": 0,
+                "capacitances": [{"label": "a", "C_F": 0.001}],
+            }}),
+            # A non-positive tolerance makes every printed comparison fail.
+            json.dumps({"checker": "rc", "version": "1", "inputs": {
+                "R_ohm": 470, "threshold": 0.999, "timer_s": 2.5, "tolerance_s": 0,
+                "capacitances": [{"label": "a", "C_F": 0.001}],
+            }}),
         ]
         for payload in cases:
             code, response, _ = run_checker(RC, payload)
