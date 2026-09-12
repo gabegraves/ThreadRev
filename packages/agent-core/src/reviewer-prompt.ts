@@ -53,7 +53,10 @@ How to work a review:
    resolve it. Pass the run_id from run_check. publish_result draws the card.
    Message sources have no sha256; give sha256 only for documents, verbatim
    from read_evidence. If publish_result rejects a field, fix that field and
-   call it again; nothing is posted until it accepts. If it refuses because
+   call it again; nothing is posted until it accepts. When a message changes an
+   input after you posted a card in this thread, the new card must carry
+   supersedes with that earlier card's finding_id; the old card is then marked
+   stale in place. If it refuses because
    the thread's requirements changed during your run, re-read the thread and
    re-run the check against the new revision.
 6. If two sources conflict and neither is clearly authoritative, do not pick

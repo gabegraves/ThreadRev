@@ -28,6 +28,7 @@ import { guardPublish, markStale } from "./replay/publish-guard";
 import { CHANGE_PATTERN, latestRevision, tsNum } from "./revision";
 import { record, runContext, threadKey } from "./evidence";
 import { editProposalBody, renderFindingCard, type EditProposalView } from "./finding-card";
+import { slackEvidenceLinks } from "./slack-evidence";
 import { queryIndex, workspaceIndex } from "./workspace";
 
 export const REPO_ROOT = resolve(import.meta.dirname, "../../..");
@@ -81,6 +82,7 @@ export const readThread = defineChannelTool({
       return "No conversation history is available on this surface. Say so and ask for the document name and the values to check.";
     }
     const ctx = runContext(threadKey(thread));
+    if (thread.platform === "slack") Object.assign(ctx.messageUrls, await slackEvidenceLinks(messages));
     const humans = messages.filter((m) => !m.isBot && m.ts);
     ctx.trigger_ts = humans.at(-1)?.ts ?? ctx.trigger_ts;
     ctx.changes = humans.filter((m) => CHANGE_PATTERN.test(m.text)).map((m) => m.ts!);
@@ -99,6 +101,7 @@ export const readThread = defineChannelTool({
     }
     return messages.map((m) => ({
       ts: m.ts,
+      url: m.ts ? ctx.messageUrls[m.ts] : undefined,
       from: m.user?.name ?? m.user?.handle ?? (m.isBot ? "bot" : "unknown"),
       bot: Boolean(m.isBot),
       text: m.text,
@@ -303,7 +306,7 @@ export const runCheck = defineChannelTool({
 /* -------------------------------------------------------- publish_result */
 
 interface ReviewState {
-  cards: Array<{ finding: Finding; ref: MessageRef }>;
+  cards: Array<{ finding: Finding; ref: MessageRef; messageUrls?: Record<string, string> }>;
   staleRuns: Array<{ run_id: string; bound: string; current: string }>;
 }
 
@@ -442,10 +445,20 @@ export const publishResult = defineChannelTool({
       return { published: false, reason: `Already posted as ${duplicate.finding.finding_id}. Do not repeat it.` };
     }
 
+    // A card bound to a later revision replaces every live card in this thread
+    // bound to an earlier one, whether or not the model names it. Live at
+    // 19:52Z the model posted Card 2 without `supersedes` and Card 1 stayed
+    // live beside it, which is the one thing the product promises not to do.
+    const olderLive = state.cards.filter(
+      (c) => c.finding.status === "live" && second(c.finding.requirements_revision) < second(bound),
+    );
+    const priors = args.supersedes
+      ? state.cards.filter((c) => c.finding.finding_id === args.supersedes && c.finding.status === "live")
+      : olderLive;
     const built = finding.safeParse({
       finding_id: newFindingId(),
       status: "live",
-      supersedes: args.supersedes,
+      supersedes: args.supersedes ?? priors.at(-1)?.finding.finding_id,
       requirements_revision: bound,
       discrepancy: args.discrepancy,
       why_it_matters: args.why_it_matters,
@@ -462,24 +475,22 @@ export const publishResult = defineChannelTool({
     }
     const f = built.data;
 
-    if (args.supersedes) {
-      const prior = state.cards.find((c) => c.finding.finding_id === args.supersedes);
-      if (prior && prior.finding.status === "live") {
-        prior.finding = markStale(prior.finding);
-        await thread.update(prior.ref, renderFindingCard(prior.finding));
-        record({
-          kind: "finding_superseded",
-          thread: threadKey(thread),
-          trigger_ts: runContext(threadKey(thread)).trigger_ts,
-          finding_id: prior.finding.finding_id,
-          superseded_by: f.finding_id,
-          cause_ts: f.requirements_revision,
-        });
-      }
+    for (const prior of priors) {
+      prior.finding = markStale(prior.finding);
+      await thread.update(prior.ref, renderFindingCard(prior.finding, prior.messageUrls));
+      record({
+        kind: "finding_superseded",
+        thread: threadKey(thread),
+        trigger_ts: runContext(threadKey(thread)).trigger_ts,
+        finding_id: prior.finding.finding_id,
+        superseded_by: f.finding_id,
+        cause_ts: f.requirements_revision,
+      });
     }
 
-    const ref = await thread.post(renderFindingCard(f));
-    state.cards.push({ finding: f, ref });
+    const messageUrls = { ...runContext(threadKey(thread)).messageUrls };
+    const ref = await thread.post(renderFindingCard(f, messageUrls));
+    state.cards.push({ finding: f, ref, messageUrls });
     await thread.setState(state);
     record({
       kind: "finding_published",
