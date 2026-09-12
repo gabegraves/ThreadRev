@@ -80,12 +80,27 @@ export function buildEvidenceGraph(events: EvidenceEvent[], opts: { thread?: str
   for (const e of scoped) {
     switch (e.kind) {
       case "message_read": {
+        // Where a message came from is the interesting part when it came from
+        // somewhere else. Dropping channel and via here made a hit pulled out
+        // of another channel indistinguishable from one in this thread, which
+        // is precisely the provenance the console exists to show.
+        const elsewhere = e.via === "workspace_search";
         upsert(nodes, {
           id: e.ts,
           kind: "message",
-          label: `${e.from}: ${short(e.text)}`,
+          label: elsewhere && e.channel
+            ? `${e.from} in ${e.channel}: ${short(e.text)}`
+            : `${e.from}: ${short(e.text)}`,
           at: e.at,
-          data: { ts: e.ts, from: e.from, is_bot: e.is_bot, text: e.text, is_change: e.is_change },
+          data: {
+            ts: e.ts,
+            from: e.from,
+            is_bot: e.is_bot,
+            text: e.text,
+            is_change: e.is_change,
+            ...(e.channel ? { channel: e.channel } : {}),
+            ...(e.via ? { via: e.via } : {}),
+          },
         });
         if (e.is_change) {
           revisionNode(e.ts, e.at);

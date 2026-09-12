@@ -119,3 +119,42 @@ test("publish_refused marks the run refused and links it to the current revision
   assert.ok(downstreamOf(graph, "100.2").nodes.has("rc-x"));
   assert.equal(graph.findings.length, 0);
 });
+
+test("a message found in another channel keeps its provenance", () => {
+  const graph = buildEvidenceGraph([
+    {
+      event_id: "e1",
+      at: "2026-09-12T16:00:01.000Z",
+      thread: "t",
+      kind: "message_read",
+      ts: "1785946800.000501",
+      from: "Dara Voss",
+      is_bot: false,
+      is_change: true,
+      text: "With it the HV bus is 820 uF, not 680.",
+      channel: "#ks4-purchasing",
+      via: "workspace_search",
+    },
+    {
+      event_id: "e2",
+      at: "2026-09-12T16:00:02.000Z",
+      thread: "t",
+      kind: "message_read",
+      ts: "1787062320.000100",
+      from: "Dara Voss",
+      is_bot: false,
+      is_change: false,
+      text: "Precharge board r2 review doc is up.",
+    },
+  ] as EvidenceEvent[]);
+
+  const hit = graph.nodes.find((n) => n.id === "1785946800.000501")!;
+  assert.equal(hit.data.channel, "#ks4-purchasing", "the console cannot show provenance it was never given");
+  assert.equal(hit.data.via, "workspace_search");
+  assert.match(hit.label, /in #ks4-purchasing/);
+
+  // A message from this thread is unchanged: no channel, no via, plain label.
+  const local = graph.nodes.find((n) => n.id === "1787062320.000100")!;
+  assert.equal(local.data.channel, undefined);
+  assert.doesNotMatch(local.label, / in #/);
+});
