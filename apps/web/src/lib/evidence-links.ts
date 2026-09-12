@@ -22,7 +22,7 @@ export function hrefForId(graph: EvidenceGraph, id: string): string | null {
     case "document":
       return `/documents?id=${q}`;
     case "message":
-      return `/thread?ts=${q}`;
+      return `/findings?view=messages&ts=${q}`;
     default:
       return null;
   }

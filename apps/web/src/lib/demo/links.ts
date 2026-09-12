@@ -4,7 +4,7 @@
  * finding = finding_id), so `graph(id)` needs no lookup table.
  */
 export const hrefs = {
-  thread: (ts: string) => `/thread?ts=${encodeURIComponent(ts)}`,
+  thread: (ts: string) => `/findings?view=messages&ts=${encodeURIComponent(ts)}`,
   document: (sha: string) => `/documents?id=${encodeURIComponent(sha)}`,
   run: (runId: string) => `/runs?id=${encodeURIComponent(runId)}`,
   finding: (findingId: string) => `/findings?id=${encodeURIComponent(findingId)}`,

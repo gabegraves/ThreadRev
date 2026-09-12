@@ -240,7 +240,7 @@ export function buildCorpus(
             { label: "Graph", href: `/graph?node=${encodeURIComponent(f.finding_id)}` },
             { label: "Finding", href: `/findings?id=${encodeURIComponent(f.finding_id)}` },
             { label: "Run", href: `/runs?id=${encodeURIComponent(f.checker_run.run_id)}` },
-            ...(e.trigger_ts ? [{ label: "Thread", href: `/thread?ts=${encodeURIComponent(e.trigger_ts)}` }] : []),
+            ...(e.trigger_ts ? [{ label: "Thread", href: `/findings?view=messages&ts=${encodeURIComponent(e.trigger_ts)}` }] : []),
             ...f.sources
               .filter((s) => s.kind === "document" && s.sha256)
               .map((s) => ({ label: s.id, href: `/documents?id=${encodeURIComponent(s.sha256 as string)}`, mono: true })),
@@ -273,7 +273,7 @@ export function buildCorpus(
           links: [
             { label: "Graph", href: `/graph?node=${encodeURIComponent(e.run_id)}` },
             { label: "Run", href: `/runs?id=${encodeURIComponent(e.run_id)}` },
-            ...(e.trigger_ts ? [{ label: "Thread", href: `/thread?ts=${encodeURIComponent(e.trigger_ts)}` }] : []),
+            ...(e.trigger_ts ? [{ label: "Thread", href: `/findings?view=messages&ts=${encodeURIComponent(e.trigger_ts)}` }] : []),
             ...(run?.evidence_refs ?? [])
               .filter((r) => r.kind === "document")
               .map((r) => ({ label: r.id.slice(0, 8), href: `/documents?id=${encodeURIComponent(r.id)}`, mono: true })),
