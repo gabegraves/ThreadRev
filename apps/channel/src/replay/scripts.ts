@@ -48,6 +48,63 @@ export const routeCases = (res: CheckerResponse) =>
 export const ROUTE_V20 = { mass_kg: 290, Crr: 0.004, CdA: 0.12, v_mps: 22, d_m: 220000, pack_kWh: 5.2, soc_start: 0.96 };
 export const ROUTE_V21 = { mass_kg: 318, Crr: 0.0048, CdA: 0.12, v_mps: 22, d_m: 220000, pack_kWh: 5.2, soc_start: 0.96 };
 
+
+/**
+ * A numeric parameter out of an extracted spreadsheet row.
+ *
+ * Rows arrive as `params row 2: mass_kg | 318 | kg`, so this is the scripted
+ * reviewer doing what the model would: reading the value off the sheet rather
+ * than being handed it. Scenario B used to pass hardcoded constants, which
+ * proved the checker and nothing about extraction.
+ */
+export function sheetValue(doc: EvidenceResult, param: string): number {
+  for (const line of doc.lines) {
+    const cells = sheetCells(line.text);
+    if (cells[0] === param && cells[1] !== undefined) {
+      const value = Number(cells[1]);
+      if (Number.isFinite(value)) return value;
+    }
+  }
+  assert.fail(`no row for ${param} in ${doc.document}`);
+}
+
+/** `params row 2: mass_kg | 318 | kg` → ["mass_kg", "318", "kg"]. */
+function sheetCells(text: string): string[] {
+  const at = text.indexOf(": ");
+  if (at < 0) return [];
+  return text.slice(at + 2).split("|").map((c) => c.trim());
+}
+
+/** Cite the exact sheet row a value came from, with its sha. */
+export function sheetSource(doc: EvidenceResult, param: string) {
+  const line = doc.lines.find((l) => sheetCells(l.text)[0] === param);
+  assert.ok(line, `no row for ${param} in ${doc.document}`);
+  return {
+    kind: "document" as const,
+    id: doc.document,
+    revision: doc.revision,
+    sha256: doc.sha256,
+    locator: line.text.slice(0, line.text.indexOf(":")),
+    quote: line.text.slice(0, 300),
+  };
+}
+
+/** Vehicle and segment parameters: the sheet supplies what the sheet knows. */
+export function routeFromSheet(doc: EvidenceResult, soc_end: number) {
+  return {
+    mass_kg: sheetValue(doc, "mass_kg"),
+    Crr: sheetValue(doc, "Crr"),
+    CdA: sheetValue(doc, "CdA"),
+    pack_kWh: sheetValue(doc, "pack_kWh"),
+    // Speed, distance and starting charge come from the request in the thread,
+    // not from the parameter sheet.
+    v_mps: 22,
+    d_m: 220000,
+    soc_start: 0.96,
+    soc_end,
+  };
+}
+
 export interface Script {
   steps: ScriptStep[];
   afterChecker?: ReplayOptions["afterChecker"];
@@ -250,10 +307,13 @@ function scenarioB(messages: FixtureMessage[]): Script {
   return {
     steps: [
       () => readThread,
-      () => routeCheck({ ...ROUTE_V20, soc_end: 0.4 }),
-      () => routeCheck({ ...ROUTE_V21, soc_end: 0.4 }),
+      () => readEvidence("ks4-sim-inputs-v2-0.xlsx"),
+      () => readEvidence("ks4-sim-inputs-v2-1.xlsx"),
+      (ctx) => routeCheck(routeFromSheet(ctx.evidence[0]!, 0.4)),
+      (ctx) => routeCheck(routeFromSheet(ctx.evidence[1]!, 0.4)),
       (ctx) => {
         const [v20, v21] = ctx.checkers as [CheckerResponse, CheckerResponse];
+        const [sheet20, sheet21] = ctx.evidence as [EvidenceResult, EvidenceResult];
         const a = routeCases(v20).mass_290kg!;
         const b = routeCases(v21).mass_318kg!;
         return publish({
@@ -262,6 +322,9 @@ function scenarioB(messages: FixtureMessage[]): Script {
           discrepancy: `Request uses the July 3 sheet (v2-0); v2-1 (July 24) supersedes it per Milo and Ines. Under v2-0 the segment at 22 m/s is ${a.feasible ? "" : "not "}feasible (${a.energy_kWh} kWh against ${a.budget_kWh} kWh); under v2-1 it is ${b.feasible ? "" : "not "}feasible (${b.energy_kWh} kWh). The conclusion flips.`,
           why_it_matters: "A feasibility answer posted from v2-0 would be wrong by 0.22 kWh, 4 percent of the pack.",
           sources: [
+            sheetSource(sheet20, "mass_kg"),
+            sheetSource(sheet21, "mass_kg"),
+            sheetSource(sheet21, "Crr"),
             { kind: "message", id: useV21.ts, quote: "Use v2-1 for anything after today." },
             { kind: "message", id: ines.ts, quote: "Confirmed, corner weights from Tuesday add up to 318 with driver." },
             { kind: "message", id: t.ts, quote: "I grabbed the params from the July 3 sheet." },
