@@ -17,3 +17,4 @@ export {
   type SearchHit,
 } from "./schemas";
 export * from "./contracts/finding";
+export * from "./contracts/evidence";

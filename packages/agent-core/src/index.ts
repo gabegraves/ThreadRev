@@ -14,3 +14,4 @@ export {
 } from "./capabilities/workplace";
 export * from "./shared";
 export { REVIEWER_ROLE, REVIEWER_PROMPT } from "./reviewer-prompt";
+export { appendEvidence, readEvidence, evidenceLogPath, newEventId } from "./evidence/log";

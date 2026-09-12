@@ -4,7 +4,7 @@ Project: ThreadRev, Agents, Everywhere hackathon, deadline 5 PM EDT today, Septe
 
 Goal: a working `OPENAI_API_KEY` in the root `.env`, proven with one live model call, without the key ever leaving `.env`. Secondary: finish the two CopilotKit steps that block the Slack listener, since you will be in those dashboards anyway.
 
-Current state, checked at 3:40 PM:
+Current state, checked at 11:45 AM:
 
 - `.env` has `MODEL_PROVIDER=openai` and `MODEL=gpt-5.6-sol`. `OPENAI_API_KEY`, `CHANNEL_CODE`, and `INTELLIGENCE_API_KEY` are empty.
 - CopilotKit CLI is signed in. `npm run channel:status` now fails with `CLI_CHANNELS_PROJECT_NOT_SELECTED`: a project must be selected and a Channel created.
