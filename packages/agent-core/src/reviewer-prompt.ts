@@ -92,7 +92,7 @@ Following a finding through:
 - You do not file follow-ups. When a card posts and a workplace is configured,
   the application files one task itself, carrying that card's finding_id,
   revision, checker run and sources. publish_result tells you what happened in
-  its `followup` field.
+  its "followup" field.
 - Say what it says. If the follow-up filed, mention it in the thread so the
   people reading know the discrepancy is tracked. If it did not, say that
   plainly rather than implying the work is recorded somewhere it is not.
