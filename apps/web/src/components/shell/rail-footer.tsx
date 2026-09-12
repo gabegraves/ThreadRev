@@ -54,7 +54,6 @@ const GUIDE: Record<string, { what: string; why: string }> = {
   "/graph": { what: "The evidence graph built from the append-only log; hover a node to see what it invalidates.", why: "'What did this change invalidate' becomes a graph walk instead of a guess." },
   "/runs": { what: "Every checker run with its inputs, outputs, checks, and refused publishes.", why: "A run computed against an outdated revision is refused before it posts." },
   "/analytics": { what: "Operational counts across all recorded scenarios.", why: "Same bento as Civic's city analytics, fed by findings instead of reports." },
-  "/chat": { what: "A CopilotKit chat with the thread and findings as context.", why: "It answers 'what changed and why' from the log and never recomputes a number." },
 };
 
 /** Trigger for the sidebar footer. Sized as a peer of ThemeToggle. */

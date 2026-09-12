@@ -1,6 +1,6 @@
 "use client";
 
-import { BarChart3, FileText, GitBranch, LayoutDashboard, MessageSquare, PlayCircle, ShieldCheck } from "lucide-react";
+import { BarChart3, FileText, GitBranch, LayoutDashboard, PlayCircle, ShieldCheck } from "lucide-react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { SidebarNav, SidebarShell, SidebarWhenCollapsed, SidebarWhenExpanded } from "@/civic-ui/components/SidebarShell";
 import { useEvidence } from "@/lib/demo/use-evidence";
@@ -49,7 +49,6 @@ export function AppSidebar() {
     { label: "Checker runs", href: "/runs", icon: PlayCircle, active: is("/runs"), count: runs },
     { label: "Analytics", href: "/analytics", icon: BarChart3, active: is("/analytics") },
   ];
-  const assist = [{ label: "Chat", href: "/chat", icon: MessageSquare, active: is("/chat") }];
 
   return (
     <SidebarShell
@@ -68,7 +67,6 @@ export function AppSidebar() {
       <div className="flex flex-col gap-6">
         <SidebarNav heading="Review" items={review} />
         <SidebarNav heading="Analysis" items={analysis} />
-        <SidebarNav heading="Assist" items={assist} />
       </div>
     </SidebarShell>
   );

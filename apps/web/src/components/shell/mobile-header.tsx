@@ -13,7 +13,6 @@ const LINKS = [
   { label: "Graph", href: "/graph" },
   { label: "Runs", href: "/runs" },
   { label: "Analytics", href: "/analytics" },
-  { label: "Chat", href: "/chat" },
 ];
 
 /** Below md the rail is gone; this sticky two-row header carries brand, scenario and a scrolling tab strip. */
