@@ -8,6 +8,12 @@
 import { REALTIME_MODEL, REALTIME_VOICE } from "@/lib/realtime-config";
 
 export async function POST() {
+  // Off by default. This route is unauthenticated, so on a public deployment
+  // anyone who can reach it can open Realtime sessions billed to OPENAI_API_KEY.
+  // ThreadRev's /voice page is not part of the product; opt in per environment.
+  if (process.env.REALTIME_VOICE_ENABLED !== "true") {
+    return Response.json({ error: "Voice is disabled. Set REALTIME_VOICE_ENABLED=true to enable /voice." }, { status: 404 });
+  }
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     return Response.json({ error: "OPENAI_API_KEY is not set on the server." }, { status: 500 });
