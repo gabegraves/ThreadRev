@@ -6,7 +6,7 @@ You are setting up the live test environment and the shared GitHub repo for Thre
 
 - Read-only outside the resources you create today. Do not post, invite, or install anything into any existing Slack workspace. Create a new one.
 - Never paste a token, key, or channel code into a commit, a chat message, a screenshot, or a file other than the gitignored `.env`. Report that a value was set, never the value.
-- The private research archive at `~/Documents/ChatGPT/9_12_26_Hackathon` contains real names. Do not copy, reference, or push anything from it.
+- The private research archive kept outside this repo contains real names. Do not copy, reference, or push anything from it.
 - If a step is still failing after 45 minutes, stop, report exactly where it failed with the error text, and move to the fallback in step 6.
 - Everything you claim done must have evidence: a command output, a status JSON, or a screenshot saved under `~/Desktop/9_12_26_Hackathon/ThreadRev/research/setup-evidence/`.
 

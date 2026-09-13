@@ -29,7 +29,7 @@ Exa is not used (decided 1:33 PM). The reviewer's truth is inside the workspace,
 
 Retrieve a correction from an older Slack thread, use the corrected inputs in a trusted check, and retain the evidence, run, and finding after restarting the agent. Verify that a subsequently ingested revision makes the previous finding stale and prevents an older run from being accepted as current.
 
-The motivating solar-car cases are repeated historical research, existing hardware being proposed for repurchase, ignored simulation-input corrections, conflicting artifact revisions, purchasing-state confusion, and document arithmetic inconsistencies. Internal evidence retrieval is the priority; a framework change alone does not solve these cases.
+The motivating historical cases are repeated historical research, existing hardware being proposed for repurchase, ignored simulation-input corrections, conflicting artifact revisions, purchasing-state confusion, and document arithmetic inconsistencies. Internal evidence retrieval is the priority; a framework change alone does not solve these cases.
 
 ### References
 

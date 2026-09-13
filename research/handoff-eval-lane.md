@@ -17,7 +17,7 @@ ThreadRev posts a review card in a Slack thread when a document or message disag
 
 Nobody fixes the bot except Gabe. Failures go to him as exact input, exact output.
 
-The private archive at `~/Documents/ChatGPT/9_12_26_Hackathon/slack-research/` has real names from a 2021 solar-car team. It stays on Gabe's machine. Nothing from it enters this repo, a screenshot, or the video. Fictional names and numbers only, from `research/synthetic-fixture-spec.md` section 3.
+The private research archive has real names. It stays outside this repo. Nothing from it enters this repo, a screenshot, or the video. Fictional names and numbers only, from `research/synthetic-fixture-spec.md` section 3.
 
 ## 3. Your work, in order
 

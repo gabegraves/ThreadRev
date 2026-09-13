@@ -8,6 +8,8 @@ dist/
 .DS_Store
 .turbo/
 *.tsbuildinfo
+__pycache__/
+*.pyc
 .next/
 next-env.d.ts
 assets/fonts/

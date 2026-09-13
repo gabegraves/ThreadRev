@@ -103,7 +103,7 @@ Video rules from `hackathon-rules.md`: two minutes, one complete interaction, vi
 ## 7. Rules for everyone
 
 - Commit and push to `origin main` after every completed unit of work. Small commits. Never end with uncommitted work. Do not commit another lane's uncommitted files.
-- Never commit `.env`, tokens, or anything from `~/Documents/ChatGPT/9_12_26_Hackathon`. That directory is a private archive with real names. It must not appear in the repo, the video, or screenshots.
+- Never commit `.env`, tokens, or anything from the private research archive kept outside this repo. It contains real names and must not appear in the repo, the video, or screenshots.
 - No co-author trailers on commits.
 - Use the name ThreadRev everywhere. ThreadLab is the old name.
 - Run `npm run verify` before claiming anything works. If it fails on the web workspace because of the review console in flight, run `npm run typecheck --workspace agent-core --workspace channel` and `npm run test --workspace agent-core --workspace channel` and say that is what you ran.

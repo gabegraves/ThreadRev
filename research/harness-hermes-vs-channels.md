@@ -1,7 +1,7 @@
 # Harness comparison: Hermes Agent vs CopilotKit Channels vs plain Bolt
 
 Date: 2026-09-12. Time-boxed ~15 min. Claims marked [V] were read directly from the cited source today; [U] means not verified.
-Kit root: `/Users/gabegraves/Desktop/9_12_26_Hackathon/agents-everywhere-starter-kit` (paths below are relative to it).
+Kit root: a sibling checkout of `agents-everywhere-starter-kit` (paths below are relative to it).
 
 ## Option A: Hermes Agent (Nous Research)
 

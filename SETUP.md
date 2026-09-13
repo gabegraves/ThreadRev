@@ -1,12 +1,12 @@
 # ThreadRev development environment
 
-Setup date: September 12, 2026. Status: local starter installed; hosted Slack/model connection awaiting user authentication and credentials. This is infrastructure, not an implemented engineering agent.
+Setup date: September 12, 2026. This file covers the development environment; [README.md](README.md) covers what is built and what is proven.
 
 ## Location and provenance
 
 Work from the repository root.
 
-Cloned [CopilotKit's official starter](https://github.com/CopilotKit/agents-everywhere-starter-kit) at `6443333e4b81fd6e21a4f531bdeee3a71eccd7b5`. Upstream Git history and origin are retained. Nothing was committed, pushed, published or submitted. Research remains in [../RESEARCH.md](../RESEARCH.md).
+Cloned [CopilotKit's official starter](https://github.com/CopilotKit/agents-everywhere-starter-kit) at `6443333e4b81fd6e21a4f531bdeee3a71eccd7b5`. Upstream Git history is retained as the `upstream` remote. Research is in [RESEARCH.md](RESEARCH.md)..
 
 Installed using Node 26.5.0 / npm 11.17.0 on this Mac; upstream requires Node 22+ and provides `.nvmrc` for 22. CopilotKit Channels 0.9.2 and Runtime 1.70.3 remain pinned. Public setup CLI verified as 4.9.60 and pinned in the channel scripts.
 
