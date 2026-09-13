@@ -26,6 +26,13 @@ Slack keeps the conversation. ThreadRev keeps the decision, what it was decided 
 
 https://github.com/gabegraves/ThreadRev (branch `main`)
 
+## Team
+
+- Gabe Graves: reviewer agent, tools, checkers, fixtures, replay harness, evals, submission.
+- Soham (28gugales-dev): web console and frontend, Vercel deployment.
+- Sricharan Samba: frontend and web UI, desktop overlay.
+- Pranav: Slack environment and live testing.
+
 Web console, public: https://threadrev-web.vercel.app (a viewer over the same evidence log, not the agent).
 
 ## Demo video

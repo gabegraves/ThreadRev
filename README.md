@@ -439,8 +439,17 @@ SETUP.md               Environment setup record and verification history
 
 </details>
 
+## Team
+
+| Who | What |
+|---|---|
+| Gabe Graves ([@gabegraves](https://github.com/gabegraves)) | Reviewer agent, tools, checkers, fixtures, replay harness, evals, submission |
+| Soham ([@28gugales-dev](https://github.com/28gugales-dev)) | Web console and frontend: review console, evidence graph, analytics, Vercel deployment |
+| Sricharan Samba | Frontend and web UI: desktop overlay (`apps/pet`), README captures, verification scripts |
+| Pranav | Slack environment and live testing: workspace setup, `@Rev` triggers, the live Card 1 run |
+
 <details>
-<summary>Team and working rules</summary>
+<summary>Working rules</summary>
 
 Five lanes worked on this repo in parallel: backend, web console, demo and submission, Slack environment, and eval / red team. [`AGENTS.md`](AGENTS.md) has the lane table, workspace rules, and Channels API conventions. [`CLAUDE.md`](CLAUDE.md) points coding agents at both.
 
