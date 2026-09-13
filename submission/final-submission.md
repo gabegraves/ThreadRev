@@ -30,7 +30,7 @@ Web console, public: https://threadrev-web.vercel.app (a viewer over the same ev
 
 ## Demo video
 
-TODO paste link
+https://www.youtube.com/watch?v=GkOk1QYSLWg
 
 ## Sponsor technologies
 

@@ -79,7 +79,7 @@ See [demo prompts](dev-docs/demo-prompts.md) for a reproducible incident workflo
 ## Social post and final submission
 
 - [ ] Follow the organizer's posting and sponsor-tagging instructions
-- [ ] Link the public repository and video (repository link ready; video link is `TODO paste link`)
+- [x] Link the public repository and video: https://github.com/gabegraves/ThreadRev and https://www.youtube.com/watch?v=GkOk1QYSLWg
 - [x] Credit the sponsors you used and applicable local partners (draft post in `submission/final-submission.md`)
 - [ ] Check the live integration once more before recording or submitting
 - [ ] Inspect the repository, video and screenshots for secrets

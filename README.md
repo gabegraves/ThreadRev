@@ -11,9 +11,15 @@
 
 When an engineering document stops matching the decisions around it, Rev traces the evidence, recomputes the supported calculation, and leaves a review card with the exact human decision still needed.
 
-[**Proof**](#proof-at-a-glance) · [**Scenario**](#the-problem-in-one-thread) · [**Why Slack matters**](#why-slack-context-matters) · [**Run it**](#run-it) · [**Architecture**](#how-it-works)
+[**Demo video**](https://www.youtube.com/watch?v=GkOk1QYSLWg) · [**Proof**](#proof-at-a-glance) · [**Scenario**](#the-problem-in-one-thread) · [**Why Slack matters**](#why-slack-context-matters) · [**Run it**](#run-it) · [**Architecture**](#how-it-works)
 
 </div>
+
+## Demo video
+
+[![ThreadRev demo: a live @Rev mention in Slack, the checker-backed card, the stale marker, and the approved edit](https://img.youtube.com/vi/GkOk1QYSLWg/maxresdefault.jpg)](https://www.youtube.com/watch?v=GkOk1QYSLWg)
+
+Two minutes: the engineering thread, Rev's review card, the correction that makes it stale, and the proposed edit a person approves. [Watch on YouTube.](https://www.youtube.com/watch?v=GkOk1QYSLWg)
 
 Built on September 12, 2026 at the [Agents, Everywhere](https://aitinkerers.org/hackathons/global/agents-everywhere) hackathon, on top of CopilotKit's [agents-everywhere-starter-kit](https://github.com/CopilotKit/agents-everywhere-starter-kit). Everything the reviewer does was written during the event; the split is in [What we built and what we inherited](#what-we-built-and-what-we-inherited).
 
