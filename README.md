@@ -19,7 +19,7 @@ When an engineering document stops matching the decisions around it, Rev traces 
 
 [![ThreadRev demo: a live @Rev mention in Slack, the checker-backed card, the stale marker, and the approved edit](https://img.youtube.com/vi/GkOk1QYSLWg/maxresdefault.jpg)](https://www.youtube.com/watch?v=GkOk1QYSLWg)
 
-Two minutes: the engineering thread, Rev's review card, the correction that makes it stale, and the proposed edit a person approves. [Watch on YouTube.](https://www.youtube.com/watch?v=GkOk1QYSLWg)
+[Watch on YouTube.](https://www.youtube.com/watch?v=GkOk1QYSLWg)
 
 Built on September 12, 2026 at the [Agents, Everywhere](https://aitinkerers.org/hackathons/global/agents-everywhere) hackathon, on top of CopilotKit's [agents-everywhere-starter-kit](https://github.com/CopilotKit/agents-everywhere-starter-kit). Everything the reviewer does was written during the event; the split is in [What we built and what we inherited](#what-we-built-and-what-we-inherited).
 
@@ -46,7 +46,7 @@ Built on September 12, 2026 at the [Agents, Everywhere](https://aitinkerers.org/
 
 This captured view of the deployed [ThreadRev analytics console](https://threadrev-web.vercel.app/analytics) makes the agent pattern visible at a glance: supersession rate, time to supersede, checker-failure mix, and the live → in-progress → superseded workflow. **It is fixture-backed console data, not a claim of live Slack delivery.**
 
-## The problem, in one thread
+## The problem
 
 Engineering teams make decisions in Slack threads and then write documents that quietly disagree with them. A review document prints a result computed from a capacitance the thread already replaced. A simulation request pulls parameters from a sheet that a correction message superseded three weeks earlier. Nobody catches it, because nobody rereads the thread.
 
@@ -76,7 +76,7 @@ And two rules shape everything else: **checker-derived rows stay tied to a named
 
 ---
 
-## One decision, end to end
+## Philosophy
 
 **Live, in a real Slack workspace, with a live model.** On September 12 at 19:22:30Z, forty seconds after an `@Rev` mention in `#ks4-electrical`, Rev posted Card 1 (`fnd-mtyrv4yj-y70h`) and then the section 4 proposed-edit card with Approve/Reject buttons. The record is [`scenario-a.1.json`](evals/records/model/scenario-a.1.json): `read_thread`, seven scoped `search_workspace` calls, `read_evidence`, and one RC checker run.
 
@@ -322,7 +322,7 @@ npm run verify
 
 The recorded replay artifacts above demonstrate behavior; they are not a substitute for a green clean-clone command on the final submission commit. Add the final commit SHA and test result here only after that command succeeds.
 
-### Not true yet
+### TODO
 
 - The stale marker, Card 2, and the Approve click have not happened with the live model in Slack.
 - The cross-channel data source is a synthetic workspace export; it is not live Slack Search or file retrieval.
