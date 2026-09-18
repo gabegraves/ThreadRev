@@ -474,7 +474,9 @@ export const publishResult = defineChannelTool({
 
     for (const prior of priors) {
       prior.finding = markStale(prior.finding);
-      await thread.update(prior.ref, renderFindingCard(prior.finding));
+      // Persisted refs lose their delivery methods; history supplies a current ref.
+      const currentRef = messages.find((m) => m.providerMessage?.logicalMessageId === prior.ref.id)?.messageRef;
+      await thread.update(currentRef ?? prior.ref, renderFindingCard(prior.finding));
       record({
         kind: "finding_superseded",
         thread: threadKey(thread),
@@ -540,7 +542,8 @@ function newProposalId() {
   return `edt-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
 }
 
-type Decide = (approve: boolean, by?: string, live?: { update: (ref: MessageRef, ui: unknown) => Promise<unknown> }) => Promise<void>;
+type LiveDecision = { update: (ui: ReturnType<typeof proposalCard>) => Promise<unknown> };
+type Decide = (approve: boolean, by?: string, live?: LiveDecision) => Promise<void>;
 
 function proposalCard(p: EditProposalView, onDecide?: Decide) {
   const body = editProposalBody(p);
@@ -554,8 +557,8 @@ function proposalCard(p: EditProposalView, onDecide?: Decide) {
         <Button
           value="approve"
           style="primary"
-          onClick={async ({ user, actor, thread: live }) => {
-            await onDecide(true, user?.name ?? actor.name ?? actor.handle, live as unknown as { update: (ref: MessageRef, ui: unknown) => Promise<unknown> });
+          onClick={async ({ user, actor, thread: live, message }) => {
+            await onDecide(true, user?.name ?? actor.name ?? actor.handle, { update: (ui) => live.update(message.ref, ui) });
           }}
         >
           Approve and write the file
@@ -563,8 +566,8 @@ function proposalCard(p: EditProposalView, onDecide?: Decide) {
         <Button
           value="reject"
           style="danger"
-          onClick={async ({ user, actor, thread: live }) => {
-            await onDecide(false, user?.name ?? actor.name ?? actor.handle, live as unknown as { update: (ref: MessageRef, ui: unknown) => Promise<unknown> });
+          onClick={async ({ user, actor, thread: live, message }) => {
+            await onDecide(false, user?.name ?? actor.name ?? actor.handle, { update: (ui) => live.update(message.ref, ui) });
           }}
         >
           Reject
@@ -659,10 +662,12 @@ export const proposeEdit = defineChannelTool({
     let ref: MessageRef | undefined;
     // The card is redrawn through whichever thread handle is live at click time.
     // A redraw failure never blocks the decision or the write; the evidence log has it.
-    const redraw = async (live?: { update: (ref: MessageRef, ui: unknown) => Promise<unknown> }) => {
+    const redraw = async (live?: LiveDecision) => {
       if (!ref) return;
       try {
-        await (live ?? thread).update(ref, proposalCard(view));
+        // Managed message refs carry their delivery: use the click's ref after the posting delivery closes.
+        if (live) await live.update(proposalCard(view));
+        else await thread.update(ref, proposalCard(view));
       } catch (e) {
         console.warn("[propose_edit] card not redrawn:", (e as Error).message);
       }

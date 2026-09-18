@@ -1,11 +1,13 @@
+import { APICallError } from "ai";
 import { it } from "node:test";
 import assert from "node:assert/strict";
 import { AbstractAgent } from "@ag-ui/client";
 import { EventType, type BaseEvent, type RunAgentInput } from "@ag-ui/core";
-import { from, type Observable } from "rxjs";
+import { concat, from, throwError, type Observable } from "rxjs";
 import { createChannel } from "@copilotkit/channels";
 import { startChannelsWithGatewayControl } from "@copilotkit/channels-intelligence";
 import type { searchWeb } from "agent-core";
+import { ChannelRunAgent, runReviewer } from "./agent";
 import { IncidentCard } from "./components";
 import { createSearchTool } from "./search";
 import { ManagedGateway, preparedDelivery } from "./testing/managed-gateway";
@@ -74,26 +76,27 @@ class ResearchAgent extends AbstractAgent {
   }
 }
 
-async function runResearch(search: typeof searchWeb, withIncident = true) {
+async function runResearch(search: typeof searchWeb, withIncident = true, agentFactory = () => new ResearchAgent(withIncident) as AbstractAgent) {
   const gateway = new ManagedGateway();
   const channel = createChannel({
     name: "support",
     identifyUser: "platform",
     showToolStatus: true,
-    agent: () => new ResearchAgent(withIncident),
+    agent: agentFactory,
     components: [IncidentCard],
     tools: [createSearchTool(search)],
   });
   let failure: unknown;
   channel.onMessage(async ({ thread }) => {
     try {
-      await thread.runAgent();
+      await runReviewer(thread);
     } catch (error) {
       failure = error;
       throw error;
     }
   });
   let agentMessages: AbstractAgent["messages"] = [];
+  const runErrors: string[] = [];
   const handle = await startChannelsWithGatewayControl([channel], {
     session: gateway,
     scope: { projectId: 1, channelName: "support" },
@@ -118,12 +121,24 @@ async function runResearch(search: typeof searchWeb, withIncident = true) {
       });
     },
     runCanonical: async (args) => {
-      const result = await args.execute(
-        {},
-        { threadId: args.threadId, runId: args.runId },
-      );
-      agentMessages = args.agent.messages;
-      return result;
+      let terminalError: Error | undefined;
+      try {
+        return await args.execute(
+          { onRunErrorEvent: ({ event }) => {
+            runErrors.push(event.message);
+            // Match runtime 1.70.3 channel-manager: persistence turns RUN_ERROR
+            // into a fresh error, preserving code but losing the provider class.
+            terminalError = Object.assign(new Error(event.message), {
+              name: "ChannelCanonicalRunError", code: event.code,
+            });
+          } },
+          { threadId: args.threadId, runId: args.runId },
+        );
+      } catch (error) {
+        throw terminalError ?? error;
+      } finally {
+        agentMessages = args.agent.messages;
+      }
     },
   });
   try {
@@ -138,6 +153,7 @@ async function runResearch(search: typeof searchWeb, withIncident = true) {
       payloads: gateway.packets.map(({ payload }) => payload),
       failure,
       agentMessages,
+      runErrors,
     };
   } finally {
     await handle.stop();
@@ -228,3 +244,28 @@ it(
     );
   },
 );
+
+class FailedModelAgent extends AbstractAgent {
+  run(input: RunAgentInput): Observable<BaseEvent> {
+    return concat(
+      from([{ type: EventType.RUN_STARTED, threadId: input.threadId, runId: input.runId }]),
+      throwError(() => new APICallError({
+        message: "Your API key has expired. Create a new API key to continue.",
+        url: "https://api.openai.com/v1/responses", requestBodyValues: {}, statusCode: 401,
+      })),
+    );
+  }
+}
+
+it("a model API failure delivers one error reply and retains the failed canonical run", { timeout: 10_000 }, async () => {
+  const result = await runResearch(async () => [], false, () => new ChannelRunAgent(() => new FailedModelAgent()));
+  const creates = result.payloads.filter((p) => p.kind === "slack.message.create");
+  assert.equal(creates.length, 1, JSON.stringify(creates));
+  assert.match(JSON.stringify(creates[0]), /Your API key has expired/);
+  assert.deepEqual(result.runErrors, ["Your API key has expired. Create a new API key to continue."]);
+});
+
+it("reviewer does not swallow unrelated setup or delivery failures", async () => {
+  const error = Object.assign(new Error("message delivery unavailable"), { name: "AI_APICallError" });
+  await assert.rejects(runReviewer({ runAgent: async () => { throw error; } }), (caught) => caught === error);
+});
