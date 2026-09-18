@@ -10,7 +10,7 @@ import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { execFileSync } from "node:child_process";
 import { preparedDelivery } from "../testing/managed-gateway";
-import { loadFixture } from "./fixture-loader";
+import { loadFixture, providerMessageId } from "./fixture-loader";
 import { runReplay, type ReplayResult } from "./harness";
 import { routeCases, scriptFor } from "./scripts";
 
@@ -314,8 +314,19 @@ for (const decision of ["approve", "reject"] as const) {
         assert.match(JSON.stringify(last.payload), decision === "approve" ? /Proposed edit: applied/ : /Proposed edit: rejected/);
         assert.doesNotMatch(JSON.stringify(last.payload), /Approve and write the file|"type":"button"|Nothing has been written/);
         assert.ok(last.deliveryId.includes(`decision_${decision}_0`), "redraw belongs to the click delivery");
+        script.steps.splice(0, script.steps.length, () => undefined);
+        const reread = preparedDelivery(`reread_${decision}`, "slack", { kind: "text", text: "Read the current proposal" });
+        const initial = preparedDelivery("replay_fixture", "slack", { kind: "text", text: "" });
+        reread.canonicalThreadId = initial.canonicalThreadId;
+        reread.conversation = initial.conversation;
+        await gateway.deliver(reread);
       }});
       assert.equal(result.failure, undefined);
+      const proposal = result.agentMessages.find((m) => m.role === "assistant" && String(m.content).includes("Proposed edit:"));
+      assert.ok(proposal);
+      assert.match(String(proposal.content), decision === "approve" ? /Proposed edit: applied/ : /Proposed edit: rejected/);
+      const replacement = result.gateway.packets.filter((p) => p.payload.kind === "slack.message.replace").at(-1)!;
+      assert.ok(proposal.id.endsWith(providerMessageId(replacement.packetId)), "transcript revision advances with the replacement");
       assert.equal(existsSync(join(outDir, "precharge-review-r2-proposed.docx")), decision === "approve");
     } finally {
       if (previousOutput === undefined) delete process.env.EDIT_OUTPUT_DIR;
@@ -346,6 +357,11 @@ it("a later delivery supersedes a persisted finding using its current transcript
     next.canonicalThreadId = initial.canonicalThreadId;
     next.conversation = initial.conversation;
     await gateway.deliver(next);
+    steps.splice(0, steps.length, () => undefined);
+    const reread = preparedDelivery("reread_superseded", "slack", { kind: "text", text: "Read current findings" });
+    reread.canonicalThreadId = initial.canonicalThreadId;
+    reread.conversation = initial.conversation;
+    await gateway.deliver(reread);
   }});
   const update = result.gateway.packets.find((p) => p.payload.kind === "slack.message.replace");
   assert.ok(update, JSON.stringify(result.agentMessages));
@@ -354,4 +370,8 @@ it("a later delivery supersedes a persisted finding using its current transcript
   assert.equal(result.postedCards.length, 2, JSON.stringify(result.agentMessages));
   assert.equal(result.replacedCards[0]?.stale, true);
   assert.deepEqual(result.threadState?.cards.map((c) => c.finding.status), ["stale", "live"]);
+  const previous = result.agentMessages.find((m) => m.id.includes(providerMessageId(originalReference!)));
+  assert.ok(previous);
+  assert.match(String(previous.content), /Superseded finding/);
+  assert.ok(previous.id.endsWith(providerMessageId(update.packetId)), "supersession advances the revision without changing logical identity");
 });

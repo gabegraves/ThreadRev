@@ -11,7 +11,7 @@ import { AbstractAgent } from "@ag-ui/client";
 import { EventType, type BaseEvent, type RunAgentInput } from "@ag-ui/core";
 import { from, type Observable } from "rxjs";
 import { createChannel, defineChannelTool } from "@copilotkit/channels";
-import { startChannelsWithGatewayControl } from "@copilotkit/channels-intelligence";
+import { startChannelsWithGatewayControl, type ChannelTranscriptMessage } from "@copilotkit/channels-intelligence";
 import { z } from "zod";
 import { type CheckerResponse } from "agent-core";
 import {
@@ -333,14 +333,27 @@ export async function runReplay(options: ReplayOptions): Promise<ReplayResult> {
         if (String(input).endsWith("/charge")) return Response.json({ charged: true });
         assert.ok(String(input).endsWith("/transcript"), `Unexpected request: ${input}`);
         const transcript = toTranscript(state.visible, trigger.ts);
-        const posted = gateway.packets.filter((p) => p.payload.kind === "slack.message.create");
-        return Response.json({ ...transcript, messages: [...transcript.messages, ...posted.map((p) => ({
-          ...transcript.messages[0],
-          logicalMessageId: providerMessageId(`pref_v1_${p.packetId}`), revisionId: providerMessageId(`pref_v1_${p.packetId}`),
-          role: "assistant", actor: { id: "rev", kind: "bot", displayName: "Rev", handle: "rev" },
-          text: (p.payload as { text: string }).text,
-          messageRef: { id: `pref_v1_${p.packetId}` }, currentTrigger: false, files: [],
-        }))] });
+        const posted = new Map<string, ChannelTranscriptMessage>();
+        for (const p of gateway.packets) {
+          if (p.payload.kind === "slack.message.create") {
+            const reference = `pref_v1_${p.packetId}`;
+            posted.set(reference, {
+              ...transcript.messages[0]!,
+              logicalMessageId: providerMessageId(reference), revisionId: providerMessageId(reference),
+              role: "assistant", actor: { id: "rev", kind: "bot", displayName: "Rev", handle: "rev" },
+              text: (p.payload as { text: string }).text,
+              messageRef: { id: reference }, currentTrigger: false, files: [],
+            });
+          } else if (p.payload.kind === "slack.message.replace") {
+            const replacement = p.payload as { providerReference: string; text: string };
+            const message = posted.get(replacement.providerReference);
+            if (message) {
+              message.text = replacement.text;
+              message.revisionId = providerMessageId(p.packetId);
+            }
+          }
+        }
+        return Response.json({ ...transcript, messages: [...transcript.messages, ...posted.values()] });
       },
       runCanonical: async (args) => {
         const result = await args.execute({}, { threadId: args.threadId, runId: args.runId });
