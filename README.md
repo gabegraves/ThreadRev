@@ -7,6 +7,8 @@
 
 # ThreadRev
 
+[![verify](https://github.com/gabegraves/ThreadRev/actions/workflows/verify.yml/badge.svg)](https://github.com/gabegraves/ThreadRev/actions/workflows/verify.yml)
+
 **A Slack-native reviewer for engineering decisions that need to remain true.**
 
 When an engineering document stops matching the decisions around it, Rev traces the evidence, recomputes the supported calculation, and leaves a review card with the exact human decision still needed.
