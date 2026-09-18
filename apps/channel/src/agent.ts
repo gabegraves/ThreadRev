@@ -1,9 +1,17 @@
+import { APICallError } from "ai";
 import { AbstractAgent } from "@ag-ui/client";
 import type { BaseEvent, RunAgentInput } from "@ag-ui/core";
 import { EventType } from "@ag-ui/core";
 import { makeAgent, REVIEWER_PROMPT } from "agent-core";
 import { Observable, type Subscription } from "rxjs";
 import { record } from "./evidence";
+
+const MODEL_API_ERROR = "threadrev_model_api_error";
+
+function reviewerError(error: unknown): unknown {
+  // The canonical runner preserves error codes, but replaces error classes.
+  return APICallError.isInstance(error) ? Object.assign(error, { code: MODEL_API_ERROR }) : error;
+}
 
 type ChannelAgentFactory = (threadId: string) => AbstractAgent;
 
@@ -98,7 +106,7 @@ export class ChannelRunAgent extends AbstractAgent {
           next: forward,
           error: (error) => {
             release();
-            subscriber.error(error);
+            subscriber.error(reviewerError(error));
           },
           complete: () => {
             forward.flush();
@@ -108,7 +116,7 @@ export class ChannelRunAgent extends AbstractAgent {
         });
       } catch (error) {
         release();
-        subscriber.error(error);
+        subscriber.error(reviewerError(error));
       }
 
       return () => {
@@ -141,7 +149,6 @@ export function makeChannelAgent(threadId: string) {
   );
 }
 
-
 /** The SDK already renders and records model API failures before rejecting. */
 export async function runReviewer(thread: { runAgent(): Promise<unknown> }): Promise<void> {
   try {
@@ -149,7 +156,7 @@ export async function runReviewer(thread: { runAgent(): Promise<unknown> }): Pro
   } catch (error) {
     // ponytail: only the observed AI SDK API-call error is handled here; other
     // failures still reach the delivery fallback until their rendering is proven.
-    if (!(error instanceof Error) || error.name !== "AI_APICallError") throw error;
+    if (!(error instanceof Error) || !("code" in error) || error.code !== MODEL_API_ERROR) throw error;
     console.warn("[reviewer] model API request failed; the SDK recorded the failed run and rendered its error");
   }
 }

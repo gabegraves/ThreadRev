@@ -324,3 +324,34 @@ for (const decision of ["approve", "reject"] as const) {
     }
   });
 }
+
+
+it("a later delivery supersedes a persisted finding using its current transcript reference", { timeout: 20_000 }, async () => {
+  const messages = loadFixture("scenario-a");
+  const steps = scriptFor("scenario-a", messages).steps.slice(0, 4);
+  const publish = steps[3]!;
+  let previousFinding: string | undefined;
+  steps[3] = (ctx) => {
+    const call = publish(ctx)!;
+    if (previousFinding) call.args = { ...(call.args as object), discrepancy: "Rechecked section 4 result.", supersedes: previousFinding };
+    return call;
+  };
+  let originalReference: string;
+  const result = await runReplay({ messages, steps, afterDelivery: async (gateway) => {
+    const post = gateway.packets.find((p) => p.payload.kind === "slack.message.create")!;
+    previousFinding = JSON.stringify(post.payload).match(/fnd-[a-z0-9-]+/)![0];
+    originalReference = `pref_v1_${post.packetId}`;
+    const next = preparedDelivery("supersede", "slack", { kind: "text", text: "Recheck the corrected result" });
+    const initial = preparedDelivery("replay_fixture", "slack", { kind: "text", text: "" });
+    next.canonicalThreadId = initial.canonicalThreadId;
+    next.conversation = initial.conversation;
+    await gateway.deliver(next);
+  }});
+  const update = result.gateway.packets.find((p) => p.payload.kind === "slack.message.replace");
+  assert.ok(update, JSON.stringify(result.agentMessages));
+  assert.equal((update.payload as { providerReference: string }).providerReference, originalReference!);
+  assert.ok(update.deliveryId.includes("supersede"));
+  assert.equal(result.postedCards.length, 2, JSON.stringify(result.agentMessages));
+  assert.equal(result.replacedCards[0]?.stale, true);
+  assert.deepEqual(result.threadState?.cards.map((c) => c.finding.status), ["stale", "live"]);
+});

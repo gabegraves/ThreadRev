@@ -25,7 +25,7 @@ import {
   searchWorkspace,
 } from "../reviewer-tools";
 import { ManagedGateway, preparedDelivery } from "../testing/managed-gateway";
-import { splitAtCutoff, toTranscript, type FixtureMessage } from "./fixture-loader";
+import { providerMessageId, splitAtCutoff, toTranscript, type FixtureMessage } from "./fixture-loader";
 import { runContext, threadKey } from "../evidence";
 import { runChecker } from "./run-checker";
 
@@ -332,7 +332,15 @@ export async function runReplay(options: ReplayOptions): Promise<ReplayResult> {
       appApiFetch: async (input) => {
         if (String(input).endsWith("/charge")) return Response.json({ charged: true });
         assert.ok(String(input).endsWith("/transcript"), `Unexpected request: ${input}`);
-        return Response.json(toTranscript(state.visible, trigger.ts));
+        const transcript = toTranscript(state.visible, trigger.ts);
+        const posted = gateway.packets.filter((p) => p.payload.kind === "slack.message.create");
+        return Response.json({ ...transcript, messages: [...transcript.messages, ...posted.map((p) => ({
+          ...transcript.messages[0],
+          logicalMessageId: providerMessageId(`pref_v1_${p.packetId}`), revisionId: providerMessageId(`pref_v1_${p.packetId}`),
+          role: "assistant", actor: { id: "rev", kind: "bot", displayName: "Rev", handle: "rev" },
+          text: (p.payload as { text: string }).text,
+          messageRef: { id: `pref_v1_${p.packetId}` }, currentTrigger: false, files: [],
+        }))] });
       },
       runCanonical: async (args) => {
         const result = await args.execute({}, { threadId: args.threadId, runId: args.runId });

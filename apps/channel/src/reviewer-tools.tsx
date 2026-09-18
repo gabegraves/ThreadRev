@@ -474,7 +474,9 @@ export const publishResult = defineChannelTool({
 
     for (const prior of priors) {
       prior.finding = markStale(prior.finding);
-      await thread.update(prior.ref, renderFindingCard(prior.finding));
+      // Persisted refs lose their delivery methods; history supplies a current ref.
+      const currentRef = messages.find((m) => m.providerMessage?.logicalMessageId === prior.ref.id)?.messageRef;
+      await thread.update(currentRef ?? prior.ref, renderFindingCard(prior.finding));
       record({
         kind: "finding_superseded",
         thread: threadKey(thread),
