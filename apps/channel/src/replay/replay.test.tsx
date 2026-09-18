@@ -9,6 +9,7 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { execFileSync } from "node:child_process";
+import { preparedDelivery } from "../testing/managed-gateway";
 import { loadFixture } from "./fixture-loader";
 import { runReplay, type ReplayResult } from "./harness";
 import { routeCases, scriptFor } from "./scripts";
@@ -278,3 +279,48 @@ it("propose_edit refuses a replacement value the checker did not produce", { tim
   assert.ok(refusal, "expected a refusal from propose_edit");
   assert.match(String(refusal.content), /7\.0.*not a value from run/);
 });
+
+
+for (const decision of ["approve", "reject"] as const) {
+  it(`native ${decision} updates the original proposal after its posting delivery closes`, { timeout: 20_000 }, async () => {
+    const outDir = mkdtempSync(join(tmpdir(), "threadrev-click-"));
+    const previousOutput = process.env.EDIT_OUTPUT_DIR;
+    process.env.EDIT_OUTPUT_DIR = outDir;
+    try {
+      const messages = loadFixture("scenario-a");
+      const script = scriptFor("scenario-a", messages);
+      const result = await runReplay({ messages, steps: script.steps, afterDelivery: async (gateway) => {
+        const post = gateway.packets.find((p) => p.payload.kind === "slack.message.create" && JSON.stringify(p.payload).includes("Proposed edit"));
+        assert.ok(post);
+        const payload = post.payload as { blocks?: Array<{ elements?: Array<{ action_id?: string; text?: { text: string } }> }> };
+        const buttons = payload.blocks?.flatMap((b) => b.elements ?? []) ?? [];
+        const button = buttons.find((b) => b.text?.text === (decision === "approve" ? "Approve and write the file" : "Reject"));
+        assert.ok(button?.action_id, JSON.stringify(post));
+        assert.equal(existsSync(join(outDir, "precharge-review-r2-proposed.docx")), false);
+        const providerReference = `pref_v1_${post.packetId}`;
+        for (let i = 0; i < 2; i++) {
+          const delivery = preparedDelivery(`decision_${decision}_${i}`, "slack", {
+            kind: "interaction", actionId: button.action_id, messageRef: { id: providerReference },
+          });
+          const initial = preparedDelivery("replay_fixture", "slack", { kind: "text", text: "" });
+          delivery.canonicalThreadId = initial.canonicalThreadId;
+          delivery.conversation = initial.conversation;
+          await gateway.deliver(delivery);
+        }
+        const updates = gateway.packets.filter((p) => p.payload.kind === "slack.message.replace");
+        assert.equal(updates.length, decision === "approve" ? 2 : 1, "native decision must redraw, with no repeated write/redraw");
+        const last = updates.at(-1)!;
+        assert.equal((last.payload as { providerReference: string }).providerReference, providerReference);
+        assert.match(JSON.stringify(last.payload), decision === "approve" ? /Proposed edit: applied/ : /Proposed edit: rejected/);
+        assert.doesNotMatch(JSON.stringify(last.payload), /Approve and write the file|"type":"button"|Nothing has been written/);
+        assert.ok(last.deliveryId.includes(`decision_${decision}_0`), "redraw belongs to the click delivery");
+      }});
+      assert.equal(result.failure, undefined);
+      assert.equal(existsSync(join(outDir, "precharge-review-r2-proposed.docx")), decision === "approve");
+    } finally {
+      if (previousOutput === undefined) delete process.env.EDIT_OUTPUT_DIR;
+      else process.env.EDIT_OUTPUT_DIR = previousOutput;
+      rmSync(outDir, { recursive: true, force: true });
+    }
+  });
+}

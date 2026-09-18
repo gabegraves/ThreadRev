@@ -150,6 +150,8 @@ export interface ReplayOptions {
    * publish. Return a fixture message to make it arrive in the thread now.
    */
   afterChecker?: (response: CheckerResponse, state: ReplayState) => FixtureMessage | undefined;
+  /** Exercise later native button deliveries while the channel is still running. */
+  afterDelivery?: (gateway: ManagedGateway) => Promise<void>;
 }
 
 /**
@@ -342,6 +344,7 @@ export async function runReplay(options: ReplayOptions): Promise<ReplayResult> {
       await gateway.deliver(
         preparedDelivery("replay_fixture", "slack", { kind: "text", text: trigger.text }),
       );
+      await options.afterDelivery?.(gateway);
       const payloads = gateway.packets.map(({ payload }) => payload as Record<string, unknown>);
       return {
         gateway,

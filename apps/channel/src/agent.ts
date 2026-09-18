@@ -140,3 +140,16 @@ export function makeChannelAgent(threadId: string) {
     threadId,
   );
 }
+
+
+/** The SDK already renders and records model API failures before rejecting. */
+export async function runReviewer(thread: { runAgent(): Promise<unknown> }): Promise<void> {
+  try {
+    await thread.runAgent();
+  } catch (error) {
+    // ponytail: only the observed AI SDK API-call error is handled here; other
+    // failures still reach the delivery fallback until their rendering is proven.
+    if (!(error instanceof Error) || error.name !== "AI_APICallError") throw error;
+    console.warn("[reviewer] model API request failed; the SDK recorded the failed run and rendered its error");
+  }
+}
