@@ -11,7 +11,7 @@ import { AbstractAgent } from "@ag-ui/client";
 import { EventType, type BaseEvent, type RunAgentInput } from "@ag-ui/core";
 import { from, type Observable } from "rxjs";
 import { createChannel, defineChannelTool } from "@copilotkit/channels";
-import { startChannelsWithGatewayControl } from "@copilotkit/channels-intelligence";
+import { startChannelsWithGatewayControl, type ChannelTranscriptMessage } from "@copilotkit/channels-intelligence";
 import { z } from "zod";
 import { type CheckerResponse } from "agent-core";
 import {
@@ -25,7 +25,7 @@ import {
   searchWorkspace,
 } from "../reviewer-tools";
 import { ManagedGateway, preparedDelivery } from "../testing/managed-gateway";
-import { splitAtCutoff, toTranscript, type FixtureMessage } from "./fixture-loader";
+import { providerMessageId, splitAtCutoff, toTranscript, type FixtureMessage } from "./fixture-loader";
 import { runContext, threadKey } from "../evidence";
 import { runChecker } from "./run-checker";
 
@@ -150,6 +150,8 @@ export interface ReplayOptions {
    * publish. Return a fixture message to make it arrive in the thread now.
    */
   afterChecker?: (response: CheckerResponse, state: ReplayState) => FixtureMessage | undefined;
+  /** Exercise later native button deliveries while the channel is still running. */
+  afterDelivery?: (gateway: ManagedGateway) => Promise<void>;
 }
 
 /**
@@ -330,7 +332,28 @@ export async function runReplay(options: ReplayOptions): Promise<ReplayResult> {
       appApiFetch: async (input) => {
         if (String(input).endsWith("/charge")) return Response.json({ charged: true });
         assert.ok(String(input).endsWith("/transcript"), `Unexpected request: ${input}`);
-        return Response.json(toTranscript(state.visible, trigger.ts));
+        const transcript = toTranscript(state.visible, trigger.ts);
+        const posted = new Map<string, ChannelTranscriptMessage>();
+        for (const p of gateway.packets) {
+          if (p.payload.kind === "slack.message.create") {
+            const reference = `pref_v1_${p.packetId}`;
+            posted.set(reference, {
+              ...transcript.messages[0]!,
+              logicalMessageId: providerMessageId(reference), revisionId: providerMessageId(reference),
+              role: "assistant", actor: { id: "rev", kind: "bot", displayName: "Rev", handle: "rev" },
+              text: (p.payload as { text: string }).text,
+              messageRef: { id: reference }, currentTrigger: false, files: [],
+            });
+          } else if (p.payload.kind === "slack.message.replace") {
+            const replacement = p.payload as { providerReference: string; text: string };
+            const message = posted.get(replacement.providerReference);
+            if (message) {
+              message.text = replacement.text;
+              message.revisionId = providerMessageId(p.packetId);
+            }
+          }
+        }
+        return Response.json({ ...transcript, messages: [...transcript.messages, ...posted.values()] });
       },
       runCanonical: async (args) => {
         const result = await args.execute({}, { threadId: args.threadId, runId: args.runId });
@@ -342,6 +365,7 @@ export async function runReplay(options: ReplayOptions): Promise<ReplayResult> {
       await gateway.deliver(
         preparedDelivery("replay_fixture", "slack", { kind: "text", text: trigger.text }),
       );
+      await options.afterDelivery?.(gateway);
       const payloads = gateway.packets.map(({ payload }) => payload as Record<string, unknown>);
       return {
         gateway,

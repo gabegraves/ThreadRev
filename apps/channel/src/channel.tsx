@@ -1,5 +1,5 @@
 import { createChannel } from "@copilotkit/channels";
-import { makeChannelAgent } from "./agent";
+import { makeChannelAgent, runReviewer } from "./agent";
 import { required } from "./env";
 import { reviewerWelcome } from "./finding-card";
 import { proposeEdit, publishResult, readEvidence, readThread, runCheck, searchWorkspace } from "./reviewer-tools";
@@ -29,7 +29,7 @@ export const channel = createChannel({
 
 // An @-mention is always a review request.
 channel.onMention(async ({ thread }) => {
-  await thread.runAgent();
+  await runReviewer(thread);
 });
 
 // Every other message in an invited channel passes through the cheap gate
@@ -44,7 +44,7 @@ channel.onMessage(async ({ thread, message }) => {
     record({ kind: "silence", thread: thread.conversationKey, reason: "gate_closed" });
     return;
   }
-  await thread.runAgent();
+  await runReviewer(thread);
 });
 
 channel.onWelcome(async ({ thread, platform }) => {

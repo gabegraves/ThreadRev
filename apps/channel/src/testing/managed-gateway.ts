@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import assert from "node:assert/strict";
 import { Thread } from "@copilotkit/channels";
 import { z } from "zod";
@@ -56,7 +57,7 @@ export class ManagedGateway extends DeliveryTestGateway {
           result: {
             ...ack.result,
             providerMessageId:
-              "pid_v1_abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQ",
+              `pid_v1_${createHash("sha256").update(String(ack.result.providerReference)).digest("base64url")}`,
           },
         };
       },
